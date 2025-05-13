@@ -20,31 +20,29 @@
  */
 #pragma once
 
-#include <functional>
-
-#include "variable_base.h"
+#include "../operator_base.h"
 
 namespace Wge {
-namespace Variable {
-class Rule : public VariableBase {
-  DECLARE_VIRABLE_NAME(RULE);
+namespace Operator {
+namespace Extension {
+class DetectSQLiAndSyntaxCheck : public OperatorBase {
+  DECLARE_OPERATOR_NAME(detectSQLiAndSyntaxCheck);
 
 public:
-  Rule(std::string&& sub_name, bool is_not, bool is_counter)
-      : VariableBase(std::move(sub_name), is_not, is_counter) {
-    initEvaluateFunc();
-  }
+  DetectSQLiAndSyntaxCheck(std::string&& literal_value, bool is_not,
+                           std::string_view curr_rule_file_path)
+      : OperatorBase(std::move(literal_value), is_not) {}
+
+  DetectSQLiAndSyntaxCheck(const std::shared_ptr<Macro::MacroBase> macro, bool is_not,
+                           std::string_view curr_rule_file_path)
+      : OperatorBase(macro, is_not) {}
 
 public:
-  void evaluate(Transaction& t, Common::EvaluateResults& result) const override {
-    if (evaluate_func_) {
-      evaluate_func_(t, result, is_counter_);
-    }
+  bool evaluate(Transaction& t, const Common::Variant& operand) const override {
+    UNREACHABLE();
+    throw "Not implemented!";
   }
-
-private:
-  void initEvaluateFunc();
-  std::function<void(Transaction&, Common::EvaluateResults&, bool)> evaluate_func_;
 };
-} // namespace Variable
+} // namespace Extension
+} // namespace Operator
 } // namespace Wge

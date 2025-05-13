@@ -20,31 +20,29 @@
  */
 #pragma once
 
-#include <functional>
-
-#include "variable_base.h"
+#include "rx_and_syntax_check_base.h"
 
 namespace Wge {
-namespace Variable {
-class Rule : public VariableBase {
-  DECLARE_VIRABLE_NAME(RULE);
+namespace Operator {
+namespace Extension {
+class RxAndSyntaxCheckJava : public RxAndSyntaxCheckBase {
+  DECLARE_OPERATOR_NAME(rxAndSyntaxCheckJava);
 
 public:
-  Rule(std::string&& sub_name, bool is_not, bool is_counter)
-      : VariableBase(std::move(sub_name), is_not, is_counter) {
-    initEvaluateFunc();
-  }
+  RxAndSyntaxCheckJava(std::string&& literal_value, bool is_not,
+                       std::string_view curr_rule_file_path)
+      : RxAndSyntaxCheckBase(std::move(literal_value), is_not, curr_rule_file_path) {}
+
+  RxAndSyntaxCheckJava(const std::shared_ptr<Macro::MacroBase> macro, bool is_not,
+                       std::string_view curr_rule_file_path)
+      : RxAndSyntaxCheckBase(macro, is_not, curr_rule_file_path) {}
 
 public:
-  void evaluate(Transaction& t, Common::EvaluateResults& result) const override {
-    if (evaluate_func_) {
-      evaluate_func_(t, result, is_counter_);
-    }
+  bool syntaxCheck(Transaction& t, const Common::Variant& operand) const override {
+    UNREACHABLE();
+    throw "Not implemented!";
   }
-
-private:
-  void initEvaluateFunc();
-  std::function<void(Transaction&, Common::EvaluateResults&, bool)> evaluate_func_;
 };
-} // namespace Variable
+} // namespace Extension
+} // namespace Operator
 } // namespace Wge

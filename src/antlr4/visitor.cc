@@ -1136,6 +1136,40 @@ std::any Visitor::visitOp_rx_default(Antlr4Gen::SecLangParser::Op_rx_defaultCont
   return EMPTY_STRING;
 }
 
+std::any Visitor::visitOp_rx_and_syntax_check_sql(
+    Antlr4Gen::SecLangParser::Op_rx_and_syntax_check_sqlContext* ctx) {
+  return setOprator<Operator::Extension::RxAndSyntaxCheckSQL>(ctx);
+}
+
+std::any Visitor::visitOp_rx_and_syntax_check_js(
+    Antlr4Gen::SecLangParser::Op_rx_and_syntax_check_jsContext* ctx) {
+  return setOprator<Operator::Extension::RxAndSyntaxCheckJS>(ctx);
+}
+
+std::any Visitor::visitOp_rx_and_syntax_check_shell(
+    Antlr4Gen::SecLangParser::Op_rx_and_syntax_check_shellContext* ctx) {
+  return setOprator<Operator::Extension::RxAndSyntaxCheckShell>(ctx);
+}
+
+std::any Visitor::visitOp_rx_and_syntax_check_java(
+    Antlr4Gen::SecLangParser::Op_rx_and_syntax_check_javaContext* ctx) {
+  return setOprator<Operator::Extension::RxAndSyntaxCheckJava>(ctx);
+}
+
+std::any Visitor::visitOp_rx_and_syntax_check_php(
+    Antlr4Gen::SecLangParser::Op_rx_and_syntax_check_phpContext* ctx) {
+  return setOprator<Operator::Extension::RxAndSyntaxCheckPHP>(ctx);
+}
+
+std::any Visitor::visitOp_detect_sqli_and_syntax_check(
+    Antlr4Gen::SecLangParser::Op_detect_sqli_and_syntax_checkContext* ctx) {
+  std::unique_ptr<Operator::OperatorBase> op =
+      std::make_unique<Operator::Extension::DetectSQLiAndSyntaxCheck>(
+          std::string(), ctx->NOT() != nullptr, parser_->currLoadFile());
+  (*current_rule_iter_)->setOperator(std::move(op));
+  return EMPTY_STRING;
+}
+
 std::any
 Visitor::visitAction_meta_data_id(Antlr4Gen::SecLangParser::Action_meta_data_idContext* ctx) {
   uint64_t id = 0;
@@ -2289,6 +2323,110 @@ std::any Visitor::visitSec_component_signature(
     Antlr4Gen::SecLangParser::Sec_component_signatureContext* ctx) {
   std::string signature = ctx->STRING()->getText();
   parser_->secComponentSignature(std::move(signature));
+  return EMPTY_STRING;
+}
+
+std::any Visitor::visitSec_rule_update_operator_by_id(
+    Antlr4Gen::SecLangParser::Sec_rule_update_operator_by_idContext* ctx) {
+  // Set the visit operator mode
+  auto old_visit_operator_mode = visit_operator_mode_;
+  visit_operator_mode_ = VisitOperatorMode::SecRuleUpdateOperator;
+
+  auto ids = ctx->INT();
+  for (auto id : ids) {
+    std::string id_str = id->getText();
+    uint64_t id_num = ::atoll(id_str.c_str());
+    current_rule_iter_ = parser_->findRuleById(id_num);
+    if (current_rule_iter_ != parser_->rules().end()) {
+      // Visit operator
+      std::string error;
+      TRY_NOCATCH(error = std::any_cast<std::string>(visitChildren(ctx)));
+      if (!error.empty()) {
+        // Revert the visit operator mode
+        visit_operator_mode_ = old_visit_operator_mode;
+        return error;
+      }
+    }
+  }
+
+  auto id_ranges = ctx->INT_RANGE();
+  for (auto range : id_ranges) {
+    std::string id_range_str = range->getText();
+    auto pos = id_range_str.find('-');
+    if (pos != std::string::npos) {
+      uint64_t first = ::atoll(id_range_str.substr(0, pos).c_str());
+      uint64_t last = ::atoll(id_range_str.substr(pos + 1).c_str());
+      for (auto id = first; id <= last; ++id) {
+        current_rule_iter_ = parser_->findRuleById(id);
+        if (current_rule_iter_ != parser_->rules().end()) {
+          // Visit operator
+          std::string error;
+          TRY_NOCATCH(error = std::any_cast<std::string>(visitChildren(ctx)));
+          if (!error.empty()) {
+            // Revert the visit operator mode
+            visit_operator_mode_ = old_visit_operator_mode;
+            return error;
+          }
+        }
+      }
+    }
+  }
+
+  auto id_and_chaind_index_array = ctx->ID_AND_CHAIN_INDEX();
+  for (auto id_and_chain : id_and_chaind_index_array) {
+    std::string id_and_chain_str = id_and_chain->getText();
+    auto pos = id_and_chain_str.find(':');
+    if (pos == std::string::npos) {
+      continue;
+    }
+    uint64_t id = ::atoll(id_and_chain_str.substr(0, pos).c_str());
+    uint64_t chain_index = ::atoll(id_and_chain_str.substr(pos + 1).c_str());
+    current_rule_iter_ = parser_->findRuleById(id);
+    if (current_rule_iter_ != parser_->rules().end()) {
+      std::optional<std::list<std::unique_ptr<Rule>>::iterator> chain_rule =
+          (*current_rule_iter_)->chainRule(chain_index);
+      if (chain_rule.has_value()) {
+        current_rule_iter_ = chain_rule.value();
+        // Visit operator
+        std::string error;
+        TRY_NOCATCH(error = std::any_cast<std::string>(visitChildren(ctx)));
+        if (!error.empty()) {
+          // Revert the visit operator mode
+          visit_operator_mode_ = old_visit_operator_mode;
+          return error;
+        }
+      }
+    }
+  }
+
+  // Revert the visit operator mode
+  visit_operator_mode_ = old_visit_operator_mode;
+
+  return EMPTY_STRING;
+}
+
+std::any Visitor::visitSec_rule_update_operator_by_tag(
+    Antlr4Gen::SecLangParser::Sec_rule_update_operator_by_tagContext* ctx) {
+  // Set the visit operator mode
+  auto old_visit_operator_mode = visit_operator_mode_;
+  visit_operator_mode_ = VisitOperatorMode::SecRuleUpdateOperator;
+
+  auto range = parser_->findRuleByTag(ctx->STRING()->getText());
+  for (auto iter = range.first; iter != range.second; ++iter) {
+    current_rule_iter_ = iter->second;
+    // Visit operator
+    std::string error;
+    TRY_NOCATCH(error = std::any_cast<std::string>(visitChildren(ctx)));
+    if (!error.empty()) {
+      // Revert the visit operator mode
+      visit_operator_mode_ = old_visit_operator_mode;
+      return error;
+    }
+  }
+
+  // Revert the visit operator mode
+  visit_operator_mode_ = old_visit_operator_mode;
+
   return EMPTY_STRING;
 }
 
