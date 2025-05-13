@@ -88,7 +88,7 @@ void emitNumericEntity(char** r, const std::string& entity_value, bool is_hex) {
   } catch (...) {
     memcpy(*r, "&#", 2);
     *r += 2;
-    memcpy(r, entity_value.data(), entity_value.size());
+    memcpy(*r, entity_value.data(), entity_value.size());
     *r += entity_value.size();
     **r = ';';
     (*r)++;

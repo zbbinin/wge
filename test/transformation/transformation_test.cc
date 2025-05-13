@@ -363,6 +363,15 @@ TEST_F(TransformationTest, htmlEntityDecode) {
     EXPECT_TRUE(ret);
     EXPECT_EQ(result, "& < > \" '   &notValid;");
   }
+
+  // Test for not valid html entity with invalid number
+  {
+    std::string data = "&#23234234234234;";
+    std::string result;
+    bool ret = html_entity_decode.evaluate(data, result);
+    EXPECT_TRUE(ret);
+    EXPECT_EQ(result, data);
+  }
 }
 
 TEST_F(TransformationTest, jsDecode) {
