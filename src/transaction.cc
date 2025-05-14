@@ -547,7 +547,8 @@ inline bool Transaction::process(int phase) {
 
     // Do the disruptive action
     std::optional<bool> disruptive = doDisruptive(*current_rule_, default_action);
-    if (disruptive.has_value()) {
+    if (disruptive.has_value() &&
+        engine_.config().rule_engine_option_ != EngineConfig::Option::DetectionOnly) {
       if (!disruptive.value()) {
         // Modify the response status code
         response_line_info_.status_code_ = "403";
