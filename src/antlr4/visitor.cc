@@ -1022,7 +1022,10 @@ std::any Visitor::visitOp_lt(Antlr4Gen::SecLangParser::Op_ltContext* ctx) {
 }
 
 std::any Visitor::visitOp_no_match(Antlr4Gen::SecLangParser::Op_no_matchContext* ctx) {
-  return setOprator<Operator::NoMatch>(ctx);
+  std::unique_ptr<Operator::OperatorBase> op = std::make_unique<Operator::NoMatch>(
+      std::string(), ctx->NOT() != nullptr, parser_->currLoadFile());
+  (*current_rule_iter_)->setOperator(std::move(op));
+  return EMPTY_STRING;
 }
 
 std::any Visitor::visitOp_pm(Antlr4Gen::SecLangParser::Op_pmContext* ctx) {

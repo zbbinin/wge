@@ -37,8 +37,7 @@ public:
 
 public:
   bool evaluate(Transaction& t, const Common::Variant& operand) const override {
-    assert(false);
-    throw "Not implemented!";
+    return is_not_ ^ false;
   }
 };
 } // namespace Operator
