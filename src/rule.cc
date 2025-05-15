@@ -365,9 +365,6 @@ inline bool Rule::evaluateWithMultiMatch(Transaction& t) const {
         i++;
         curr_transform_index = 0;
       } else {
-        // The variable value was moved by pushMatchedVariable, we need copy it back
-        variable_value = t.getMatchedVariables().back().second;
-
         // The variable value is not matched, perf transformation and try to match again
         if (IS_STRING_VIEW_VARIANT(variable_value.variant_)) [[likely]] {
           // Evaluate the transformation
