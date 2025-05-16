@@ -62,8 +62,8 @@ public:
         { result.append(static_cast<int>(query_params->size())); },
         // specify subname
         {
-          auto iter = query_params_map->find(sub_name_);
-          result.append(iter != query_params_map->end() ? 1 : 0);
+          int count = query_params_map->count(sub_name_);
+          result.append(count);
         });
 
     RETURN_VALUE(
@@ -88,8 +88,8 @@ public:
         // specify subname
         {
           if (!hasExceptVariable(sub_name_)) [[likely]] {
-            auto iter = query_params_map->find(sub_name_);
-            if (iter != query_params_map->end()) {
+            auto range = query_params_map->equal_range(sub_name_);
+            for (auto iter = range.first; iter != range.second; ++iter) {
               result.append(iter->second);
             }
           }

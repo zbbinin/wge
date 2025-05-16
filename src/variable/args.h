@@ -67,10 +67,8 @@ public:
         { result.append(static_cast<int>(line_query_params.size() + body_query_params->size())); },
         // specify subname
         {
-          int count = line_query_params_map.find(sub_name_) != line_query_params_map.end() ? 1 : 0;
-          if (body_query_params_map->find(sub_name_) != body_query_params_map->end()) {
-            count++;
-          }
+          int count = line_query_params_map.count(sub_name_);
+          count += body_query_params_map->count(sub_name_);
           result.append(count);
         });
 
@@ -108,13 +106,13 @@ public:
         // specify subname
         {
           if (!hasExceptVariable(sub_name_)) [[likely]] {
-            auto iter = line_query_params_map.find(sub_name_);
-            if (iter != line_query_params_map.end()) {
+            auto range = line_query_params_map.equal_range(sub_name_);
+            for (auto iter = range.first; iter != range.second; ++iter) {
               result.append(iter->second);
             }
-            auto iter2 = body_query_params_map->find(sub_name_);
-            if (iter2 != body_query_params_map->end()) {
-              result.append(iter2->second);
+            auto range2 = body_query_params_map->equal_range(sub_name_);
+            for (auto iter = range2.first; iter != range2.second; ++iter) {
+              result.append(iter->second);
             }
           }
         });
