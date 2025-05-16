@@ -1723,6 +1723,8 @@ std::any Visitor::visitAction_non_disruptive_t_md5(
 
 std::any Visitor::visitAction_non_disruptive_t_none(
     Antlr4Gen::SecLangParser::Action_non_disruptive_t_noneContext* ctx) {
+  auto& transforms = (*current_rule_iter_)->transforms();
+  transforms.clear();
   (*current_rule_iter_)->isIgnoreDefaultTransform(true);
   return EMPTY_STRING;
 }
