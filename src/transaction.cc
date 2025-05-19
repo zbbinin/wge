@@ -563,14 +563,15 @@ inline bool Transaction::process(int phase) {
     }
 
     // Do the disruptive action
-    std::optional<bool> disruptive = doDisruptive(*current_rule_, default_action);
-    if (disruptive.has_value() &&
-        engine_.config().rule_engine_option_ != EngineConfig::Option::DetectionOnly) {
-      if (!disruptive.value()) {
-        // Modify the response status code
-        response_line_info_.status_code_ = "403";
+    if (engine_.config().rule_engine_option_ != EngineConfig::Option::DetectionOnly) {
+      std::optional<bool> disruptive = doDisruptive(*current_rule_, default_action);
+      if (disruptive.has_value()) {
+        if (!disruptive.value()) {
+          // Modify the response status code
+          response_line_info_.status_code_ = "403";
+        }
+        return disruptive.value();
       }
-      return disruptive.value();
     }
 
     // Skip the rules if current rule that has a skip action or skipAfter action is matched
