@@ -192,7 +192,7 @@ bool Transaction::processRequestHeaders(HeaderFind request_header_find,
     } else if (content_type.starts_with("multipart/form-data")) {
       request_body_processor_ = BodyProcessorType::MultiPart;
     } else {
-      request_body_processor_ = BodyProcessorType::UrlEncoded;
+      request_body_processor_ = BodyProcessorType::UnknownFormat;
     }
     // The xml and json processor must be specified by the ctl action.
     // else if (content_type == "application/xml" || content_type == "text/xml") {
@@ -217,6 +217,9 @@ bool Transaction::processRequestBody(BodyExtractor body_extractor,
     if (!body.empty() && request_body_processor_.has_value()) {
       switch (request_body_processor_.value()) {
         {
+        case BodyProcessorType::UnknownFormat: {
+          // Do nothing
+        } break;
         case BodyProcessorType::UrlEncoded: {
           body_query_param_.init(body.front());
         } break;
