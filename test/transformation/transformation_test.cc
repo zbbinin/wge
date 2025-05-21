@@ -848,6 +848,11 @@ TEST_F(TransformationTest, urlDecodeUni) {
   ret = url_decode_uni.evaluate(data, result);
   EXPECT_TRUE(ret);
   EXPECT_EQ(result, "\u4E2D \u6587 \u4E2D \u6587 ");
+
+  data = R"(%uff1cscript%uff1ealert(%uff07XSS%uff07);%uff1c/script%uff1e)";
+  ret = url_decode_uni.evaluate(data, result);
+  EXPECT_TRUE(ret);
+  EXPECT_EQ(result, "<script>alert('XSS');</script>");
 }
 
 TEST_F(TransformationTest, urlDecode) {
