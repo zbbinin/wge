@@ -20,26 +20,17 @@
  */
 #pragma once
 
-#include "variable_base.h"
+#include <string_view>
+
+#include "../../transaction.h"
 
 namespace Wge {
-namespace Variable {
-class PathInfo : public VariableBase {
-  DECLARE_VIRABLE_NAME(PATH_INFO);
-
+namespace Common {
+namespace Ragel {
+class UriParser {
 public:
-  PathInfo(std::string&& sub_name, bool is_not, bool is_counter)
-      : VariableBase(std::move(sub_name), is_not, is_counter) {}
-
-public:
-  void evaluate(Transaction& t, Common::EvaluateResults& result) const override {
-    if (is_counter_) [[unlikely]] {
-      result.append(t.getRequestLineInfo().relative_uri_.empty() ? 0 : 1);
-      return;
-    }
-
-    result.append(t.getRequestLineInfo().relative_uri_);
-  }
+  void init(std::string_view uri, Transaction::RequestLineInfo& req_line_info);
 };
-} // namespace Variable
+} // namespace Ragel
+} // namespace Common
 } // namespace Wge

@@ -18,28 +18,22 @@
  * DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#pragma once
+#include <gtest/gtest.h>
 
-#include "variable_base.h"
+#include "transaction.h"
+#include "engine.h"
 
 namespace Wge {
-namespace Variable {
-class PathInfo : public VariableBase {
-  DECLARE_VIRABLE_NAME(PATH_INFO);
-
-public:
-  PathInfo(std::string&& sub_name, bool is_not, bool is_counter)
-      : VariableBase(std::move(sub_name), is_not, is_counter) {}
-
-public:
-  void evaluate(Transaction& t, Common::EvaluateResults& result) const override {
-    if (is_counter_) [[unlikely]] {
-      result.append(t.getRequestLineInfo().relative_uri_.empty() ? 0 : 1);
-      return;
-    }
-
-    result.append(t.getRequestLineInfo().relative_uri_);
+class TransactionTest : public ::testing::Test {
+protected:
+  void SetUp() override {
+    engine_.init();
+    t_ = engine_.makeTransaction();
   }
+
+protected:
+  Wge::Engine engine_;
+  std::unique_ptr<Transaction> t_;
 };
-} // namespace Variable
+
 } // namespace Wge

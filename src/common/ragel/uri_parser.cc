@@ -18,28 +18,18 @@
  * DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#pragma once
+#include "uri_parser.h"
 
-#include "variable_base.h"
+#include <uri_parser.h>
 
 namespace Wge {
-namespace Variable {
-class PathInfo : public VariableBase {
-  DECLARE_VIRABLE_NAME(PATH_INFO);
-
-public:
-  PathInfo(std::string&& sub_name, bool is_not, bool is_counter)
-      : VariableBase(std::move(sub_name), is_not, is_counter) {}
-
-public:
-  void evaluate(Transaction& t, Common::EvaluateResults& result) const override {
-    if (is_counter_) [[unlikely]] {
-      result.append(t.getRequestLineInfo().relative_uri_.empty() ? 0 : 1);
-      return;
-    }
-
-    result.append(t.getRequestLineInfo().relative_uri_);
-  }
-};
-} // namespace Variable
+namespace Common {
+namespace Ragel {
+void UriParser::init(std::string_view uri, Transaction::RequestLineInfo& req_line_info) {
+  ::uriParser(uri, req_line_info.uri_, req_line_info.relative_uri_, req_line_info.query_,
+              req_line_info.base_name_, req_line_info.uri_buffer_,
+              req_line_info.relative_uri_buffer_, req_line_info.base_name_buffer_);
+}
+} // namespace Ragel
+} // namespace Common
 } // namespace Wge
