@@ -18,19 +18,15 @@
  * DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#pragma once
+#include "js_decode.h"
 
-#include <string>
-
-#include "transform_base.h"
+#include <js_decode.h>
 
 namespace Wge {
 namespace Transformation {
-class JsDecode : public TransformBase {
-  DECLARE_TRANSFORM_NAME(jsDecode);
+bool JsDecode::evaluate(std::string_view data, std::string& result) const {
+  return jsDecode(data, result);
+}
 
-public:
-  bool evaluate(std::string_view data, std::string& result) const override;
-};
 } // namespace Transformation
 } // namespace Wge

@@ -388,7 +388,31 @@ TEST_F(TransformationTest, htmlEntityDecode) {
 }
 
 TEST_F(TransformationTest, jsDecode) {
-  // TODO(zhouyu 2025-03-21): Implement this test
+  const JsDecode js_decode;
+
+  {
+    std::string data = R"(This is a test data)";
+    std::string result;
+    bool ret = js_decode.evaluate(data, result);
+    EXPECT_FALSE(ret);
+    EXPECT_TRUE(result.empty());
+  }
+
+  {
+    std::string data = R"(This is a test data. \a \b \f \n \r \t \v \\ \? \' \" \xab \101 \01 \1)";
+    std::string result;
+    bool ret = js_decode.evaluate(data, result);
+    EXPECT_TRUE(ret);
+    EXPECT_EQ(result, "This is a test data. \a \b \f \n \r \t \v \\ \? \' \" \xab A \1 \1");
+  }
+
+  {
+    std::string data = R"(\u0054\u0068\u0069\u0073 \u0069\u0073 \u0061 \u0074\u0065\u0073\u0074 \u0064\u0061\u0074\u0061)";
+    std::string result;
+    bool ret = js_decode.evaluate(data, result);
+    EXPECT_TRUE(ret);
+    EXPECT_EQ(result, "\u0054\u0068\u0069\u0073 \u0069\u0073 \u0061 \u0074\u0065\u0073\u0074 \u0064\u0061\u0074\u0061");
+  }
 }
 
 TEST_F(TransformationTest, length) {
