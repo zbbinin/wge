@@ -71,13 +71,17 @@ public:
   // At the ProcessUri method, we will parse the request line and store the method, path, query,
   // protocol, and version.
   struct RequestLineInfo {
-    std::string method_;
+    std::string_view method_;
     std::string_view uri_raw_;
     std::string_view uri_;
     std::string_view relative_uri_;
     std::string_view query_;
-    std::string protocol_;
-    std::string version_;
+    std::string_view protocol_;
+    std::string_view version_;
+    std::string_view base_name_;
+    std::string uri_buffer_;
+    std::string relative_uri_buffer_;
+    std::string base_name_buffer_;
     Common::Ragel::QueryParam query_params_;
   };
 
@@ -442,7 +446,7 @@ public:
    * Get the request line info.
    * @return the request line info that parsed from the raw request line.
    */
-  const RequestLineInfo& getRequestLineInfo() const { return requset_line_info_; }
+  const RequestLineInfo& getRequestLineInfo() const { return request_line_info_; }
 
   /**
    * Get the response line info.
@@ -561,7 +565,7 @@ private:
   ConnectionInfo connection_info_;
   std::string_view request_line_;
   std::string request_line_buffer_;
-  RequestLineInfo requset_line_info_;
+  RequestLineInfo request_line_info_;
   ResponseLineInfo response_line_info_;
   Common::Ragel::QueryParam body_query_param_;
   Common::Ragel::MultiPart body_multi_part_;

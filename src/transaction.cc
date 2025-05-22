@@ -23,6 +23,8 @@
 #include <chrono>
 #include <format>
 
+#include "common/ragel/uri_parser.h"
+
 #include "action/set_var.h"
 #include "common/assert.h"
 #include "common/empty_string.h"
@@ -61,117 +63,60 @@ void Transaction::processConnection(std::string_view downstream_ip, short downst
 }
 
 void Transaction::processUri(std::string_view request_line) {
-  WGE_LOG_TRACE("====process uri====");
-
-  // Parse the request line
   request_line_ = request_line;
-  auto pos = request_line.find(' ');
-  if (pos != std::string_view::npos) {
-    // Parse the method
-    requset_line_info_.method_ = request_line.substr(0, pos);
+  // Find the first space to extract the HTTP method
+  size_t pos_space1 = request_line.find(' ');
+  if (pos_space1 != std::string_view::npos) [[likely]] {
+    std::string_view method = request_line.substr(0, pos_space1);
+    // Find the second space to extract the URI
+    size_t pos_space2 = request_line.find(' ', pos_space1 + 1);
+    if (pos_space2 != std::string_view::npos) [[likely]] {
+      std::string_view uri = request_line.substr(pos_space1 + 1, pos_space2 - pos_space1 - 1);
+      // Extract the protocol string (e.g., "HTTP/1.1")
+      request_line_info_.protocol_ = request_line.substr(pos_space2 + 1);
 
-    // Parse the uri
-    request_line.remove_prefix(pos + 1);
-    pos = request_line.find(' ');
-    if (pos != std::string_view::npos) {
-      requset_line_info_.uri_ = request_line.substr(0, pos);
-      requset_line_info_.uri_raw_ = requset_line_info_.uri_;
-    }
-
-    // Parse the query
-    auto pos_question = requset_line_info_.uri_.find('?');
-    if (pos_question != std::string_view::npos) {
-      requset_line_info_.query_ = requset_line_info_.uri_.substr(pos_question + 1);
-      requset_line_info_.uri_.remove_suffix(requset_line_info_.uri_.size() - pos_question);
-    }
-
-    // Parse the relative uri
-    requset_line_info_.relative_uri_ = requset_line_info_.uri_;
-    if (requset_line_info_.relative_uri_.starts_with("http://")) {
-      auto pos = requset_line_info_.relative_uri_.find('/', 7);
-      if (pos != std::string_view::npos) {
-        requset_line_info_.relative_uri_.remove_prefix(pos);
-      }
-    } else if (requset_line_info_.relative_uri_.starts_with("https://")) {
-      auto pos = requset_line_info_.relative_uri_.find('/', 8);
-      if (pos != std::string_view::npos) {
-        requset_line_info_.relative_uri_.remove_prefix(pos);
+      // Extract the version part after the '/' in the protocol string
+      auto pos = request_line_info_.protocol_.find('/');
+      if (pos != std::string_view::npos) [[likely]] {
+        processUri(uri, method, request_line_info_.protocol_.substr(pos + 1));
       }
     }
-
-    // Parse the protocol and verison
-    request_line.remove_prefix(pos + 1);
-    pos = request_line.find('/');
-    if (pos != std::string_view::npos) {
-      requset_line_info_.protocol_ = request_line;
-      request_line.remove_prefix(pos + 1);
-      requset_line_info_.version_ = request_line;
-    }
-
-    // Init the query params
-    requset_line_info_.query_params_.init(requset_line_info_.query_);
-
-    WGE_LOG_TRACE("method: {}, uri: {}, query: {}, protocol: {}, version: {}",
-                  requset_line_info_.method_, requset_line_info_.uri_, requset_line_info_.query_,
-                  requset_line_info_.protocol_, requset_line_info_.version_);
   }
 }
 
 void Transaction::processUri(std::string_view uri, std::string_view method,
                              std::string_view version) {
   WGE_LOG_TRACE("====process uri====");
-
+  // If request_line_ is empty, reconstruct it using method, URI, and version
+  if (request_line_.empty()) {
+    request_line_buffer_.reserve(method.size() + uri.size() + version.size() + 7);
+    request_line_buffer_ += method;
+    request_line_buffer_ += ' ';
+    request_line_buffer_ += uri;
+    request_line_buffer_ += " HTTP/";
+    request_line_buffer_ += version;
+    request_line_ = request_line_buffer_;
+    // Extract protocol string from the reconstructed request line
+    request_line_info_.protocol_ = request_line_.substr(method.size() + uri.size() + 2);
+  }
   // method
-  requset_line_info_.method_ = method;
+  request_line_info_.method_ = method;
 
-  // uri
-  requset_line_info_.uri_raw_ = uri;
-  requset_line_info_.uri_ = uri;
+  // uri_raw
+  request_line_info_.uri_raw_ = uri;
 
-  // Parse the query
-  auto pos_question = requset_line_info_.uri_.find('?');
-  if (pos_question != std::string_view::npos) {
-    requset_line_info_.query_ = requset_line_info_.uri_.substr(pos_question + 1);
-    requset_line_info_.uri_.remove_suffix(requset_line_info_.uri_.size() - pos_question);
-  }
+  // version
+  request_line_info_.version_ = version;
 
-  // Parse the relative uri
-  requset_line_info_.relative_uri_ = requset_line_info_.uri_;
-  if (requset_line_info_.relative_uri_.starts_with("http://")) {
-    auto pos = requset_line_info_.relative_uri_.find('/', 7);
-    if (pos != std::string_view::npos) {
-      requset_line_info_.relative_uri_.remove_prefix(pos);
-    }
-  } else if (requset_line_info_.relative_uri_.starts_with("https://")) {
-    auto pos = requset_line_info_.relative_uri_.find('/', 8);
-    if (pos != std::string_view::npos) {
-      requset_line_info_.relative_uri_.remove_prefix(pos);
-    }
-  }
-
-  // protocol and verison
-  requset_line_info_.protocol_ = "HTTP";
-  requset_line_info_.version_ = version;
-
-  // Combine the request line
-  request_line_buffer_.reserve(
-      requset_line_info_.method_.size() + requset_line_info_.uri_raw_.size() +
-      requset_line_info_.protocol_.size() + requset_line_info_.version_.size() + 3);
-  request_line_buffer_ += requset_line_info_.method_;
-  request_line_buffer_ += ' ';
-  request_line_buffer_ += requset_line_info_.uri_raw_;
-  request_line_buffer_ += ' ';
-  request_line_buffer_ += requset_line_info_.protocol_;
-  request_line_buffer_ += '/';
-  request_line_buffer_ += requset_line_info_.version_;
-  request_line_ = request_line_buffer_;
+  Common::Ragel::UriParser uri_parser;
+  uri_parser.init(uri, request_line_info_);
 
   // Init the query params
-  requset_line_info_.query_params_.init(requset_line_info_.query_);
+  request_line_info_.query_params_.init(request_line_info_.query_);
 
   WGE_LOG_TRACE("method: {}, uri: {}, query: {}, protocol: {}, version: {}",
-                requset_line_info_.method_, requset_line_info_.uri_, requset_line_info_.query_,
-                requset_line_info_.protocol_, requset_line_info_.version_);
+                request_line_info_.method_, request_line_info_.uri_, request_line_info_.query_,
+                request_line_info_.protocol_, request_line_info_.version_);
 }
 
 bool Transaction::processRequestHeaders(HeaderFind request_header_find,
