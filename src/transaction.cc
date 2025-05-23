@@ -149,37 +149,34 @@ bool Transaction::processRequestHeaders(HeaderFind request_header_find,
   return process(1);
 }
 
-bool Transaction::processRequestBody(BodyExtractor body_extractor,
+bool Transaction::processRequestBody(std::string_view body,
                                      std::function<void(const Rule&)> log_callback) {
   WGE_LOG_TRACE("====process request body====");
-  extractor_.reqeust_body_extractor_ = std::move(body_extractor);
+  request_body_ = body;
   log_callback_ = std::move(log_callback);
 
   // Parse the query params
-  if (extractor_.reqeust_body_extractor_) {
-    const std::vector<std::string_view>& body = extractor_.reqeust_body_extractor_();
-    if (!body.empty() && request_body_processor_.has_value()) {
-      switch (request_body_processor_.value()) {
-      case BodyProcessorType::UnknownFormat: {
-        // Do nothing
-      } break;
-      case BodyProcessorType::UrlEncoded: {
-        body_query_param_.init(body.front());
-      } break;
-      case BodyProcessorType::MultiPart: {
-        auto content_type = extractor_.request_header_find_("content-type");
-        body_multi_part_.init(content_type, body.front(), engine_.config().upload_file_limit_);
-      } break;
-      case BodyProcessorType::Xml: {
-        body_xml_.init(body.front());
-      } break;
-      case BodyProcessorType::Json: {
-        body_json_.init(body.front());
-      } break;
-      default: {
-        UNREACHABLE();
-      } break;
-      }
+  if (!request_body_.empty() && request_body_processor_.has_value()) {
+    switch (request_body_processor_.value()) {
+    case BodyProcessorType::UnknownFormat: {
+      // Do nothing
+    } break;
+    case BodyProcessorType::UrlEncoded: {
+      body_query_param_.init(request_body_);
+    } break;
+    case BodyProcessorType::MultiPart: {
+      auto content_type = extractor_.request_header_find_("content-type");
+      body_multi_part_.init(content_type, request_body_, engine_.config().upload_file_limit_);
+    } break;
+    case BodyProcessorType::Xml: {
+      body_xml_.init(request_body_);
+    } break;
+    case BodyProcessorType::Json: {
+      body_json_.init(request_body_);
+    } break;
+    default: {
+      UNREACHABLE();
+    } break;
     }
   }
 
@@ -201,10 +198,10 @@ bool Transaction::processResponseHeaders(std::string_view status_code, std::stri
   return process(3);
 }
 
-bool Transaction::processResponseBody(BodyExtractor body_extractor,
+bool Transaction::processResponseBody(std::string_view body,
                                       std::function<void(const Rule&)> log_callback) {
   WGE_LOG_TRACE("====process response body====");
-  extractor_.response_body_extractor_ = std::move(body_extractor);
+  response_body_ = body;
   log_callback_ = std::move(log_callback);
   return process(4);
 }

@@ -164,12 +164,11 @@ public:
 
   /**
    * Process the request body.
-   * @param body_extractor the request body extractor.
+   * @param body the request body.
    * @param log_callback the log callback. if the rule is matched, the log_callback will be called.
    * @return true if the request is safe, false otherwise that means need to deny the request.
    */
-  bool processRequestBody(BodyExtractor body_extractor,
-                          std::function<void(const Rule&)> log_callback);
+  bool processRequestBody(std::string_view body, std::function<void(const Rule&)> log_callback);
 
   /**
    * Process the response headers.
@@ -189,12 +188,11 @@ public:
 
   /**
    * Process the response body.
-   * @param body_extractor the response body extractor.
+   * @param body the response body.
    * @param log_callback the log callback. if the rule is matched, the log_callback will be called.
    * @return true if the request is safe, false otherwise that means need to deny the request.
    */
-  bool processResponseBody(BodyExtractor body_extractor,
-                           std::function<void(const Rule&)> log_callback);
+  bool processResponseBody(std::string_view body, std::function<void(const Rule&)> log_callback);
 
 public:
   /**
@@ -468,6 +466,18 @@ public:
   const RequestLineInfo& getRequestLineInfo() const { return request_line_info_; }
 
   /**
+   * Get the request body.
+   * @return the string view of the request body.
+   */
+  std::string_view getRequestBody() const { return request_body_; }
+
+  /**
+   * Get the response body.
+   * @return the string view of the response body.
+   */
+  std::string_view getResponseBody() const { return response_body_; }
+
+  /**
    * Get the response line info.
    * @return the response line info
    */
@@ -584,6 +594,8 @@ private:
   std::string request_line_buffer_;
   RequestLineInfo request_line_info_;
   ResponseLineInfo response_line_info_;
+  std::string_view request_body_;
+  std::string_view response_body_;
   Common::Ragel::QueryParam body_query_param_;
   Common::Ragel::MultiPart body_multi_part_;
   Common::Ragel::Xml body_xml_;
