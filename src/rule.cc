@@ -37,6 +37,17 @@ void Rule::initExceptVariables() {
   // the except variable to the collection except list.
   for (auto& except_var : except_variables_) {
     auto except_var_name = except_var->fullName();
+
+    // Init the except scanner
+    std::unique_ptr<Common::Pcre::Scanner> except_scanner_;
+    if (!except_var_name.sub_name_.empty() && except_var_name.sub_name_.front() == '/' &&
+        except_var_name.sub_name_.back() == '/') {
+      except_scanner_ = std::make_unique<Common::Pcre::Scanner>(
+          std::string_view{except_var_name.sub_name_.data() + 1,
+                           except_var_name.sub_name_.size() - 2},
+          false, false);
+    }
+
     for (auto iter = variables_.begin(); iter != variables_.end();) {
       auto var_name = (*iter)->fullName();
 
@@ -49,6 +60,13 @@ void Rule::initExceptVariables() {
       // The specific exception is collection or they are the same variable, we remove the variable
       // directly for the performance.
       if (except_var_name.sub_name_.empty() || var_name.sub_name_ == except_var_name.sub_name_) {
+        variables_index_by_full_name_.erase(var_name);
+        iter = variables_.erase(iter);
+        continue;
+      }
+
+      // The specific exception is a regex, if matched, we remove the variable directly
+      if (except_scanner_ && except_scanner_->match(var_name.sub_name_)) {
         variables_index_by_full_name_.erase(var_name);
         iter = variables_.erase(iter);
         continue;
