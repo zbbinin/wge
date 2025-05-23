@@ -24,7 +24,7 @@
 #include <algorithm>
 
 #ifndef ENABLE_MULTI_PART_DEBUG_LOG
-#define ENABLE_MULTI_PART_DEBUG_LOG 0
+#define ENABLE_MULTI_PART_DEBUG_LOG 1
 #endif
 
 #if ENABLE_MULTI_PART_DEBUG_LOG
@@ -51,15 +51,15 @@
   }
 
   action start_boundary {
-    boundary_start = p - 2;
+    boundary_start = p;
   }
 
   action end_boundary {
     boundary_len = p - boundary_start;
   }
 
-  boundary = "--" [^ \t\r\n]+ >start_boundary %end_boundary;
-  whitespace_boundary = "--" [^\r\n]* [ \t]+ >error_boundary_whitespace;
+  boundary = [^ \t\r\n]+ >start_boundary %end_boundary;
+  whitespace_boundary = [^\r\n]* [ \t]+ >error_boundary_whitespace;
   quoted_boundary = '"' [^"]+ '"' >error_boundary_quoted;
 
   main := ' '* "multipart/form-data;" ' '* "boundary="
