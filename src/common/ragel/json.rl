@@ -161,9 +161,9 @@
     value := |*
       WS => skip;
       '[' => { 
-        JSON_LOG("fnetx array");
+        JSON_LOG("fcall array");
         ++square_bracket_count;
-        fnext array;
+        fcall array;
       };
       '}' | ',' => {
         JSON_LOG("fret value");
