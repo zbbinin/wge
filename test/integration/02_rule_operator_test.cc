@@ -47,6 +47,33 @@ public:
   Engine engine_;
 };
 
+TEST_F(RuleOperatorTest, additionalCondition) {
+  const std::string directive =
+      R"(SecAction "phase:1,setvar:tx.foo=bar"
+      SecRule TX:foo "@beginsWith ba" "id:1,phase:1,setvar:'tx.v1',tag:'foo',msg:'bar'")";
+
+  auto result = engine_.load(directive);
+  engine_.init();
+
+  {
+    auto t = engine_.makeTransaction();
+    ASSERT_TRUE(result.has_value());
+
+    t->processRequestHeaders(nullptr, nullptr, 0, nullptr,
+                             [](const Rule& rule, std::string_view variable) { return true; });
+    EXPECT_TRUE(t->hasVariable("v1"));
+  }
+
+  {
+    auto t = engine_.makeTransaction();
+    ASSERT_TRUE(result.has_value());
+
+    t->processRequestHeaders(nullptr, nullptr, 0, nullptr,
+                             [](const Rule& rule, std::string_view variable) { return false; });
+    EXPECT_FALSE(t->hasVariable("v1"));
+  }
+}
+
 TEST_F(RuleOperatorTest, beginsWith) {
   const std::string directive =
       R"(SecAction "phase:1,setvar:tx.foo=bar"

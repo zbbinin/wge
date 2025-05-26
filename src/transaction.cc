@@ -118,15 +118,16 @@ void Transaction::processUri(std::string_view uri, std::string_view method,
                 request_line_info_.protocol_, request_line_info_.version_);
 }
 
-bool Transaction::processRequestHeaders(HeaderFind request_header_find,
-                                        HeaderTraversal request_header_traversal,
-                                        size_t header_count,
-                                        std::function<void(const Rule&)> log_callback) {
+bool Transaction::processRequestHeaders(
+    HeaderFind request_header_find, HeaderTraversal request_header_traversal, size_t header_count,
+    std::function<void(const Rule&)> log_callback,
+    std::function<bool(const Rule&, std::string_view)> additional_cond) {
   WGE_LOG_TRACE("====process request headers====");
   extractor_.request_header_find_ = std::move(request_header_find);
   extractor_.request_header_traversal_ = std::move(request_header_traversal);
   extractor_.request_header_count_ = header_count;
   log_callback_ = std::move(log_callback);
+  additional_cond_ = std::move(additional_cond);
 
   // Set the request body processor
   if (extractor_.request_header_find_) {
@@ -146,14 +147,22 @@ bool Transaction::processRequestHeaders(HeaderFind request_header_find,
     // }
   }
 
-  return process(1);
+  bool result = process(1);
+
+  // Reset the log callback and additional condition
+  log_callback_ = nullptr;
+  additional_cond_ = nullptr;
+
+  return result;
 }
 
-bool Transaction::processRequestBody(std::string_view body,
-                                     std::function<void(const Rule&)> log_callback) {
+bool Transaction::processRequestBody(
+    std::string_view body, std::function<void(const Rule&)> log_callback,
+    std::function<bool(const Rule&, std::string_view)> additional_cond) {
   WGE_LOG_TRACE("====process request body====");
   request_body_ = body;
   log_callback_ = std::move(log_callback);
+  additional_cond_ = std::move(additional_cond);
 
   // Parse the query params
   if (!request_body_.empty() && request_body_processor_.has_value()) {
@@ -180,30 +189,53 @@ bool Transaction::processRequestBody(std::string_view body,
     }
   }
 
-  return process(2);
+  bool result = process(2);
+
+  // Reset the log callback and additional condition
+  log_callback_ = nullptr;
+  additional_cond_ = nullptr;
+
+  return result;
 }
 
-bool Transaction::processResponseHeaders(std::string_view status_code, std::string_view protocol,
-                                         HeaderFind response_header_find,
-                                         HeaderTraversal response_header_traversal,
-                                         size_t response_header_count,
-                                         std::function<void(const Rule&)> log_callback) {
+bool Transaction::processResponseHeaders(
+    std::string_view status_code, std::string_view protocol, HeaderFind response_header_find,
+    HeaderTraversal response_header_traversal, size_t response_header_count,
+    std::function<void(const Rule&)> log_callback,
+    std::function<bool(const Rule&, std::string_view)> additional_cond) {
   WGE_LOG_TRACE("====process response headers====");
   extractor_.response_header_find_ = std::move(response_header_find);
   extractor_.response_header_traversal_ = std::move(response_header_traversal);
   extractor_.response_header_count_ = response_header_count;
   log_callback_ = std::move(log_callback);
+  additional_cond_ = std::move(additional_cond);
   response_line_info_.status_code_ = status_code;
   response_line_info_.protocol_ = protocol;
-  return process(3);
+
+  bool result = process(3);
+
+  // Reset the log callback and additional condition
+  log_callback_ = nullptr;
+  additional_cond_ = nullptr;
+
+  return result;
 }
 
-bool Transaction::processResponseBody(std::string_view body,
-                                      std::function<void(const Rule&)> log_callback) {
+bool Transaction::processResponseBody(
+    std::string_view body, std::function<void(const Rule&)> log_callback,
+    std::function<bool(const Rule&, std::string_view)> additional_cond) {
   WGE_LOG_TRACE("====process response body====");
   response_body_ = body;
   log_callback_ = std::move(log_callback);
-  return process(4);
+  additional_cond_ = std::move(additional_cond);
+
+  bool result = process(4);
+
+  // Reset the log callback and additional condition
+  log_callback_ = nullptr;
+  additional_cond_ = nullptr;
+
+  return result;
 }
 
 void Transaction::setVariable(size_t index, const Common::Variant& value) {

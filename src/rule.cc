@@ -287,6 +287,15 @@ Rule::evaluateTransform(Transaction& t, const Wge::Variable::VariableBase* var,
 inline bool Rule::evaluateOperator(Transaction& t, const Common::Variant& var_value) const {
   bool matched = operator_->evaluate(t, var_value);
   matched = operator_->isNot() ^ matched;
+
+  // Call additional conditions if they are defined
+  if (t.getAdditionalCond()) {
+    if (IS_STRING_VIEW_VARIANT(var_value)) {
+      matched = t.getAdditionalCond()(*this, std::get<std::string_view>(var_value));
+      WGE_LOG_TRACE("call additional condition: {}", matched);
+    }
+  }
+
   WGE_LOG_TRACE("evaluate operator: {} {}@{} {} = {}", VISTIT_VARIANT_AS_STRING(var_value),
                 operator_->isNot() ? "!" : "", operator_->name(),
                 operator_->macro() ? operator_->macro()->literalValue() : operator_->literalValue(),

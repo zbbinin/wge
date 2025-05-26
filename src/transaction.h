@@ -156,19 +156,26 @@ public:
    * @param request_header_traversal the header traversal function.
    * @param request_header_count the count of the headers.
    * @param log_callback the log callback. if the rule is matched, the log_callback will be called.
+   * @param additional_cond an "AND" logic based on the original logic of the rule, only if both
+   * match successfully is the final result true.
    * @return true if the request is safe, false otherwise that means need to deny the request.
    */
-  bool processRequestHeaders(HeaderFind request_header_find,
-                             HeaderTraversal request_header_traversal, size_t request_header_count,
-                             std::function<void(const Rule&)> log_callback);
+  bool processRequestHeaders(
+      HeaderFind request_header_find, HeaderTraversal request_header_traversal,
+      size_t request_header_count, std::function<void(const Rule&)> log_callback = nullptr,
+      std::function<bool(const Rule&, std::string_view)> additional_cond = nullptr);
 
   /**
    * Process the request body.
    * @param body the request body.
    * @param log_callback the log callback. if the rule is matched, the log_callback will be called.
+   * @param additional_cond an "AND" logic based on the original logic of the rule, only if both
+   * match successfully is the final result true.
    * @return true if the request is safe, false otherwise that means need to deny the request.
    */
-  bool processRequestBody(std::string_view body, std::function<void(const Rule&)> log_callback);
+  bool
+  processRequestBody(std::string_view body, std::function<void(const Rule&)> log_callback = nullptr,
+                     std::function<bool(const Rule&, std::string_view)> additional_cond = nullptr);
 
   /**
    * Process the response headers.
@@ -178,21 +185,28 @@ public:
    * @param response_header_traversal the header traversal function.
    * @param response_header_count the count of the headers.
    * @param log_callback the log callback. if the rule is matched, the log_callback will be called.
+   * @param additional_cond an "AND" logic based on the original logic of the rule, only if both
+   * match successfully is the final result true.
    * @return true if the request is safe, false otherwise that means need to deny the request.
    */
-  bool processResponseHeaders(std::string_view status_code, std::string_view protocol,
-                              HeaderFind response_header_find,
-                              HeaderTraversal response_header_traversal,
-                              size_t response_header_count,
-                              std::function<void(const Rule&)> log_callback);
+  bool processResponseHeaders(
+      std::string_view status_code, std::string_view protocol, HeaderFind response_header_find,
+      HeaderTraversal response_header_traversal, size_t response_header_count,
+      std::function<void(const Rule&)> log_callback = nullptr,
+      std::function<bool(const Rule&, std::string_view)> additional_cond = nullptr);
 
   /**
    * Process the response body.
    * @param body the response body.
    * @param log_callback the log callback. if the rule is matched, the log_callback will be called.
+   * @param additional_cond an "AND" logic based on the original logic of the rule, only if both
+   * match successfully is the final result true.
    * @return true if the request is safe, false otherwise that means need to deny the request.
    */
-  bool processResponseBody(std::string_view body, std::function<void(const Rule&)> log_callback);
+  bool
+  processResponseBody(std::string_view body,
+                      std::function<void(const Rule&)> log_callback = nullptr,
+                      std::function<bool(const Rule&, std::string_view)> additional_cond = nullptr);
 
 public:
   /**
@@ -518,6 +532,10 @@ public:
 
   const Rule* currentEvaluateRule() const { return current_rule_; }
 
+  const std::function<bool(const Rule&, std::string_view)>& getAdditionalCond() const {
+    return additional_cond_;
+  }
+
 private:
   class RandomInitHelper {
   public:
@@ -546,6 +564,7 @@ private:
   std::vector<Common::EvaluateResults::Element> captured_;
   static const RandomInitHelper random_init_helper_;
   std::function<void(const Rule&)> log_callback_;
+  std::function<bool(const Rule&, std::string_view)> additional_cond_;
   std::array<std::variant<std::monostate, std::string, const Macro::MacroBase*>,
              static_cast<size_t>(PersistentStorage::Storage::Type::SizeOfType)>
       persistent_storage_keys_;
