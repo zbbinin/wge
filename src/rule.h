@@ -173,7 +173,18 @@ public:
     chain_.emplace_back(std::make_unique<Rule>(file_path_, line));
 
     // The chained rule inherits the phase of the parent rule.
-    chain_.back()->phase(phase_);
+    std::unique_ptr<Rule>& chain_rule = chain_.back();
+    chain_rule->phase_ = phase_;
+
+    // Sets the chain index and parent rule for the chained rule.
+    chain_rule->chain_index_ = chain_.size() - 1;
+    chain_rule->parent_rule_ = this;
+    chain_rule->top_rule_ = this;
+    Rule* parent = parent_rule_;
+    while (parent) {
+      chain_rule->top_rule_ = parent;
+      parent = parent->parent_rule_;
+    }
 
     return std::prev(chain_.end());
   }
@@ -191,6 +202,10 @@ public:
   void skip(int value) { skip_ = value; }
   const std::string& skipAfter() const { return skip_after_; }
   void skipAfter(std::string&& skip_after) { skip_after_ = std::move(skip_after); }
+
+  int chainIndex() const;
+  const Rule* parentRule() const;
+  const Rule* topRule() const;
 
 public:
   void appendVariable(std::unique_ptr<Variable::VariableBase>&& var);
@@ -305,6 +320,18 @@ private:
   // Chains the current rule with the rule that immediately follows it, creating a rule chain.
   // Chained rules allow for more complex processing logic.
   std::list<std::unique_ptr<Rule>> chain_;
+
+  // If this rule is a chain rule, this is the index of the chain. -1 means this rule is not a
+  // chain.
+  int chain_index_{-1};
+
+  // If this rule is a chain rule, this is the parent rule of this rule. nullptr means this rule is
+  // not a chained rule.
+  Rule* parent_rule_{nullptr};
+
+  // If this rule is a chain rule, this is the top rule of the chain. nullptr means this rule is not
+  // a chained rule.
+  Rule* top_rule_{nullptr};
 
   // Skips one or more rules (or chains) on successful match.
   int skip_{0};
