@@ -60,7 +60,7 @@
       fbreak;
     }
 
-    action add_key {
+    action find_key {
       key_view = std::string_view(ts + 1, te - ts - 2);
       key_view = trimRight(key_view.data(), key_view.size());
       key_view.remove_suffix(1);
@@ -70,7 +70,7 @@
         key_view = escape_buffer.front();
       }
       value_view = {};
-      JSON_LOG(std::format("add_key: {}", key_view));
+      JSON_LOG(std::format("find_key: {}", key_view));
       JSON_LOG("fcall value");
       fcall value;
     }
@@ -84,13 +84,13 @@
       }
       key_value_map.insert({key_view, value_view});
       key_value_linked.emplace_back(key_view, value_view);
-      JSON_LOG(std::format("add_string_value: {}", value_view));
+      JSON_LOG(std::format("add_string_value. insert key-value: {}: {}", key_view, value_view));
     }
   
     action skip_object_value {
       key_value_map.insert({key_view, {}});
       key_value_linked.emplace_back(key_view, "");
-      JSON_LOG(std::format("skip_object_value: {}", key_view));
+      JSON_LOG(std::format("skip_object_value. insert key-value: {}: {}", key_view,""));
       JSON_LOG("fret value");
       fret;
     }
@@ -98,54 +98,40 @@
     action skip_number_value {
       key_value_map.insert({key_view, {}});
       key_value_linked.emplace_back(key_view, "");
-      JSON_LOG(std::format("skip_number_value: {}", std::string_view(ts, te - ts)));
+      JSON_LOG(std::format("skip_number_value: {} insert key-value: {}: {}", std::string_view(ts, te - ts), key_view, ""));
     }
 
     action skip_boolean_value {
       key_value_map.insert({key_view, {}});
       key_value_linked.emplace_back(key_view, "");
-      JSON_LOG(std::format("skip_boolean_value: {}", std::string_view(ts, te - ts)));
+      JSON_LOG(std::format("skip_boolean_value: {} insert key-value: {}: {}", std::string_view(ts, te - ts), key_view, ""));
     }
 
     action skip_null_value {
       key_value_map.insert({key_view, {}});
       key_value_linked.emplace_back(key_view, "");
-      JSON_LOG(std::format("skip_null_value: {}", std::string_view(ts, te - ts)));
+      JSON_LOG(std::format("skip_null_value: {} insert key-value: {}: {}", std::string_view(ts, te - ts), key_view, ""));
     }
 
     #####################################################
 
     action skip_array_object_value {
-      key_value_map.insert({key_view, {}});
-      key_value_linked.emplace_back(key_view, "");
       square_bracket_count = 0;
-      JSON_LOG(std::format("skip_array_object_value: {}", key_view));
+      JSON_LOG(std::format("skip_array_object_value"));
       JSON_LOG("fret array");
       fret;
     }
 
     action skip_array_number_value {
-      key_value_map.insert({key_view, {}});
-      key_value_linked.emplace_back(key_view, "");
       JSON_LOG(std::format("skip_array_number_value: {}", std::string_view(ts, te - ts)));
-      JSON_LOG("fnext skip_array_elemt");
-      fnext skip_array_elemt;
     }
 
     action skip_array_boolean_value {
-      key_value_map.insert({key_view, {}});
-      key_value_linked.emplace_back(key_view, "");
       JSON_LOG(std::format("skip_array_boolean_value: {}", std::string_view(ts, te - ts)));
-      JSON_LOG("fnext skip_array_elemt");
-      fnext skip_array_elemt;
     }
 
     action skip_array_null_value {
-      key_value_map.insert({key_view, {}});
-      key_value_linked.emplace_back(key_view, "");
       JSON_LOG(std::format("skip_array_null_value: {}", std::string_view(ts, te - ts)));
-      JSON_LOG("fnext skip_array_elemt");
-      fnext skip_array_elemt;
     }
 
     WS = [ \t\r\n]*;
@@ -156,14 +142,16 @@
       '}' => skip;
       ',' => skip;
       ']' => skip;
-      '"' ([^"] | ('\\"'))* '"' WS ':' => add_key;
+      '"' ([^"] | ('\\"'))* '"' WS ':' => find_key;
       any => error;
     *|;
 
     value := |*
       WS => skip;
       '[' => { 
-        JSON_LOG("fnext array");
+        key_value_map.insert({key_view, {}});
+        key_value_linked.emplace_back(key_view, "");
+        JSON_LOG(std::format("fnext array. insert key-value: {}: {}", key_view, ""));
         ++square_bracket_count;
         fnext array;
       };
@@ -203,22 +191,6 @@
       '-'? [0-9]+ '.'? [0-9]* => skip_array_number_value;
       '"' ([^"] | ('\\"'))* '"' => add_string_value;
       any => error;
-    *|;
-
-    skip_array_elemt := |*
-      '[' => {
-        JSON_LOG("array nesting open");
-        ++square_bracket_count;
-      };
-      ']' => {
-        JSON_LOG("array nesting close");
-        --square_bracket_count;
-        if (square_bracket_count == 0) {
-          JSON_LOG("fret array");
-          fret;
-        } 
-      };
-      any => skip;
     *|;
 }%%
 

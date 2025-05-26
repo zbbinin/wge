@@ -90,8 +90,8 @@ TEST_F(JsonTest, ragle) {
   json_parser.init(json_);
   auto& key_values_map = json_parser.getKeyValues();
   auto& key_values_linked = json_parser.getKeyValuesLinked();
-  EXPECT_EQ(key_values_map.size(), 22);
-  EXPECT_EQ(key_values_linked.size(), 22);
+  EXPECT_EQ(key_values_map.size(), 23);
+  EXPECT_EQ(key_values_linked.size(), 23);
 
   EXPECT_EQ(key_values_linked[0].first, "na\"me");
   EXPECT_EQ(key_values_linked[0].second, "Trump\a \b \f \n \r \t \v \\ \? \' \" \xab A \1 \1");
@@ -121,43 +121,46 @@ TEST_F(JsonTest, ragle) {
   EXPECT_EQ(key_values_linked[8].second, "Jack");
 
   EXPECT_EQ(key_values_linked[9].first, "array_strings");
-  EXPECT_EQ(key_values_linked[9].second, "string1");
+  EXPECT_EQ(key_values_linked[9].second, "");
 
   EXPECT_EQ(key_values_linked[10].first, "array_strings");
-  EXPECT_EQ(key_values_linked[10].second, "string2");
+  EXPECT_EQ(key_values_linked[10].second, "string1");
 
   EXPECT_EQ(key_values_linked[11].first, "array_strings");
-  EXPECT_EQ(key_values_linked[11].second, "string3");
+  EXPECT_EQ(key_values_linked[11].second, "string2");
 
-  EXPECT_EQ(key_values_linked[12].first, "array_numbers");
-  EXPECT_EQ(key_values_linked[12].second, "");
+  EXPECT_EQ(key_values_linked[12].first, "array_strings");
+  EXPECT_EQ(key_values_linked[12].second, "string3");
 
-  EXPECT_EQ(key_values_linked[13].first, "array_booleans");
+  EXPECT_EQ(key_values_linked[13].first, "array_numbers");
   EXPECT_EQ(key_values_linked[13].second, "");
 
-  EXPECT_EQ(key_values_linked[14].first, "array_floats");
+  EXPECT_EQ(key_values_linked[14].first, "array_booleans");
   EXPECT_EQ(key_values_linked[14].second, "");
 
-  EXPECT_EQ(key_values_linked[15].first, "array_objects");
+  EXPECT_EQ(key_values_linked[15].first, "array_floats");
   EXPECT_EQ(key_values_linked[15].second, "");
 
-  EXPECT_EQ(key_values_linked[16].first, "name");
-  EXPECT_EQ(key_values_linked[16].second, "name1");
+  EXPECT_EQ(key_values_linked[16].first, "array_objects");
+  EXPECT_EQ(key_values_linked[16].second, "");
 
-  EXPECT_EQ(key_values_linked[17].first, "type");
-  EXPECT_EQ(key_values_linked[17].second, "type1");
+  EXPECT_EQ(key_values_linked[17].first, "name");
+  EXPECT_EQ(key_values_linked[17].second, "name1");
 
-  EXPECT_EQ(key_values_linked[18].first, "value");
-  EXPECT_EQ(key_values_linked[18].second, "");
+  EXPECT_EQ(key_values_linked[18].first, "type");
+  EXPECT_EQ(key_values_linked[18].second, "type1");
 
-  EXPECT_EQ(key_values_linked[19].first, "name");
-  EXPECT_EQ(key_values_linked[19].second, "name2");
+  EXPECT_EQ(key_values_linked[19].first, "value");
+  EXPECT_EQ(key_values_linked[19].second, "");
 
-  EXPECT_EQ(key_values_linked[20].first, "type");
-  EXPECT_EQ(key_values_linked[20].second, "type2");
+  EXPECT_EQ(key_values_linked[20].first, "name");
+  EXPECT_EQ(key_values_linked[20].second, "name2");
 
-  EXPECT_EQ(key_values_linked[18].first, "value");
-  EXPECT_EQ(key_values_linked[18].second, "");
+  EXPECT_EQ(key_values_linked[21].first, "type");
+  EXPECT_EQ(key_values_linked[21].second, "type2");
+
+  EXPECT_EQ(key_values_linked[22].first, "value");
+  EXPECT_EQ(key_values_linked[22].second, "");
 }
 
 TEST_F(JsonTest, benchmark) {
