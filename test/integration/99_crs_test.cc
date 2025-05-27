@@ -90,11 +90,7 @@ public:
         result.emplace_back(iter->second.data(), iter->second.length());
       }
 
-      if (result.size() > 0) {
-        return result[0];
-      } else {
-        return std::string_view();
-      }
+      return result;
     };
 
     request_header_traversal_ = [&](HeaderTraversalCallback callback) {
@@ -112,11 +108,7 @@ public:
         result.emplace_back(iter->second.data(), iter->second.length());
       }
 
-      if (result.size() > 0) {
-        return result[0];
-      } else {
-        return std::string_view();
-      }
+      return result;
     };
 
     response_header_traversal_ = [&](HeaderTraversalCallback callback) {

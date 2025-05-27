@@ -30,7 +30,7 @@ namespace Wge {
  * @param lower_case_key the header key with lower case.
  * @return the header value. if the header does not exist, return empty string_view.
  */
-using HeaderFind = std::function<std::string_view(const std::string& lower_case_key)>;
+using HeaderFind = std::function<std::vector<std::string_view>(const std::string& lower_case_key)>;
 
 /**
  * Header traversal callback.

@@ -131,7 +131,11 @@ bool Transaction::processRequestHeaders(
 
   // Set the request body processor
   if (extractor_.request_header_find_) {
-    auto content_type = extractor_.request_header_find_("content-type");
+    std::string_view content_type;
+    auto results = extractor_.request_header_find_("content-type");
+    if (!results.empty()) {
+      content_type = results.front();
+    }
     if (content_type.starts_with("application/x-www-form-urlencoded")) {
       request_body_processor_ = BodyProcessorType::UrlEncoded;
     } else if (content_type.starts_with("multipart/form-data")) {
@@ -174,7 +178,11 @@ bool Transaction::processRequestBody(
       body_query_param_.init(request_body_);
     } break;
     case BodyProcessorType::MultiPart: {
-      auto content_type = extractor_.request_header_find_("content-type");
+      std::string_view content_type;
+      auto results = extractor_.request_header_find_("content-type");
+      if (!results.empty()) {
+        content_type = results.front();
+      }
       body_multi_part_.init(content_type, request_body_, engine_.config().upload_file_limit_);
     } break;
     case BodyProcessorType::Xml: {
@@ -611,7 +619,11 @@ void Transaction::initCookies() {
   init_cookies_ = true;
 
   // Get the cookies form the request headers
-  std::string_view cookies = extractor_.request_header_find_("cookie");
+  std::string_view cookies;
+  std::vector<std::string_view> result = extractor_.request_header_find_("cookie");
+  if (!result.empty()) {
+    cookies = result.front();
+  }
 
   // Parse the cookies
   size_t begin = 0;

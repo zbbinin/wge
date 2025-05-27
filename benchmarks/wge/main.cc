@@ -21,11 +21,7 @@ void process(Wge::Engine& engine, const HttpInfo& http_info) {
       result.emplace_back(iter->second.data(), iter->second.length());
     }
 
-    if (result.size() > 0) {
-      return result[0];
-    } else {
-      return std::string_view();
-    }
+    return result;
   };
 
   Wge::HeaderTraversal request_header_traversal = [&](Wge::HeaderTraversalCallback callback) {
@@ -43,11 +39,7 @@ void process(Wge::Engine& engine, const HttpInfo& http_info) {
       result.emplace_back(iter->second.data(), iter->second.length());
     }
 
-    if (result.size() > 0) {
-      return result[0];
-    } else {
-      return std::string_view();
-    }
+    return result;
   };
 
   Wge::HeaderTraversal response_header_traversal = [&](Wge::HeaderTraversalCallback callback) {

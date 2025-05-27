@@ -65,9 +65,9 @@ public:
         },
         // specify subname
         {
-          std::string_view value = t.httpExtractor().request_header_find_(sub_name_);
-          if (!value.empty()) {
-            result.append(value);
+          std::vector<std::string_view> values = t.httpExtractor().request_header_find_(sub_name_);
+          for (auto& value : values) {
+            result.append(value, sub_name_);
           }
         });
   }

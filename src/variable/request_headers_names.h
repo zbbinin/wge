@@ -39,7 +39,9 @@ public:
         // collection
         { result.append(static_cast<int>(t.httpExtractor().request_header_count_)); },
         // specify subname
-        { result.append(t.httpExtractor().request_header_find_(sub_name_).empty() ? 0 : 1); });
+        {
+          result.append(static_cast<int>(t.httpExtractor().request_header_find_(sub_name_).size()));
+        });
 
     RETURN_VALUE(
         // collection
@@ -66,8 +68,8 @@ public:
         },
         // specify subname
         {
-          std::string_view value = t.httpExtractor().request_header_find_(sub_name_);
-          if (!value.empty()) {
+          std::vector<std::string_view> values = t.httpExtractor().request_header_find_(sub_name_);
+          for (size_t i = 0; i < values.size(); ++i) {
             result.append(sub_name_);
           }
         });
