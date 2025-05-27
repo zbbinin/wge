@@ -264,10 +264,12 @@ Rule::evaluateTransform(Transaction& t, const Wge::Variable::VariableBase* var,
       auto& transforms = default_action->transforms();
 
       // Evaluate the default transformations
+      const Common::EvaluateResults::Element* p_input = &input;
       for (auto& transform : transforms) {
-        bool ret = transform->evaluate(t, var, input, output);
+        bool ret = transform->evaluate(t, var, *p_input, output);
         if (ret) {
           transform_list.emplace_back(transform.get());
+          p_input = &output;
         }
         WGE_LOG_TRACE("evaluate default transformation: {} {}", transform->name(), ret);
       }
@@ -275,10 +277,12 @@ Rule::evaluateTransform(Transaction& t, const Wge::Variable::VariableBase* var,
   }
 
   // Evaluate the action defined transformations
+  const Common::EvaluateResults::Element* p_input = &input;
   for (auto& transform : transforms_) {
-    bool ret = transform->evaluate(t, var, input, output);
+    bool ret = transform->evaluate(t, var, *p_input, output);
     if (ret) {
       transform_list.emplace_back(transform.get());
+      p_input = &output;
     }
     WGE_LOG_TRACE("evaluate action defined transformation: {} {}", transform->name(), ret);
   }
@@ -414,7 +418,7 @@ inline bool Rule::evaluateWithMultiMatch(Transaction& t) const {
         i++;
         curr_transform_index = 0;
       } else {
-        // The variable value is not matched, perf transformation and try to match again
+        // The variable value is not matched, evaluate the transformation and try to match again
         if (IS_STRING_VIEW_VARIANT(evaluated_value->variant_)) [[likely]] {
           // Evaluate the transformation
           bool ret = false;

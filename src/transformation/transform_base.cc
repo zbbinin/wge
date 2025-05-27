@@ -73,12 +73,13 @@ bool TransformBase::evaluate(Transaction& t, const Variable::VariableBase* varia
     }
 
     // Evaluate the transformation and store the result in the cache
-    bool ret = evaluate(input_data_view, output.string_buffer_);
+    std::string output_buffer;
+    bool ret = evaluate(input_data_view, output_buffer);
     if (ret) {
       auto iter_transform_result =
           iter_data->second.emplace(name(), Common::EvaluateResults::Element()).first;
       Common::EvaluateResults::Element& result = iter_transform_result->second.value();
-      result.string_buffer_ = std::move(output.string_buffer_);
+      result.string_buffer_ = std::move(output_buffer);
       result.variant_ = result.string_buffer_;
       output.variant_ = result.variant_;
       output.variable_sub_name_ = input.variable_sub_name_;
@@ -88,11 +89,13 @@ bool TransformBase::evaluate(Transaction& t, const Variable::VariableBase* varia
 
     return ret;
   } else {
-    bool ret = evaluate(input_data_view, output.string_buffer_);
+    std::string output_buffer;
+    bool ret = evaluate(input_data_view, output_buffer);
     if (ret) [[likely]] {
       if (convertToInt()) [[unlikely]] {
         output.variant_ = ::atoi(output.string_buffer_.c_str());
       } else {
+        output.string_buffer_ = std::move(output_buffer);
         output.variant_ = output.string_buffer_;
       }
       output.variable_sub_name_ = input.variable_sub_name_;

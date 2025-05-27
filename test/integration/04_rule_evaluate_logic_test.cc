@@ -32,18 +32,19 @@ TEST(RuleEvaluateLogicTest, evluateLogic) {
   {
     const std::string directive = R"(
         SecRuleEngine On
-        SecAction "phase:1,setvar:tx.foo1=bar,setvar:tx.foo2=bar123,setvar:tx.foo3=bar,setvar:tx.foo4=BAR"
+        SecAction "phase:1,setvar:tx.foo1=%42ar,setvar:tx.foo2=bar123,setvar:tx.foo3=bar,setvar:tx.foo4=BAR"
         SecRule TX:foo1|TX:foo2|TX:foo3|TX:foo4 "@streq bar" \
         "id:1, \
         phase:1, \
         pass, \
         t:none, \
+        t:urlDecode, \
         t:lowercase, \
         msg:'tx.test=%{tx.test}', \
         logdata:'%{MATCHED_VAR_NAME}=%{MATCHED_VAR} %{MATCHED_VARS_NAMES}=%{MATCHED_VARS}', \
         setvar:tx.test=+1")";
 
-    Engine engine(spdlog::level::off);
+    Engine engine(spdlog::level::trace);
     auto result = engine.load(directive);
     engine.init();
     auto t = engine.makeTransaction();
