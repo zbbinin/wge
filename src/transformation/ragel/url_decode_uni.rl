@@ -62,22 +62,17 @@
       auto it = unicode_map_20127.find(value);
       if(it != unicode_map_20127.end()) {
         value = it->second;
+      }else {
+        // If not found, use lower 8 bits of the value
+        value &= 0xff;
+
+        // Then convert the full-width character to half-width
+        // This step is not necessary, because the unicode_map_20127 already contains the conversion. 
+        // TODO(zhouyu 2025-05-27): Convert the full-width character to half-width. If 
+        // adding new unicode maps, please ensure that the conversion is done.
       }
 
-      // Convert to Unicode
-      if(value < 0x80) {
-        // 1 byte
-        *r++ = static_cast<char>(value);
-      } else if(value < 0x800) {
-        // 2 bytes
-        *r++ = static_cast<char>(0xc0 | (value >> 6));
-        *r++ = static_cast<char>(0x80 | (value & 0x3f));
-      } else if(value < 0x10000) {
-        // Surrogate pairs
-        *r++ = static_cast<char>(0xe0 | (value >> 12));
-        *r++ = static_cast<char>(0x80 | ((value >> 6) & 0x3f));
-        *r++ = static_cast<char>(0x80 | (value & 0x3f));
-      }
+      *r++ = static_cast<char>(value);
     }
   }
 

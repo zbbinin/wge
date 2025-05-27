@@ -407,11 +407,13 @@ TEST_F(TransformationTest, jsDecode) {
   }
 
   {
-    std::string data = R"(\u0054\u0068\u0069\u0073 \u0069\u0073 \u0061 \u0074\u0065\u0073\u0074 \u0064\u0061\u0074\u0061)";
+    std::string data =
+        R"(\u0054\u0068\u0069\u0073 \u0069\u0073 \u0061 \u0074\u0065\u0073\u0074 \u0064\u0061\u0074\u0061)";
     std::string result;
     bool ret = js_decode.evaluate(data, result);
     EXPECT_TRUE(ret);
-    EXPECT_EQ(result, "\u0054\u0068\u0069\u0073 \u0069\u0073 \u0061 \u0074\u0065\u0073\u0074 \u0064\u0061\u0074\u0061");
+    EXPECT_EQ(result, "\u0054\u0068\u0069\u0073 \u0069\u0073 \u0061 \u0074\u0065\u0073\u0074 "
+                      "\u0064\u0061\u0074\u0061");
   }
 }
 
@@ -917,12 +919,12 @@ TEST_F(TransformationTest, urlDecodeUni) {
   data = R"(%u4E2D%u6587)";
   ret = url_decode_uni.evaluate(data, result);
   EXPECT_TRUE(ret);
-  EXPECT_EQ(result, "\u4E2D\u6587");
+  EXPECT_EQ(result, "\x2D\x87");
 
   data = R"(%u4E2D+%u6587%20%u4E2D+%u6587%20)";
   ret = url_decode_uni.evaluate(data, result);
   EXPECT_TRUE(ret);
-  EXPECT_EQ(result, "\u4E2D \u6587 \u4E2D \u6587 ");
+  EXPECT_EQ(result, "\x2D \x87 \x2D \x87 ");
 
   data = R"(%uff1cscript%uff1ealert(%uff07XSS%uff07);%uff1c/script%uff1e)";
   ret = url_decode_uni.evaluate(data, result);
