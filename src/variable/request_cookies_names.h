@@ -35,7 +35,7 @@ public:
 
 public:
   void evaluate(Transaction& t, Common::EvaluateResults& result) const override {
-    const std::unordered_map<std::string_view, std::string_view>& cookies = t.getCookies();
+    const std::unordered_multimap<std::string_view, std::string_view>& cookies = t.getCookies();
 
     RETURN_IF_COUNTER(
         // collection
@@ -67,9 +67,9 @@ public:
         },
         // specify subname
         {
-          auto iter = cookies.find(sub_name_);
-          if (iter != cookies.end()) {
-            result.append(iter->first);
+          auto range = cookies.equal_range(sub_name_);
+          for (auto it = range.first; it != range.second; ++it) {
+            result.append(it->first);
           }
         });
   }

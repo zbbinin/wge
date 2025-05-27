@@ -28,6 +28,7 @@
 #include "common/empty_string.h"
 #include "common/log.h"
 #include "common/ragel/uri_parser.h"
+#include "common/string.h"
 #include "common/try.h"
 #include "engine.h"
 #include "variable/variables_include.h"
@@ -619,23 +620,23 @@ void Transaction::initCookies() {
   init_cookies_ = true;
 
   // Get the cookies form the request headers
-  std::string_view cookies;
   std::vector<std::string_view> result = extractor_.request_header_find_("cookie");
-  if (!result.empty()) {
-    cookies = result.front();
-  }
 
   // Parse the cookies
-  size_t begin = 0;
-  size_t end = 0;
-  while (end != std::string_view::npos) {
-    end = cookies.find(';', begin);
-    auto cookie = cookies.substr(begin, end - begin);
-    auto pos = cookie.find('=');
-    if (pos != std::string_view::npos) {
-      cookies_[cookie.substr(0, pos)] = cookie.substr(pos + 1);
+  for (auto& cookies : result) {
+    size_t begin = 0;
+    size_t end = 0;
+    while (end != std::string_view::npos) {
+      end = cookies.find(';', begin);
+      auto cookie = cookies.substr(begin, end - begin);
+      auto pos = cookie.find('=');
+      if (pos != std::string_view::npos) {
+        std::string_view key = Common::trim(cookie.substr(0, pos));
+        std::string_view value = Common::trim(cookie.substr(pos + 1));
+        cookies_.emplace(key, value);
+      }
+      begin = end + 1;
     }
-    begin = end + 1;
   }
 }
 

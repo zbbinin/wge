@@ -41,5 +41,14 @@ static std::vector<std::string_view> SplitTokens(std::string_view value, char de
 
   return tokens;
 }
+
+static std::string_view trim(std::string_view str) {
+  size_t start = str.find_first_not_of(" \t\n\r");
+  if (start == std::string_view::npos) {
+    return {};
+  }
+  size_t end = str.find_last_not_of(" \t\n\r");
+  return str.substr(start, end - start + 1);
+}
 } // namespace Common
 } // namespace Wge

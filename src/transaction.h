@@ -456,7 +456,7 @@ public:
     return transform_cache_;
   }
 
-  std::unordered_map<std::string_view, std::string_view>& getCookies() {
+  std::unordered_multimap<std::string_view, std::string_view>& getCookies() {
     initCookies();
     return cookies_;
   }
@@ -595,7 +595,7 @@ private:
       StringViewPtrHash, StringViewPtrEqual>
       transform_cache_;
   bool init_cookies_{false};
-  std::unordered_map<std::string_view, std::string_view> cookies_;
+  std::unordered_multimap<std::string_view, std::string_view> cookies_;
   std::bitset<PHASE_TOTAL> allow_phases_;
 
   // ctl
