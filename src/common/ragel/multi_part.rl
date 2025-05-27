@@ -38,32 +38,42 @@
 %%{
   machine multipart_content_type;
   
-  action error_boundary_whitespace {
-    MULTI_PART_LOG("error_boundary_whitespace");
-    error_code.set(MultipartStrictError::ErrorType::BoundaryWhitespace);
-    fbreak;
-  }
-
   action error_boundary_quoted {
     MULTI_PART_LOG("error_boundary_quoted");
     error_code.set(MultipartStrictError::ErrorType::BoundaryQuoted);
-    fbreak;
-  }
-
-  action start_boundary {
     boundary_start = p;
   }
 
-  action end_boundary {
-    boundary_len = p - boundary_start;
+  action start_boundary_name {
+    boundary_start = p;
   }
 
-  boundary = [^ \t\r\n]+ >start_boundary %end_boundary;
-  whitespace_boundary = [^\r\n]* [ \t]+ >error_boundary_whitespace;
-  quoted_boundary = '"' [^"]+ '"' >error_boundary_quoted;
+  action boundary_name {
+    switch(fc){
+      case ' ': 
+      case '\t': {
+        MULTI_PART_LOG("error_boundary_whitespace");
+        error_code.set(MultipartStrictError::ErrorType::BoundaryWhitespace);
+        break;
+      }
+      case '"': {
+        MULTI_PART_LOG("error_boundary_quoted");
+        error_code.set(MultipartStrictError::ErrorType::BoundaryQuoted);
+        break;
+      }
+      default: 
+        break;
+    }
+  }
 
-  main := ' '* "multipart/form-data;" ' '* "boundary="
-  (boundary | quoted_boundary | whitespace_boundary);
+  action end_boundary_name {
+    boundary_len = p - boundary_start;
+    MULTI_PART_LOG(std::format("end_boundary_name:{}", std::string_view(boundary_start, boundary_len)));
+  }
+
+  boundary = [^\r\n]+ >start_boundary_name @boundary_name %end_boundary_name;
+
+  main := ' '* "multipart/form-data;" ' '* "boundary=" boundary;
 }%%
 
 %% write data;
@@ -93,7 +103,6 @@ static std::string_view parseContentType(std::string_view input, Wge::MultipartS
   action error_data_before {
     MULTI_PART_LOG("error_data_before");
     error_code.set(MultipartStrictError::ErrorType::DataBefore);
-    fbreak;
   }
 
   action error_data_after {
@@ -105,7 +114,6 @@ static std::string_view parseContentType(std::string_view input, Wge::MultipartS
   action error_header_folding {
     MULTI_PART_LOG("error_header_folding");
     error_code.set(MultipartStrictError::ErrorType::HeaderFolding);
-    fbreak;
   }
 
   action error_lf_line {
@@ -118,13 +126,11 @@ static std::string_view parseContentType(std::string_view input, Wge::MultipartS
   action error_missing_semicolon {
     MULTI_PART_LOG("error_missing_semicolon");
     error_code.set(MultipartStrictError::ErrorType::MissingSemicolon);
-    fbreak;
   }
 
   action error_invalid_quoting {
     MULTI_PART_LOG("error_invalid_quoting");
     error_code.set(MultipartStrictError::ErrorType::InvalidQuoting);
-    fbreak;
   }
 
   action error_invalid_part {
@@ -136,13 +142,11 @@ static std::string_view parseContentType(std::string_view input, Wge::MultipartS
   action error_invalid_header_folding {
     MULTI_PART_LOG("error_invalid_header_folding");
     error_code.set(MultipartStrictError::ErrorType::InvalidHeaderFolding);
-    fbreak;
   }
 
   action error_file_limit_exceeded {
     MULTI_PART_LOG("error_file_limit_exceeded");
     error_code.set(MultipartStrictError::ErrorType::FileLimitExceeded);
-    fbreak;
   }
 
   action start_boundary {
@@ -160,21 +164,30 @@ static std::string_view parseContentType(std::string_view input, Wge::MultipartS
     }
   }
 
-  boundary = '--' [^ \t\r\n]+ >start_boundary %end_boundary;
+  boundary = '--' [^\r\n]+ >start_boundary %end_boundary;
   data_before = [^\-] >error_data_before;
 
   lf = '\n' >error_lf_line;
   crlf = '\r\n';
 
   main := 
-    ((data_before | boundary ) (lf | crlf) @{ MULTI_PART_LOG("fcall headers"); fcall headers;})+;
+    (data_before* boundary (lf | crlf) @{ MULTI_PART_LOG("fcall headers"); fcall headers;})+;
 
   headers := |*
+    # Invalid Part
+    '--' [^\r\n]+ => {
+      MULTI_PART_LOG("error_invalid_part: no body");
+      error_code.set(MultipartStrictError::ErrorType::InvalidPart);
+      p = ts;
+      fhold;
+      fret;
+    };
+
     # Header folding
     [ \t]+ => error_header_folding;
 
     # Invalid header folding
-    [^ \t\r\n] [^ \t\r\n:]+ (lf | crlf) => error_invalid_header_folding;
+    [^ \t\r\n\-] [^ \t\r\n:]+ (lf | crlf) => error_invalid_header_folding;
 
     [^ \t\r\n]+ ':' [ \t]* => { 
       MULTI_PART_LOG("fcall header_value");
@@ -203,10 +216,6 @@ static std::string_view parseContentType(std::string_view input, Wge::MultipartS
   *|;
 
   header_value := |*
-    # Missing semicolon
-    [^ \r\n;]+ [ \t]+ [^\r\n]+ => error_missing_semicolon;
-
-    # The value is ok 
     [^\r\n]+ => { 
       if(is_content_disposition) {
         MULTI_PART_LOG("fnext content_disposition_value");
@@ -235,11 +244,17 @@ static std::string_view parseContentType(std::string_view input, Wge::MultipartS
 
   content_disposition_value := |*
     "form-data;" [ \t]* => skip;
+    "form-data" [ \t]* => error_missing_semicolon;
     "name=" '"' [^"\r\n]+ '"' [ \t;]* => { 
       name = trim(ts + 5, te - ts - 5);
       MULTI_PART_LOG(std::format("name with quotes:{}", name));
     };
-    "name=" [^ \t\r\n"]* '"' => error_invalid_quoting;
+    "name=" [^ \t\r\n"]* '"' [^ \t\r\n"]* => {
+      MULTI_PART_LOG("error_invalid_quoting");
+      error_code.set(MultipartStrictError::ErrorType::InvalidQuoting);
+      name = trim(ts + 5, te - ts - 5);
+      MULTI_PART_LOG(std::format("name:{}", name));
+    };
     "name=" [^ \t\r\n";]+ [ \t;]* => { 
       name = trim(ts + 5, te - ts - 5);
       MULTI_PART_LOG(std::format("name without quotes:{}", name));
@@ -251,7 +266,6 @@ static std::string_view parseContentType(std::string_view input, Wge::MultipartS
       ++file_count; 
       if(max_file_count && file_count > max_file_count) { 
         error_code.set(MultipartStrictError::ErrorType::FileLimitExceeded); 
-        fbreak; 
       }
     };
     "filename=" [^ \t\r\n"]* '"' => error_invalid_quoting;
@@ -261,14 +275,12 @@ static std::string_view parseContentType(std::string_view input, Wge::MultipartS
       ++file_count; 
       if(max_file_count && file_count > max_file_count) { 
         error_code.set(MultipartStrictError::ErrorType::FileLimitExceeded); 
-        fbreak; 
       }
     };
     (lf | crlf) => {
       if(name.empty()) {
         MULTI_PART_LOG("error_invalid_part: name is empty");
         error_code.set(MultipartStrictError::ErrorType::InvalidPart);
-        fbreak;
       }
 
       MULTI_PART_LOG("fret content_disposition_value");
@@ -280,7 +292,7 @@ static std::string_view parseContentType(std::string_view input, Wge::MultipartS
   *|;
 
   body := |*
-    "--" [^ \t\r\n]+ => {
+    "--" [^\r\n]+ => {
       std::string_view token = std::string_view(ts + 2, te - ts - 2);
       if(token.starts_with(boundary)) {
         if(filename.empty()) {
@@ -385,8 +397,24 @@ static void parseMultiPart(std::string_view input,
   %% write init;
   %% write exec;
 
+  // If there is no end boundary, process the last part
+  if(filename.empty()) {
+    if(p_value_start && value_len > 0) {
+      MULTI_PART_LOG("no end boundary, process last part");
+      MULTI_PART_LOG(std::format("add name:{}, value:{}", name, std::string_view(p_value_start, value_len)));
+      auto result = name_value_map.insert({name, std::string_view(p_value_start, value_len)});
+      name_value_linked.emplace_back(name, std::string_view(p_value_start, value_len));
+    }
+  } else {
+    MULTI_PART_LOG("no end boundary, process last part");
+    MULTI_PART_LOG(std::format("add name:{}, filename:{}", name, filename));
+    auto result = name_filename_map.insert({name, filename});
+    name_filename_linked.emplace_back(name, filename);
+  }
+
+
   if(!parse_complete && !error_code.get(MultipartStrictError::ErrorType::MultipartStrictError)) {
-    MULTI_PART_LOG("parse not complete");
+    MULTI_PART_LOG("error_invalid_part: parse not complete");
     error_code.set(MultipartStrictError::ErrorType::InvalidPart);
   }
 

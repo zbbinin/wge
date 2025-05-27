@@ -141,7 +141,14 @@ TEST(Common, multiPartError) {
   // ErrorType::BoundaryQuoted
   {
     Wge::Common::Ragel::MultiPart multi_part;
-    multi_part.init(R"(multipart/form-data; boundary="--helloworld")", "");
+    multi_part.init(R"(multipart/form-data; boundary="--helloworld")",
+                    R"(--"--helloworld")"
+                    "\r\n"
+                    "content-disposition: form-data; name=foo1\r\n"
+                    "header1: value1\r\n"
+                    "\r\n"
+                    "bar1\r\n"
+                    R"(--"--helloworld"--)");
     auto error = multi_part.getError();
     EXPECT_TRUE(error.get(Wge::MultipartStrictError::ErrorType::MultipartStrictError));
     EXPECT_FALSE(error.get(Wge::MultipartStrictError::ErrorType::ReqbodyProcessorError));
@@ -157,12 +164,27 @@ TEST(Common, multiPartError) {
     EXPECT_FALSE(error.get(Wge::MultipartStrictError::ErrorType::InvalidHeaderFolding));
     EXPECT_FALSE(error.get(Wge::MultipartStrictError::ErrorType::FileLimitExceeded));
     EXPECT_FALSE(error.get(Wge::MultipartStrictError::ErrorType::UnmatchedBoundary));
+
+    auto& name_value_map = multi_part.getNameValue();
+    auto& name_value_linked = multi_part.getNameValueLinked();
+    EXPECT_EQ(name_value_map.size(), 1);
+    EXPECT_EQ(name_value_linked.size(), 1);
+    EXPECT_EQ(name_value_map.find("foo1")->second, "bar1\r\n");
+    EXPECT_EQ(name_value_linked[0].first, "foo1");
+    EXPECT_EQ(name_value_linked[0].second, "bar1\r\n");
   }
 
   // ErrorType::BoundaryWhitespace
   {
     Wge::Common::Ragel::MultiPart multi_part;
-    multi_part.init(R"(multipart/form-data; boundary=--hello world)", "");
+    multi_part.init(R"(multipart/form-data; boundary=--hello world)",
+                    R"(----hello world)"
+                    "\r\n"
+                    "content-disposition: form-data; name=foo1\r\n"
+                    "header1: value1\r\n"
+                    "\r\n"
+                    "bar1\r\n"
+                    R"(----hello world--)");
     auto error = multi_part.getError();
     EXPECT_TRUE(error.get(Wge::MultipartStrictError::ErrorType::MultipartStrictError));
     EXPECT_FALSE(error.get(Wge::MultipartStrictError::ErrorType::ReqbodyProcessorError));
@@ -178,12 +200,27 @@ TEST(Common, multiPartError) {
     EXPECT_FALSE(error.get(Wge::MultipartStrictError::ErrorType::InvalidHeaderFolding));
     EXPECT_FALSE(error.get(Wge::MultipartStrictError::ErrorType::FileLimitExceeded));
     EXPECT_FALSE(error.get(Wge::MultipartStrictError::ErrorType::UnmatchedBoundary));
+
+    auto& name_value_map = multi_part.getNameValue();
+    auto& name_value_linked = multi_part.getNameValueLinked();
+    EXPECT_EQ(name_value_map.size(), 1);
+    EXPECT_EQ(name_value_linked.size(), 1);
+    EXPECT_EQ(name_value_map.find("foo1")->second, "bar1\r\n");
+    EXPECT_EQ(name_value_linked[0].first, "foo1");
+    EXPECT_EQ(name_value_linked[0].second, "bar1\r\n");
   }
 
   // ErrorType::DataBefore
   {
     Wge::Common::Ragel::MultiPart multi_part;
-    multi_part.init(R"(multipart/form-data; boundary=--helloworld)", "aa\r\n----helloworld\r\n");
+    multi_part.init(R"(multipart/form-data; boundary=--helloworld)",
+                    R"(asdf----helloworld)"
+                    "\r\n"
+                    "content-disposition: form-data; name=foo1\r\n"
+                    "header1: value1\r\n"
+                    "\r\n"
+                    "bar1\r\n"
+                    R"(----helloworld--)");
     auto error = multi_part.getError();
     EXPECT_TRUE(error.get(Wge::MultipartStrictError::ErrorType::MultipartStrictError));
     EXPECT_FALSE(error.get(Wge::MultipartStrictError::ErrorType::ReqbodyProcessorError));
@@ -199,17 +236,27 @@ TEST(Common, multiPartError) {
     EXPECT_FALSE(error.get(Wge::MultipartStrictError::ErrorType::InvalidHeaderFolding));
     EXPECT_FALSE(error.get(Wge::MultipartStrictError::ErrorType::FileLimitExceeded));
     EXPECT_FALSE(error.get(Wge::MultipartStrictError::ErrorType::UnmatchedBoundary));
+
+    auto& name_value_map = multi_part.getNameValue();
+    auto& name_value_linked = multi_part.getNameValueLinked();
+    EXPECT_EQ(name_value_map.size(), 1);
+    EXPECT_EQ(name_value_linked.size(), 1);
+    EXPECT_EQ(name_value_map.find("foo1")->second, "bar1\r\n");
+    EXPECT_EQ(name_value_linked[0].first, "foo1");
+    EXPECT_EQ(name_value_linked[0].second, "bar1\r\n");
   }
 
   // ErrorType::DataAfter
   {
     Wge::Common::Ragel::MultiPart multi_part;
     multi_part.init(R"(multipart/form-data; boundary=--helloworld)",
-                    "----helloworld\r\n"
-                    "content-disposition: form-data; name=\"hello\"\r\n"
+                    R"(----helloworld)"
                     "\r\n"
-                    "world\r\n"
-                    "----helloworld--aa");
+                    "content-disposition: form-data; name=foo1\r\n"
+                    "header1: value1\r\n"
+                    "\r\n"
+                    "bar1\r\n"
+                    R"(----helloworld--asdf)");
     auto error = multi_part.getError();
     EXPECT_TRUE(error.get(Wge::MultipartStrictError::ErrorType::MultipartStrictError));
     EXPECT_FALSE(error.get(Wge::MultipartStrictError::ErrorType::ReqbodyProcessorError));
@@ -225,18 +272,27 @@ TEST(Common, multiPartError) {
     EXPECT_FALSE(error.get(Wge::MultipartStrictError::ErrorType::InvalidHeaderFolding));
     EXPECT_FALSE(error.get(Wge::MultipartStrictError::ErrorType::FileLimitExceeded));
     EXPECT_FALSE(error.get(Wge::MultipartStrictError::ErrorType::UnmatchedBoundary));
+
+    auto& name_value_map = multi_part.getNameValue();
+    auto& name_value_linked = multi_part.getNameValueLinked();
+    EXPECT_EQ(name_value_map.size(), 1);
+    EXPECT_EQ(name_value_linked.size(), 1);
+    EXPECT_EQ(name_value_map.find("foo1")->second, "bar1\r\n");
+    EXPECT_EQ(name_value_linked[0].first, "foo1");
+    EXPECT_EQ(name_value_linked[0].second, "bar1\r\n");
   }
 
   // ErrorType::HeaderFolding
   {
     Wge::Common::Ragel::MultiPart multi_part;
     multi_part.init(R"(multipart/form-data; boundary=--helloworld)",
-                    "----helloworld\r\n"
-                    "content-disposition: form-data; name=\"hello\";\r\n"
-                    " filename=\"hello\"\r\n"
+                    R"(----helloworld)"
                     "\r\n"
-                    "world\r\n"
-                    "----helloworld--");
+                    "content-disposition: form-data; name=foo1\r\n"
+                    " header1: value1\r\n"
+                    "\r\n"
+                    "bar1\r\n"
+                    R"(----helloworld--)");
     auto error = multi_part.getError();
     EXPECT_TRUE(error.get(Wge::MultipartStrictError::ErrorType::MultipartStrictError));
     EXPECT_FALSE(error.get(Wge::MultipartStrictError::ErrorType::ReqbodyProcessorError));
@@ -252,6 +308,14 @@ TEST(Common, multiPartError) {
     EXPECT_FALSE(error.get(Wge::MultipartStrictError::ErrorType::InvalidHeaderFolding));
     EXPECT_FALSE(error.get(Wge::MultipartStrictError::ErrorType::FileLimitExceeded));
     EXPECT_FALSE(error.get(Wge::MultipartStrictError::ErrorType::UnmatchedBoundary));
+
+    auto& name_value_map = multi_part.getNameValue();
+    auto& name_value_linked = multi_part.getNameValueLinked();
+    EXPECT_EQ(name_value_map.size(), 1);
+    EXPECT_EQ(name_value_linked.size(), 1);
+    EXPECT_EQ(name_value_map.find("foo1")->second, "bar1\r\n");
+    EXPECT_EQ(name_value_linked[0].first, "foo1");
+    EXPECT_EQ(name_value_linked[0].second, "bar1\r\n");
   }
 
   // ErrorType::LfLine
@@ -284,11 +348,13 @@ TEST(Common, multiPartError) {
   {
     Wge::Common::Ragel::MultiPart multi_part;
     multi_part.init(R"(multipart/form-data; boundary=--helloworld)",
-                    "----helloworld\r\n"
-                    "content-disposition: form-data name=\"hello\"\r\n"
+                    R"(----helloworld)"
                     "\r\n"
-                    "world\r\n"
-                    "----helloworld--");
+                    "content-disposition: form-data name=foo1\r\n"
+                    "header1: value1\r\n"
+                    "\r\n"
+                    "bar1\r\n"
+                    R"(----helloworld--)");
     auto error = multi_part.getError();
     EXPECT_TRUE(error.get(Wge::MultipartStrictError::ErrorType::MultipartStrictError));
     EXPECT_FALSE(error.get(Wge::MultipartStrictError::ErrorType::ReqbodyProcessorError));
@@ -304,17 +370,27 @@ TEST(Common, multiPartError) {
     EXPECT_FALSE(error.get(Wge::MultipartStrictError::ErrorType::InvalidHeaderFolding));
     EXPECT_FALSE(error.get(Wge::MultipartStrictError::ErrorType::FileLimitExceeded));
     EXPECT_FALSE(error.get(Wge::MultipartStrictError::ErrorType::UnmatchedBoundary));
+
+    auto& name_value_map = multi_part.getNameValue();
+    auto& name_value_linked = multi_part.getNameValueLinked();
+    EXPECT_EQ(name_value_map.size(), 1);
+    EXPECT_EQ(name_value_linked.size(), 1);
+    EXPECT_EQ(name_value_map.find("foo1")->second, "bar1\r\n");
+    EXPECT_EQ(name_value_linked[0].first, "foo1");
+    EXPECT_EQ(name_value_linked[0].second, "bar1\r\n");
   }
 
   // ErrorType::InvalidQuoting
   {
     Wge::Common::Ragel::MultiPart multi_part;
     multi_part.init(R"(multipart/form-data; boundary=--helloworld)",
-                    "----helloworld\r\n"
-                    "content-disposition: form-data; name=\"hello\r\n"
+                    R"(----helloworld)"
                     "\r\n"
-                    "world\r\n"
-                    "----helloworld--");
+                    "content-disposition: form-data; name=\"foo1\r\n"
+                    "header1: value1\r\n"
+                    "\r\n"
+                    "bar1\r\n"
+                    R"(----helloworld--)");
     auto error = multi_part.getError();
     EXPECT_TRUE(error.get(Wge::MultipartStrictError::ErrorType::MultipartStrictError));
     EXPECT_FALSE(error.get(Wge::MultipartStrictError::ErrorType::ReqbodyProcessorError));
@@ -330,17 +406,27 @@ TEST(Common, multiPartError) {
     EXPECT_FALSE(error.get(Wge::MultipartStrictError::ErrorType::InvalidHeaderFolding));
     EXPECT_FALSE(error.get(Wge::MultipartStrictError::ErrorType::FileLimitExceeded));
     EXPECT_FALSE(error.get(Wge::MultipartStrictError::ErrorType::UnmatchedBoundary));
+
+    auto& name_value_map = multi_part.getNameValue();
+    auto& name_value_linked = multi_part.getNameValueLinked();
+    EXPECT_EQ(name_value_map.size(), 1);
+    EXPECT_EQ(name_value_linked.size(), 1);
+    EXPECT_EQ(name_value_map.find("foo1")->second, "bar1\r\n");
+    EXPECT_EQ(name_value_linked[0].first, "foo1");
+    EXPECT_EQ(name_value_linked[0].second, "bar1\r\n");
   }
 
   // ErrorType::InvalidQuoting
   {
     Wge::Common::Ragel::MultiPart multi_part;
     multi_part.init(R"(multipart/form-data; boundary=--helloworld)",
-                    "----helloworld\r\n"
-                    "content-disposition: form-data; name=hello\"\r\n"
+                    R"(----helloworld)"
                     "\r\n"
-                    "world\r\n"
-                    "----helloworld--");
+                    "content-disposition: form-data; name=foo1\"\r\n"
+                    "header1: value1\r\n"
+                    "\r\n"
+                    "bar1\r\n"
+                    R"(----helloworld--)");
     auto error = multi_part.getError();
     EXPECT_TRUE(error.get(Wge::MultipartStrictError::ErrorType::MultipartStrictError));
     EXPECT_FALSE(error.get(Wge::MultipartStrictError::ErrorType::ReqbodyProcessorError));
@@ -356,17 +442,27 @@ TEST(Common, multiPartError) {
     EXPECT_FALSE(error.get(Wge::MultipartStrictError::ErrorType::InvalidHeaderFolding));
     EXPECT_FALSE(error.get(Wge::MultipartStrictError::ErrorType::FileLimitExceeded));
     EXPECT_FALSE(error.get(Wge::MultipartStrictError::ErrorType::UnmatchedBoundary));
+
+    auto& name_value_map = multi_part.getNameValue();
+    auto& name_value_linked = multi_part.getNameValueLinked();
+    EXPECT_EQ(name_value_map.size(), 1);
+    EXPECT_EQ(name_value_linked.size(), 1);
+    EXPECT_EQ(name_value_map.find("foo1")->second, "bar1\r\n");
+    EXPECT_EQ(name_value_linked[0].first, "foo1");
+    EXPECT_EQ(name_value_linked[0].second, "bar1\r\n");
   }
 
   // ErrorType::InvalidQuoting
   {
     Wge::Common::Ragel::MultiPart multi_part;
     multi_part.init(R"(multipart/form-data; boundary=--helloworld)",
-                    "----helloworld\r\n"
-                    "content-disposition: form-data; name=hel\"lo\r\n"
+                    R"(----helloworld)"
                     "\r\n"
-                    "world\r\n"
-                    "----helloworld--");
+                    "content-disposition: form-data; name=fo\"o1\r\n"
+                    "header1: value1\r\n"
+                    "\r\n"
+                    "bar1\r\n"
+                    R"(----helloworld--)");
     auto error = multi_part.getError();
     EXPECT_TRUE(error.get(Wge::MultipartStrictError::ErrorType::MultipartStrictError));
     EXPECT_FALSE(error.get(Wge::MultipartStrictError::ErrorType::ReqbodyProcessorError));
@@ -382,15 +478,30 @@ TEST(Common, multiPartError) {
     EXPECT_FALSE(error.get(Wge::MultipartStrictError::ErrorType::InvalidHeaderFolding));
     EXPECT_FALSE(error.get(Wge::MultipartStrictError::ErrorType::FileLimitExceeded));
     EXPECT_FALSE(error.get(Wge::MultipartStrictError::ErrorType::UnmatchedBoundary));
+
+    auto& name_value_map = multi_part.getNameValue();
+    auto& name_value_linked = multi_part.getNameValueLinked();
+    EXPECT_EQ(name_value_map.size(), 1);
+    EXPECT_EQ(name_value_linked.size(), 1);
+    EXPECT_EQ(name_value_map.find("fo\"o1")->second, "bar1\r\n");
+    EXPECT_EQ(name_value_linked[0].first, "fo\"o1");
+    EXPECT_EQ(name_value_linked[0].second, "bar1\r\n");
   }
 
   // ErrorType::InvalidPart
   {
     Wge::Common::Ragel::MultiPart multi_part;
     multi_part.init(R"(multipart/form-data; boundary=--helloworld)",
-                    "----helloworld\r\n"
-                    "content-disposition: form-data; name=hello\r\n"
-                    "----helloworld--");
+                    R"(----helloworld)"
+                    "\r\n"
+                    "content-disposition: form-data; name=foo1\r\n"
+                    R"(----helloworld)"
+                    "\r\n"
+                    "content-disposition: form-data; name=foo1\r\n"
+                    "header1: value1\r\n"
+                    "\r\n"
+                    "bar1\r\n"
+                    R"(----helloworld--)");
     auto error = multi_part.getError();
     EXPECT_TRUE(error.get(Wge::MultipartStrictError::ErrorType::MultipartStrictError));
     EXPECT_FALSE(error.get(Wge::MultipartStrictError::ErrorType::ReqbodyProcessorError));
@@ -406,16 +517,26 @@ TEST(Common, multiPartError) {
     EXPECT_FALSE(error.get(Wge::MultipartStrictError::ErrorType::InvalidHeaderFolding));
     EXPECT_FALSE(error.get(Wge::MultipartStrictError::ErrorType::FileLimitExceeded));
     EXPECT_FALSE(error.get(Wge::MultipartStrictError::ErrorType::UnmatchedBoundary));
+
+    auto& name_value_map = multi_part.getNameValue();
+    auto& name_value_linked = multi_part.getNameValueLinked();
+    EXPECT_EQ(name_value_map.size(), 1);
+    EXPECT_EQ(name_value_linked.size(), 1);
+    EXPECT_EQ(name_value_map.find("foo1")->second, "bar1\r\n");
+    EXPECT_EQ(name_value_linked[0].first, "foo1");
+    EXPECT_EQ(name_value_linked[0].second, "bar1\r\n");
   }
 
   // ErrorType::InvalidPart
   {
     Wge::Common::Ragel::MultiPart multi_part;
     multi_part.init(R"(multipart/form-data; boundary=--helloworld)",
-                    "----helloworld\r\n"
-                    "content-disposition: form-data; name=hello\r\n"
+                    R"(----helloworld)"
                     "\r\n"
-                    "world\r\n");
+                    "content-disposition: form-data; name=foo1\r\n"
+                    "header1: value1\r\n"
+                    "\r\n"
+                    "bar1\r\n");
     auto error = multi_part.getError();
     EXPECT_TRUE(error.get(Wge::MultipartStrictError::ErrorType::MultipartStrictError));
     EXPECT_FALSE(error.get(Wge::MultipartStrictError::ErrorType::ReqbodyProcessorError));
@@ -431,18 +552,28 @@ TEST(Common, multiPartError) {
     EXPECT_FALSE(error.get(Wge::MultipartStrictError::ErrorType::InvalidHeaderFolding));
     EXPECT_FALSE(error.get(Wge::MultipartStrictError::ErrorType::FileLimitExceeded));
     EXPECT_FALSE(error.get(Wge::MultipartStrictError::ErrorType::UnmatchedBoundary));
+
+    auto& name_value_map = multi_part.getNameValue();
+    auto& name_value_linked = multi_part.getNameValueLinked();
+    EXPECT_EQ(name_value_map.size(), 1);
+    EXPECT_EQ(name_value_linked.size(), 1);
+    EXPECT_EQ(name_value_map.find("foo1")->second, "bar1\r\n");
+    EXPECT_EQ(name_value_linked[0].first, "foo1");
+    EXPECT_EQ(name_value_linked[0].second, "bar1\r\n");
   }
 
   // ErrorType::InvalidHeaderFolding
   {
     Wge::Common::Ragel::MultiPart multi_part;
     multi_part.init(R"(multipart/form-data; boundary=--helloworld)",
-                    "----helloworld\r\n"
-                    "content-disposition: form-data;name=hello\r\n"
-                    "filename=hello\r\n"
+                    R"(----helloworld)"
                     "\r\n"
-                    "world\r\n"
-                    "----helloworld--");
+                    "content-disposition: form-data; name=foo1\r\n"
+                    "filename=hello\r\n"
+                    "header1: value1\r\n"
+                    "\r\n"
+                    "bar1\r\n"
+                    R"(----helloworld--)");
     auto error = multi_part.getError();
     EXPECT_TRUE(error.get(Wge::MultipartStrictError::ErrorType::MultipartStrictError));
     EXPECT_FALSE(error.get(Wge::MultipartStrictError::ErrorType::ReqbodyProcessorError));
@@ -458,6 +589,14 @@ TEST(Common, multiPartError) {
     EXPECT_TRUE(error.get(Wge::MultipartStrictError::ErrorType::InvalidHeaderFolding));
     EXPECT_FALSE(error.get(Wge::MultipartStrictError::ErrorType::FileLimitExceeded));
     EXPECT_FALSE(error.get(Wge::MultipartStrictError::ErrorType::UnmatchedBoundary));
+
+    auto& name_value_map = multi_part.getNameValue();
+    auto& name_value_linked = multi_part.getNameValueLinked();
+    EXPECT_EQ(name_value_map.size(), 1);
+    EXPECT_EQ(name_value_linked.size(), 1);
+    EXPECT_EQ(name_value_map.find("foo1")->second, "bar1\r\n");
+    EXPECT_EQ(name_value_linked[0].first, "foo1");
+    EXPECT_EQ(name_value_linked[0].second, "bar1\r\n");
   }
 
   // ErrorType::FileLimitExceeded
