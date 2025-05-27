@@ -52,6 +52,10 @@
       WS => { tag_values_str.append(ts, te - ts); };
       '<?' ([^?] | ('?' [^>]))* '?>' WS => { XML_LOG(std::format("skip processing instruction: {}",std::string_view(ts, te - ts))); };
       '<!--' ([^\-] | ('-' [^\-]))*  '-->' WS => { XML_LOG(std::format("skip comment: {}",std::string_view(ts, te - ts))); };
+      # skip doctype without internal subset
+      '<!DOCTYPE' [^>]+ '>' WS => { XML_LOG(std::format("skip doctype: {}",std::string_view(ts, te - ts))); };
+      # skip doctype with internal subset
+      '<!DOCTYPE' [^>]+ '[' [^\]]+ ']'  '>' WS => { XML_LOG(std::format("skip doctype with internal subset: {}",std::string_view(ts, te - ts))); };
       '<' => { XML_LOG("fcall open_tag"); fcall open_tag; };
       any => error;
     *|;
