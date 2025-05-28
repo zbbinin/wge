@@ -23,7 +23,7 @@
 #include <string_view>
 #include <vector>
 #include <unordered_map>
-#include <escape_seq_decode.h>
+#include <js_decode.h>
 #include <forward_list>
 
 #ifndef ENABLE_JSON_DEBUG_LOG
@@ -65,7 +65,7 @@
       key_view = trimRight(key_view.data(), key_view.size());
       key_view.remove_suffix(1);
       std::string key_escape_buffer;
-      if(escapeSeqDecode(key_view, key_escape_buffer)) {
+      if(jsDecode(key_view, key_escape_buffer)) {
         escape_buffer.emplace_front(std::move(key_escape_buffer));
         key_view = escape_buffer.front();
       }
@@ -78,7 +78,7 @@
     action add_string_value {
       value_view = std::string_view(ts + 1, te - ts - 2);
       std::string value_escape_buffer;
-      if(escapeSeqDecode(value_view, value_escape_buffer)) {
+      if(jsDecode(value_view, value_escape_buffer)) {
         escape_buffer.emplace_front(std::move(value_escape_buffer));
         value_view = escape_buffer.front();
       }
