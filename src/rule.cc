@@ -66,7 +66,8 @@ void Rule::initExceptVariables() {
       }
 
       // The specific exception is a regex, if matched, we remove the variable directly
-      if (except_scanner_ && except_scanner_->match(var_name.sub_name_)) {
+      if (!var_name.sub_name_.empty() && except_scanner_ &&
+          except_scanner_->match(var_name.sub_name_)) {
         variables_index_by_full_name_.erase(var_name);
         iter = variables_.erase(iter);
         continue;
