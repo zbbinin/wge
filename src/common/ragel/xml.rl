@@ -74,6 +74,10 @@
     open_tag := |*
       WS => skip;
       [^ =]+ '=' ['"] => { XML_LOG("fgoto attr_value"); fgoto attr_value; };
+      '/>' => {
+        XML_LOG("fgoto main");
+        fgoto main;
+      };
       '>' => { XML_LOG("fgoto tag_value"); fgoto tag_value; };
       '<' => error;
       any => skip;
