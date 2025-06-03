@@ -84,7 +84,7 @@ jobs:
       - name: Build
         run: |
           echo "::group::Building project"
-          cmake --build build/release -t wge test --verbose | true
+          cmake --build build/release -t wge test --verbose 
  
           find ./ -name "unordered_flat_map.hpp" || true
           echo "::endgroup::"
