@@ -467,10 +467,10 @@ ModeSecRuleOperator_NOT: NOT -> type(NOT);
 AT: '@' -> popMode, pushMode(ModeSecRuleOperatorName);
 ModeSecRuleOperator_QUOTE:
 	QUOTE -> type(QUOTE), popMode, pushMode(ModeSecRuleAction);
-RX_DEFUALT: ('\\"' | ~[" @!%] | ('%' ~[{])) (
+RX_DEFUALT: ('\\"' | ~[" @!%] | ('%' ~[{\\]) | ('%\\' .)) (
 		'\\"'
 		| ~["%]
-		| ('%' ~[{])
+		| ('%' ~[{\\] | ('%\\' .))
 	)* -> type(STRING);
 ModeSecRuleOperator_PER_CENT:
 	PER_CENT -> type(PER_CENT), pushMode(ModeSecRuleVariableName);
@@ -535,11 +535,12 @@ OP_WITHIN: [wW][iI][tT][hH][iI][nN];
 mode ModeSecRuleOperatorValue;
 ModeSecRuleOperatorValue_QUOTE:
 	QUOTE -> type(QUOTE), popMode, pushMode(ModeSecRuleAction);
-ModeSecRuleOperatorValue_STRING: ('\\"' | ~["%] | ('%' ~[{])) (
+ModeSecRuleOperatorValue_STRING: (
 		'\\"'
 		| ~["%]
-		| ('%' ~[{])
-	)* -> type(STRING);
+		| ('%' ~[{\\])
+		| ('%\\' .)
+	)+ -> type(STRING);
 ModeSecRuleOperatorValue_PER_CENT:
 	PER_CENT -> type(PER_CENT), pushMode(ModeSecRuleVariableName);
 
