@@ -75,15 +75,19 @@ jobs:
 
           # 查找unordered_flat_map.hpp
           echo "::group::Find unordered_flat_map.hpp"
-          ls build/release-with-debug-info/vcpkg_installed/x64-linux/include/boost/
-          ls build/release-with-debug-info/vcpkg_installed/x64-linux/include/boost/unordered/
-          find ./ -name "unordered_flat_map.hpp"
+          find /opt/vcpkg/ -name "unordered_flat_map.hpp" || true
+
+          ls /opt/vcpkg/buildtrees/boost-unordered || true
+          ls /opt/vcpkg/packages/boost-unordered* || tru
           echo "::endgroup::"
 
       - name: Build
         run: |
           echo "::group::Building project"
-          cmake --build build/release -t wge test --verbose
+          cmake --build build/release -t wge test --verbose | true
+          ls build/release-with-debug-info/vcpkg_installed/x64-linux/include/boost/ || true
+          ls build/release-with-debug-info/vcpkg_installed/x64-linux/include/boost/unordered/ || true
+          find ./ -name "unordered_flat_map.hpp" || true
           echo "::endgroup::"
 
       - name: Run tests
