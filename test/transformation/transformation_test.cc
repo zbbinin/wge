@@ -729,7 +729,7 @@ TEST_F(TransformationTest, removeComments) {
 This is # comment a test)";
   ret = remove_comments.evaluate(data, result);
   EXPECT_TRUE(ret);
-  EXPECT_EQ(result, "This is # comment a test");
+  EXPECT_EQ(result, "This is ");
 
   data = R"(This is -- comment a test)";
   ret = remove_comments.evaluate(data, result);

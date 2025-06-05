@@ -39,42 +39,12 @@
     fgoto transformation;
   }
 
-  action exec_transformation_if_newline {
-    if(*ts == '\n' || ts == ps) {
-      result.resize(input.size());
-      r = result.data();
-      if(ts > input.data()){
-        memcpy(r, input.data(), ts - input.data());
-        r += ts - input.data();
-      }
-      p = ts;
-      fhold;
-      fgoto transformation;
-    }
-  }
-
-  action exec_transformation_if_eof {
-    if(te == eof) {
-      result.resize(input.size());
-      r = result.data();
-      if(ts > input.data()){
-        memcpy(r, input.data(), ts - input.data());
-        r += ts - input.data();
-      }
-      p = ts;
-      fhold;
-      fgoto transformation;
-    }
-  }
-
   # prescan
   main := |*
     '/*' => exec_transformation;
     '<!--' => exec_transformation;
-    '--' [^\r\n]* '\r'? '\n' => exec_transformation;
-    '--' [^\r\n]* => exec_transformation_if_eof;
-    '\n'? [ \t]* '#' [^\r\n]* '\r'? '\n' => exec_transformation_if_newline;
-    '\n'? [ \t]* '#' [^\r\n]* => exec_transformation_if_eof;
+    '--' => exec_transformation;
+    '#' => exec_transformation;
     any => skip;
   *|;
 
@@ -83,13 +53,7 @@
     '/*' => { fgoto remove; };
     '<!--' => { fgoto remove; };
     '--' [^\r\n]* '\r'? '\n'? => skip;
-    '\n'? [ \t]* '#' [^\r\n]* '\r'? '\n'? => {
-      // The '#' comment is a special case, only remove it if it is at the start of a line
-      if(*ts != '\n' && ts != ps) {
-        memcpy(r, ts, te - ts);
-        r += te - ts;
-      }
-    };
+    '#' [^\r\n]* '\r'? '\n'? => skip;
     any => { *r++ = fc; };
   *|;
 
