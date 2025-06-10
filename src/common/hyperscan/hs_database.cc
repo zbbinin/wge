@@ -33,7 +33,7 @@ Scratch HsDataBase::main_scratch_;
 HsDataBase::HsDataBase(const std::string& pattern, bool literal, bool som_leftmost, bool prefilter,
                        bool support_stream)
     : db_(literal) {
-  unsigned int flag = HS_FLAG_CASELESS;
+  unsigned int flag = 0;
   if (som_leftmost) {
     flag |= HS_FLAG_SOM_LEFTMOST;
   }
@@ -47,7 +47,7 @@ HsDataBase::HsDataBase(const std::string& pattern, bool literal, bool som_leftmo
 HsDataBase::HsDataBase(const std::vector<std::string_view>& patterns, bool literal,
                        bool som_leftmost, bool prefilter, bool support_stream)
     : db_(literal) {
-  unsigned int flag = HS_FLAG_CASELESS;
+  unsigned int flag = 0;
   if (som_leftmost) {
     flag |= HS_FLAG_SOM_LEFTMOST;
   }
@@ -69,7 +69,7 @@ HsDataBase::HsDataBase(const std::vector<std::string_view>& patterns,
     : db_(literal) {
   assert(patterns.size() == ids.size());
 
-  unsigned int flag = HS_FLAG_CASELESS;
+  unsigned int flag = 0;
   if (som_leftmost) {
     flag |= HS_FLAG_SOM_LEFTMOST;
   }
