@@ -53,8 +53,8 @@ public:
           scanner_ = std::make_unique<Common::Hyperscan::Scanner>(hs_db);
         },
         [&]() {
-          auto hs_db =
-              std::make_shared<Common::Hyperscan::HsDataBase>(tokens, true, true, false, false);
+          auto hs_db = std::make_shared<Common::Hyperscan::HsDataBase>(tokens, true, true, true,
+                                                                       false, false);
           scanner_ = std::make_unique<Common::Hyperscan::Scanner>(hs_db);
           return hs_db;
         });
@@ -92,7 +92,7 @@ public:
             scanner = macro_scanner.get();
           },
           [&]() {
-            return std::make_shared<Common::Hyperscan::HsDataBase>(tokens, true, true, false,
+            return std::make_shared<Common::Hyperscan::HsDataBase>(tokens, true, true, true, false,
                                                                    false);
           });
     }

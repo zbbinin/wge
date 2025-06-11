@@ -28,7 +28,7 @@
 
 TEST(HyperscanTest, greedy) {
   Wge::Common::Hyperscan::Scanner scanner(
-      std::make_shared<Wge::Common::Hyperscan::HsDataBase>("a+", false, true, false, false));
+      std::make_shared<Wge::Common::Hyperscan::HsDataBase>("a+", false, false, true, false, false));
   int count = 0;
 
   std::future<void> result = std::async([&]() {
@@ -62,7 +62,7 @@ TEST(HyperscanTest, greedy) {
 TEST(HyperscanTest, serialize) {
   const char* serialize_dir = "/tmp/HyperscanTest";
   Wge::Common::Hyperscan::Scanner scanner(std::make_shared<Wge::Common::Hyperscan::HsDataBase>(
-      "a+", false, true, false, true, serialize_dir));
+      "a+", false, false, true, false, true, serialize_dir));
 
   std::string serialize_file_path = serialize_dir;
   serialize_file_path += "/";
@@ -92,7 +92,7 @@ TEST(HyperscanTest, serialize) {
   result.get();
 
   Wge::Common::Hyperscan::Scanner scanner2(std::make_shared<Wge::Common::Hyperscan::HsDataBase>(
-      "a+", false, true, false, true, serialize_dir));
+      "a+", false, false, true, false, true, serialize_dir));
   EXPECT_TRUE(std::filesystem::exists(serialize_file_path));
   EXPECT_EQ(file_time, std::filesystem::last_write_time(serialize_file_path));
 

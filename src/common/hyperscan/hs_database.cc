@@ -32,10 +32,13 @@ namespace Common {
 namespace Hyperscan {
 Scratch HsDataBase::main_scratch_;
 
-HsDataBase::HsDataBase(const std::string& pattern, bool literal, bool som_leftmost, bool prefilter,
-                       bool support_stream, const char* serialize_dir)
+HsDataBase::HsDataBase(const std::string& pattern, bool literal, bool case_less, bool som_leftmost,
+                       bool prefilter, bool support_stream, const char* serialize_dir)
     : db_(literal) {
   unsigned int flag = 0;
+  if (case_less) {
+    flag |= HS_FLAG_CASELESS;
+  }
   if (som_leftmost) {
     flag |= HS_FLAG_SOM_LEFTMOST;
   }
@@ -49,11 +52,14 @@ HsDataBase::HsDataBase(const std::string& pattern, bool literal, bool som_leftmo
   loadOrCompile(serialize_dir, support_stream);
 }
 
-HsDataBase::HsDataBase(const std::vector<std::string_view>& patterns, bool literal,
+HsDataBase::HsDataBase(const std::vector<std::string_view>& patterns, bool literal, bool case_less,
                        bool som_leftmost, bool prefilter, bool support_stream,
                        const char* serialize_dir)
     : db_(literal) {
   unsigned int flag = 0;
+  if (case_less) {
+    flag |= HS_FLAG_CASELESS;
+  }
   if (som_leftmost) {
     flag |= HS_FLAG_SOM_LEFTMOST;
   }
@@ -71,12 +77,16 @@ HsDataBase::HsDataBase(const std::vector<std::string_view>& patterns, bool liter
 }
 
 HsDataBase::HsDataBase(const std::vector<std::string_view>& patterns,
-                       const std::vector<uint64_t>& ids, bool literal, bool som_leftmost,
-                       bool prefilter, bool support_stream, const char* serialize_dir)
+                       const std::vector<uint64_t>& ids, bool literal, bool case_less,
+                       bool som_leftmost, bool prefilter, bool support_stream,
+                       const char* serialize_dir)
     : db_(literal) {
   assert(patterns.size() == ids.size());
 
   unsigned int flag = 0;
+  if (case_less) {
+    flag |= HS_FLAG_CASELESS;
+  }
   if (som_leftmost) {
     flag |= HS_FLAG_SOM_LEFTMOST;
   }
@@ -93,10 +103,10 @@ HsDataBase::HsDataBase(const std::vector<std::string_view>& patterns,
   loadOrCompile(serialize_dir, support_stream);
 }
 
-HsDataBase::HsDataBase(std::ifstream& ifs, bool literal, bool som_leftmost, bool prefilter,
-                       bool support_stream, const char* serialize_dir)
+HsDataBase::HsDataBase(std::ifstream& ifs, bool literal, bool case_less, bool som_leftmost,
+                       bool prefilter, bool support_stream, const char* serialize_dir)
     : db_(literal) {
-  if (db_.expressions_.load(ifs, true, som_leftmost, prefilter, false)) {
+  if (db_.expressions_.load(ifs, true, case_less, som_leftmost, prefilter, false)) {
     loadOrCompile(serialize_dir, support_stream);
   }
 }

@@ -54,6 +54,7 @@ public:
    * Each line in the file is a pattern.
    * @param ifs the file stream
    * @param utf8 whether the pattern is utf8
+   * @param case_less whether the pattern is case insensitive
    * @param som_leftmost whether the pattern is som_leftmost
    * @param prefilter whether enable HS_FLAG_PREFILTER flag when compile
    * @param multi_line whether the pattern is multi_line
@@ -61,7 +62,8 @@ public:
    * Starts with charactor '#' means comment this line
    * Starts with double charactor '#' means comment all of follow
    */
-  bool load(std::ifstream& ifs, bool utf8, bool som_leftmost, bool prefilter, bool multi_line);
+  bool load(std::ifstream& ifs, bool utf8, bool case_less, bool som_leftmost, bool prefilter,
+            bool multi_line);
 
   /**
    * Add a pattern to the list

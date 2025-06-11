@@ -31,8 +31,8 @@
 namespace Wge {
 namespace Common {
 namespace Hyperscan {
-bool ExpressionList::load(std::ifstream& ifs, bool utf8, bool som_leftmost, bool prefilter,
-                          bool multi_line) {
+bool ExpressionList::load(std::ifstream& ifs, bool utf8, bool case_less, bool som_leftmost,
+                          bool prefilter, bool multi_line) {
   assert(ifs.is_open());
   if (!ifs.is_open()) {
     return false;
@@ -40,6 +40,10 @@ bool ExpressionList::load(std::ifstream& ifs, bool utf8, bool som_leftmost, bool
 
   constexpr size_t max_character = 2048;
   unsigned int flag = 0;
+
+  if (case_less) {
+    flag |= HS_FLAG_CASELESS;
+  }
 
   if (utf8 && !literal_) {
     flag |= HS_FLAG_UTF8;
