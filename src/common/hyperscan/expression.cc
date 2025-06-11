@@ -26,6 +26,7 @@
 #include <hs/hs.h>
 
 #include "../log.h"
+#include "../sha1.h"
 
 namespace Wge {
 namespace Common {
@@ -145,6 +146,25 @@ uint64_t ExpressionList::getRealId(unsigned int id) const {
   }
 
   return -1;
+}
+
+std::string ExpressionList::sha1() const {
+  Common::Sha1 sha1;
+
+  // The literal_
+  sha1.update(reinterpret_cast<const char*>(&literal_), sizeof(literal_));
+
+  // The exprs_
+  for (const auto& expr : exprs_) {
+    sha1.update(expr);
+  }
+
+  // The flags_
+  sha1.update(reinterpret_cast<const char*>(flags_.data()), flags_.size() * sizeof(unsigned int));
+
+  // The real_ids_
+  return sha1.update(reinterpret_cast<const char*>(real_ids_.data()),
+                     real_ids_.size() * sizeof(uint64_t), true);
 }
 } // namespace Hyperscan
 } // namespace Common

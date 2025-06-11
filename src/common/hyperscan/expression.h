@@ -84,6 +84,12 @@ public:
   uint64_t getRealId(unsigned int id) const;
   const Pcre::PatternList& getPcrePatternList() const { return pcre_pattern_list_; }
 
+  /**
+   * Get the SHA1 hash of the expression list.
+   * @return the SHA1 hash as a string
+   */
+  std::string sha1() const;
+
   static bool isPcre(const std::string& expression) {
     static std::regex is_pcre_pattern(R"(.*(?:\(\?=|\(\?!|\(\?<=|\(\?<!|\(\?>|\\\d|[?*+}]\+).*)");
     return std::regex_match(expression, is_pcre_pattern);

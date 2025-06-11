@@ -46,9 +46,12 @@ public:
    * @param som_leftmost whether enable HS_FLAG_SOM_LEFTMOST flag when compile
    * @param prefilter whether enable HS_FLAG_PREFILTER flag when compile
    * @param support_stream whether support stream mode
+   * @param serialize_dir the directory to serialize the database, if not nullptr, the database will
+   * be try to load from the directory and if not found, it will be compiled and saved to the
+   * directory.
    */
   HsDataBase(const std::string& pattern, bool literal, bool som_leftmost, bool prefilter,
-             bool support_stream);
+             bool support_stream, const char* serialize_dir = nullptr);
 
   /**
    * Load patterns form a vector of string_view without pattern id. The id of patterns will be
@@ -58,9 +61,12 @@ public:
    * @param som_leftmost whether enable HS_FLAG_SOM_LEFTMOST flag when compile
    * @param prefilter whether enable HS_FLAG_PREFILTER flag when compile
    * @param support_stream whether support stream mode
+   * @param serialize_dir the directory to serialize the database, if not nullptr, the database will
+   * be try to load from the directory and if not found, it will be compiled and saved to the
+   * directory.
    */
   HsDataBase(const std::vector<std::string_view>& patterns, bool literal, bool som_leftmost,
-             bool prefilter, bool support_stream);
+             bool prefilter, bool support_stream, const char* serialize_dir = nullptr);
 
   /**
    * Load patterns form a vector of string_view with pattern id.
@@ -70,9 +76,13 @@ public:
    * @param som_leftmost whether enable HS_FLAG_SOM_LEFTMOST flag when compile
    * @param prefilter whether enable HS_FLAG_PREFILTER flag when compile
    * @param support_stream whether support stream mode
+   * @param serialize_dir the directory to serialize the database, if not nullptr, the database will
+   * be try to load from the directory and if not found, it will be compiled and saved to the
+   * directory.
    */
   HsDataBase(const std::vector<std::string_view>& patterns, const std::vector<uint64_t>& ids,
-             bool literal, bool som_leftmost, bool prefilter, bool support_stream);
+             bool literal, bool som_leftmost, bool prefilter, bool support_stream,
+             const char* serialize_dir = nullptr);
 
   /**
    * Load patterns from the specified file.
@@ -82,9 +92,12 @@ public:
    * @param som_leftmost whether enable HS_FLAG_SOM_LEFTMOST flag when compile
    * @param prefilter whether enable HS_FLAG_PREFILTER flag when compile
    * @param support_stream whether support stream mode
+   * @param serialize_dir the directory to serialize the database, if not nullptr, the database will
+   * be try to load from the directory and if not found, it will be compiled and saved to the
+   * directory.
    */
   HsDataBase(std::ifstream& ifs, bool literal, bool som_leftmost, bool prefilter,
-             bool support_stream);
+             bool support_stream, const char* serialize_dir = nullptr);
 
 public:
   const hs_database_t* blockNative() const { return db_.block_db_; }
@@ -97,6 +110,8 @@ public:
   }
 
   static Scratch& mainScratch() { return main_scratch_; }
+
+  const std::string& sha1() const { return expressions_sha1_; }
 
 private:
   struct Database {
@@ -116,10 +131,16 @@ private:
 
 private:
   void compile(bool support_stream);
+  bool loadFromSerialize(const char* serialize_dir, bool support_stream);
+  void serialize(const char* serialize_dir, bool support_stream) const;
+  std::string makeBlockSerializeFilePath(const char* serialize_dir) const;
+  std::string makeStreamSerializeFilePath(const char* serialize_dir) const;
+  void loadOrCompile(const char* serialize_dir, bool support_stream);
   static Scratch main_scratch_;
 
 private:
   Database db_;
+  std::string expressions_sha1_;
 };
 } // namespace Hyperscan
 } // namespace Common

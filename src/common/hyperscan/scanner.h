@@ -54,6 +54,7 @@ public:
   void streamScanStart() const;
   void streamScan(std::string_view data) const;
   void streamScanStop() const;
+  const std::string& databaseSha1() const { return hs_db_->sha1(); }
 
 private:
   using GreedyMatchCache = std::unordered_map<unsigned int,                          // id

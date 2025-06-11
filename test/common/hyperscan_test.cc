@@ -19,6 +19,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include <filesystem>
 #include <future>
 
 #include <gtest/gtest.h>
@@ -56,4 +57,63 @@ TEST(HyperscanTest, greedy) {
   });
 
   result.get();
+}
+
+TEST(HyperscanTest, serialize) {
+  const char* serialize_dir = "/tmp/HyperscanTest";
+  Wge::Common::Hyperscan::Scanner scanner(std::make_shared<Wge::Common::Hyperscan::HsDataBase>(
+      "a+", false, true, false, true, serialize_dir));
+
+  std::string serialize_file_path = serialize_dir;
+  serialize_file_path += "/";
+  serialize_file_path += scanner.databaseSha1();
+  serialize_file_path += ".bdb";
+  EXPECT_TRUE(std::filesystem::exists(serialize_file_path));
+
+  // Get the file create time
+  auto file_time = std::filesystem::last_write_time(serialize_file_path);
+
+  int count = 0;
+  std::future<void> result = std::async([&]() {
+    scanner.registMatchCallback(
+        [](uint64_t id, unsigned long long from, unsigned long long to, unsigned int flags,
+           void* user_data) -> int {
+          int* count = static_cast<int*>(user_data);
+          *count += 1;
+          return 0;
+        },
+        &count);
+
+    scanner.blockScan("aaaabaaaa", Wge::Common::Hyperscan::Scanner::ScanMode::Normal, nullptr,
+                      nullptr);
+    EXPECT_EQ(count, 8);
+  });
+
+  result.get();
+
+  Wge::Common::Hyperscan::Scanner scanner2(std::make_shared<Wge::Common::Hyperscan::HsDataBase>(
+      "a+", false, true, false, true, serialize_dir));
+  EXPECT_TRUE(std::filesystem::exists(serialize_file_path));
+  EXPECT_EQ(file_time, std::filesystem::last_write_time(serialize_file_path));
+
+  count = 0;
+  result = std::async([&]() {
+    scanner2.registMatchCallback(
+        [](uint64_t id, unsigned long long from, unsigned long long to, unsigned int flags,
+           void* user_data) -> int {
+          int* count = static_cast<int*>(user_data);
+          *count += 1;
+          return 0;
+        },
+        &count);
+
+    scanner.blockScan("aaaabaaaa", Wge::Common::Hyperscan::Scanner::ScanMode::Normal, nullptr,
+                      nullptr);
+    EXPECT_EQ(count, 8);
+  });
+  result.get();
+
+  // Remove the serialize directory
+  std::filesystem::remove_all(serialize_dir);
+  EXPECT_FALSE(std::filesystem::exists(serialize_dir));
 }
