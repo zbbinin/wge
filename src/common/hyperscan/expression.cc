@@ -39,7 +39,7 @@ bool ExpressionList::load(std::ifstream& ifs, bool utf8, bool case_less, bool so
   }
 
   constexpr size_t max_character = 2048;
-  unsigned int flag = 0;
+  unsigned int flag = HS_FLAG_SINGLEMATCH;
 
   if (case_less) {
     flag |= HS_FLAG_CASELESS;
@@ -108,6 +108,11 @@ void ExpressionList::add(Expression&& exp, bool prefilter, bool init_raw_data) {
         local_flag &= ~HS_FLAG_SOM_LEFTMOST;
         local_flag |= HS_FLAG_PREFILTER;
       }
+    }
+
+    // HS_FLAG_SINGLEMATCH is not supported in combination with HS_FLAG_SOM_LEFTMOST.
+    if (local_flag & HS_FLAG_SOM_LEFTMOST) {
+      local_flag &= ~HS_FLAG_SINGLEMATCH;
     }
 
     exprs_.emplace_back(std::move(exp.exp_));
