@@ -107,6 +107,7 @@ void ExpressionList::add(Expression&& exp, bool prefilter, bool init_raw_data) {
         // the HS_FLAG_PREFILTER flag can't be used in combination whit HS_FLAG_SOM_LEFTMOST.
         local_flag &= ~HS_FLAG_SOM_LEFTMOST;
         local_flag |= HS_FLAG_PREFILTER;
+        local_flag |= HS_FLAG_ALLOWEMPTY;
       }
     }
 
