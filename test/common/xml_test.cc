@@ -22,6 +22,7 @@
 #include <string_view>
 
 #include <gtest/gtest.h>
+#include <libxml/xmlstring.h>
 #include <libxml2/libxml/parser.h>
 #include <libxml2/libxml/xpath.h>
 
