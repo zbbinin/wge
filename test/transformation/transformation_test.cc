@@ -561,11 +561,12 @@ TEST_F(TransformationTest, trimRight) {
 
 TEST_F(TransformationTest, trim) {
   const std::vector<TestCase> test_cases = {
-      {false, "This is a test", ""},
+      {false, "This is a test", "This is a test"},
       {true, "\t\n\r\f\v\x20 This is a test \t\n\r\f\v\x20", "This is a test"},
       {true, "\t\n\r\f\v\x20 ", ""}};
 
   evaluate<Wge::Transformation::Trim>(test_cases);
+  evaluateStream<Wge::Transformation::Trim>(test_cases);
 }
 
 TEST_F(TransformationTest, upperCase) {
