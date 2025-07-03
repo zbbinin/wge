@@ -527,7 +527,12 @@ TEST_F(TransformationTest, replaceNulls) {
 }
 
 TEST_F(TransformationTest, sha1) {
-  // TODO(zhouyu 2025-03-21): Implement this test
+  const std::vector<TestCase> test_cases = {
+      {true, "This is a test", "a54d88e06612d820bc3be72877c74f257b561b19"},
+      {true, "This is a test data", "80ce9fbcd1461f1b81357159f1f261eddd0681dd"}};
+
+  evaluate<Wge::Transformation::Sha1>(test_cases);
+  evaluateStream<Wge::Transformation::Sha1>(test_cases);
 }
 
 TEST_F(TransformationTest, sqlHexDecode) {
