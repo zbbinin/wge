@@ -115,6 +115,8 @@ public:
   void id(uint64_t value) { id_ = value; }
   int phase() const { return phase_; }
   void phase(int value) { phase_ = value; }
+  int index() const { return index_; }
+  void index(int value) { index_ = value; }
   const Severity severity() const { return severity_; }
   void severity(Severity value) { severity_ = value; }
   const std::string& msg() const { return msg_; }
@@ -261,6 +263,9 @@ private:
   // Places the rule or chain into one of five available processing phases. It can also be used in
   // SecDefaultAction to establish the rule defaults for that phase.
   int phase_{-1};
+
+  // The index of the rule in the phase. -1 means the rule is not in a phase.
+  int index_{-1};
 
   // Assigns severity to the rule in which it is used.
   // Severity values in ModSecurity follows the numeric scale of syslog (where 0 is the most

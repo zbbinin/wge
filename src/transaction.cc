@@ -453,7 +453,7 @@ void Transaction::removeRule(
     auto& rules = engine_.rules(phase);
     auto begin = rules.begin();
     if (phase == current_phase_) {
-      begin += current_rule_index_ + 1;
+      begin += current_rule_->index() + 1;
     }
 
     // Traverse the rules and mark the rules that need to be removed
@@ -521,11 +521,11 @@ inline bool Transaction::process(int phase) {
   auto begin = rules.begin();
   auto& rule_remove_flag = rule_remove_flags_[phase - 1];
   for (auto iter = begin; iter != rules.end();) {
-    current_rule_index_ = std::distance(begin, iter);
     current_rule_ = *iter;
 
     // Skip the rules that have been removed
-    if (!rule_remove_flag.empty() && rule_remove_flag[current_rule_index_])
+    assert(current_rule_->index() != -1);
+    if (!rule_remove_flag.empty() && rule_remove_flag[current_rule_->index()])
       [[unlikely]] {
         ++iter;
         continue;

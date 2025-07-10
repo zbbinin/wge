@@ -188,7 +188,9 @@ void Engine::initRules() {
       WGE_LOG_WARN("phase {} invalid. rule id:{}", phase, rule->id());
       continue;
     }
-    rules_.at(phase - 1).emplace_back(rule.get());
+    auto& phase_rules = rules_[phase - 1];
+    rule->index(phase_rules.size());
+    phase_rules.emplace_back(rule.get());
   }
 }
 

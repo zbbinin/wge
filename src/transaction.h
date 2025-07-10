@@ -596,7 +596,6 @@ private:
 
   // Current evaluation state
   int current_phase_{1};
-  size_t current_rule_index_{0};
   const Rule* current_rule_{nullptr};
   std::vector<MatchedVariable> matched_variables_;
   Common::EvaluateResults::Element msg_macro_expanded_;
