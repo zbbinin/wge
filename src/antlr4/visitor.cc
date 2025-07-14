@@ -1149,6 +1149,14 @@ Visitor::visitAction_meta_data_id(Antlr4Gen::SecLangParser::Action_meta_data_idC
     }
   }
 
+  // Ensure the id is unique
+  auto rule_iter = parser_->findRuleById(id);
+  if (rule_iter != parser_->rules().end()) {
+    // If the rule already exists, we cannot set the id again
+    should_visit_next_child_ = false;
+    return std::string("Rule with id " + std::to_string(id) + " already exists");
+  }
+
   (*current_rule_iter_)->id(id);
   if (visit_action_mode_ == VisitActionMode::SecRule) {
     parser_->setRuleIdIndex(current_rule_iter_);

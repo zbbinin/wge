@@ -101,8 +101,8 @@ TEST_F(RuleOperatorParseTest, ipMatch) {
   const std::string directive =
       R"(SecRule TX:ipv4 "@ipMatch 192.168.1.1" "id:1,phase:1,setvar:'tx.ipv4_true'"
   SecRule TX:ipv4 "@ipMatch 192.168.1.0/24" "id:2,phase:1,setvar:'tx.ipv4_mark_true'"
-  SecRule TX:ipv6 "@ipMatch 2001:db8:85a3:8d3:1319:8a2e:370:7349" "id:1,phase:1,setvar:'tx.ipv6_false'"
-  SecRule TX:ipv6 "@ipMatch 2001:db8:85a3:8d3:1319:8a2e:270:0000/24" "id:1,phase:1,setvar:'tx.ipv6_mask_false'")";
+  SecRule TX:ipv6 "@ipMatch 2001:db8:85a3:8d3:1319:8a2e:370:7349" "id:3,phase:1,setvar:'tx.ipv6_false'"
+  SecRule TX:ipv6 "@ipMatch 2001:db8:85a3:8d3:1319:8a2e:270:0000/24" "id:4,phase:1,setvar:'tx.ipv6_mask_false'")";
 
   Antlr4::Parser parser;
   auto result = parser.load(directive);
