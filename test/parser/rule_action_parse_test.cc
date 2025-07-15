@@ -496,7 +496,7 @@ SecRule ARGS_GET|ARGS_POST:foo|!ARGS_GET:foo|&ARGS "bar" "id:2,tag:'foo',msg:'ba
   EXPECT_EQ(parser.rules().size(), 1);
 
   // Variables pool
-  auto& chain_rule = parser.rules().back()->backChainRule();
+  Rule* chain_rule = parser.rules().back()->chainRule(0).value()->get();
   auto& rule_var_pool = chain_rule->variables();
   ASSERT_EQ(rule_var_pool.size(), 3);
   EXPECT_NE(nullptr, dynamic_cast<Variable::ArgsGet*>(rule_var_pool[0].get()));

@@ -324,14 +324,12 @@ inline bool Rule::evaluateOperator(Transaction& t, const Common::Variant& var_va
 }
 
 inline bool Rule::evaluateChain(Transaction& t) const {
+  assert(chain_.size() <= 1);
   bool matched = true;
-  for (auto& rule : chain_) {
-    WGE_LOG_TRACE("evaluate chained rule. id: {}", rule->id());
+  if (!chain_.empty()) {
+    WGE_LOG_TRACE("evaluate chained rule. id: {}", chain_.front()->id());
     WGE_LOG_TRACE("↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓");
-    matched = rule->evaluate(t);
-    if (!matched) {
-      break;
-    }
+    matched = chain_.front()->evaluate(t);
   }
 
   return matched;

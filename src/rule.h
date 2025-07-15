@@ -172,33 +172,51 @@ public:
   // Action Grop: Flow
 public:
   std::list<std::unique_ptr<Rule>>::iterator appendChainRule(int line) {
+    ASSERT_IS_MAIN_THREAD();
+    // Ensure that the chain_ only contains one element
+    assert(chain_.empty());
+    chain_.clear();
+
     chain_.emplace_back(std::make_unique<Rule>(file_path_, line));
 
     // The chained rule inherits the phase of the parent rule.
-    std::unique_ptr<Rule>& chain_rule = chain_.back();
+    Rule* chain_rule = chain_.back().get();
     chain_rule->phase_ = phase_;
 
     // Sets the chain index and parent rule for the chained rule.
-    chain_rule->chain_index_ = chain_.size() - 1;
     chain_rule->parent_rule_ = this;
     chain_rule->top_rule_ = this;
+    chain_rule->chain_index_ = 0;
     Rule* parent = parent_rule_;
     while (parent) {
       chain_rule->top_rule_ = parent;
       parent = parent->parent_rule_;
+      // Update the chain index
+      chain_rule->chain_index_++;
     }
 
     return std::prev(chain_.end());
   }
-  void removeBackChainRule() { chain_.erase(std::prev(chain_.end())); }
-  std::unique_ptr<Rule>& backChainRule() { return chain_.back(); }
+
+  /**
+   * Get the rule of the chain by index.
+   * @param index the relative index of the chain that starts from this rule. Note that the index is
+   * not same as the index of the chain that starts form the top rule.
+   * @return the rule of the chain by index, if the index is out of range, return last rule of the
+   * chain.
+   */
   std::optional<std::list<std::unique_ptr<Rule>>::iterator> chainRule(size_t index) {
-    if (index >= chain_.size()) {
-      return std::nullopt;
+    std::optional<std::list<std::unique_ptr<Rule>>::iterator> result;
+    Rule* parent = this;
+    for (size_t i = 0; i <= index; ++i) {
+      if (!parent->chain_.empty()) {
+        result = parent->chain_.begin();
+        parent = parent->chain_.front().get();
+      } else {
+        break;
+      }
     }
-    auto it = chain_.begin();
-    std::advance(it, index);
-    return it;
+    return result;
   }
   int skip() const { return skip_; }
   void skip(int value) { skip_ = value; }
@@ -325,6 +343,8 @@ private:
 private:
   // Chains the current rule with the rule that immediately follows it, creating a rule chain.
   // Chained rules allow for more complex processing logic.
+  // Although chain_ is a list, it will only have at most one element. The list is used to maintain
+  // compatibility with the Wge::Antlr4::Visitor.
   std::list<std::unique_ptr<Rule>> chain_;
 
   // If this rule is a chain rule, this is the index of the chain. -1 means this rule is not a
