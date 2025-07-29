@@ -42,8 +42,8 @@ public:
         { result.append(static_cast<int>(cookies.size())); },
         // specify subname
         {
-          auto iter = cookies.find(sub_name_);
-          result.append(iter != cookies.end() ? 1 : 0);
+          int count = cookies.count(sub_name_);
+          result.append(count);
         });
 
     RETURN_VALUE(

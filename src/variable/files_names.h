@@ -42,8 +42,8 @@ public:
         { result.append(static_cast<int>(filename.size())); },
         // specify subname
         {
-          auto iter = filename_map.find(sub_name_);
-          result.append(iter != t.getBodyMultiPart().getNameFileName().end() ? 1 : 0);
+          int count = filename_map.count(sub_name_);
+          result.append(count);
         });
 
     RETURN_VALUE(

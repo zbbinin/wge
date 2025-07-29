@@ -38,7 +38,9 @@ public:
         // collection
         { result.append(static_cast<int>(t.httpExtractor().request_header_count_)); },
         // specify subname
-        { result.append(t.httpExtractor().request_header_find_(sub_name_).size()); });
+        {
+          result.append(static_cast<int>(t.httpExtractor().request_header_find_(sub_name_).size()));
+        });
 
     RETURN_VALUE(
         // collection

@@ -42,15 +42,12 @@ public:
     // _charset_ is a special case, it is used to get the charset of the multipart/form-data
     // content. It is not a header, we can get it from the name-value pair.
     if (is_charset_) {
-      auto range = t.getBodyMultiPart().getNameValue().equal_range("_charset_");
-      int count = 0;
-      for (auto iter = range.first; iter != range.second; ++iter) {
-        ++count;
-      }
-
+      static constexpr std::string_view key = "_charset_";
       if (is_counter_) {
+        int count = t.getBodyMultiPart().getNameValue().count(key);
         result.append(count);
       } else {
+        auto range = t.getBodyMultiPart().getNameValue().equal_range(key);
         for (auto iter = range.first; iter != range.second; ++iter) {
           result.append(iter->second);
         }
@@ -64,11 +61,7 @@ public:
         { result.append(static_cast<int>(t.getBodyMultiPart().getHeaders().size())); },
         // specify subname
         {
-          auto iter_range = t.getBodyMultiPart().getHeaders().equal_range(sub_name_);
-          int count = 0;
-          for (auto iter = iter_range.first; iter != iter_range.second; ++iter) {
-            ++count;
-          }
+          int count = t.getBodyMultiPart().getNameValue().count(sub_name_);
           result.append(count);
         });
 
