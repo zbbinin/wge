@@ -38,7 +38,8 @@ public:
    * Copy constructor.
    * In a scenario where a database is created by main thread and data will be scanned by multiple
    * worker threads, the copy constructor is used to create a new scratch space for each worker
-   * thread(rather than forcing us to pass all the databases through add() multiple times).
+   * thread(rather than forcing us to pass all the databases through addBlock/addStream multiple
+   * times).
    */
   Scratch(const Scratch& scratch) {
     ::hs_clone_scratch(scratch.block_scratch_, &block_scratch_);
