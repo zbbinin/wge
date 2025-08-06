@@ -134,6 +134,9 @@ bool Rule::evaluate(Transaction& t) const {
       return evaluateWithMultiMatch(t);
     }
 
+  Common::EvaluateResults::Element transformed_value;
+  std::list<const Transformation::TransformBase*> transform_list;
+
   // Evaluate the variables
   bool rule_matched = false;
   for (auto& var : variables_) {
@@ -144,8 +147,8 @@ bool Rule::evaluate(Transaction& t) const {
     for (size_t i = 0; i < result.size(); i++) {
       Common::EvaluateResults::Element& variable_value = result.get(i);
       bool variable_matched = false;
-      Common::EvaluateResults::Element transformed_value;
-      std::list<const Transformation::TransformBase*> transform_list;
+      transformed_value.clear();
+      transform_list.clear();
       if (IS_STRING_VIEW_VARIANT(variable_value.variant_))
         [[likely]] {
           // Evaluate the transformations
@@ -381,6 +384,9 @@ inline bool Rule::evaluateWithMultiMatch(Transaction& t) const {
     transforms.emplace_back(transform.get());
   }
 
+  Common::EvaluateResults::Element transformed_value;
+  std::list<const Transformation::TransformBase*> transform_list;
+
   // Evaluate the variables
   bool rule_matched = false;
   for (auto& var : variables_) {
@@ -390,8 +396,8 @@ inline bool Rule::evaluateWithMultiMatch(Transaction& t) const {
     size_t curr_transform_index = 0;
 
     // Evaluate each variable result
-    Common::EvaluateResults::Element transformed_value;
-    std::list<const Transformation::TransformBase*> transform_list;
+    transformed_value.clear();
+    transform_list.clear();
     Common::EvaluateResults::Element* evaluated_value = nullptr;
     for (size_t i = 0; i < result.size();) {
       if (evaluated_value == nullptr) {

@@ -83,6 +83,11 @@ public:
       }
       variable_sub_name_ = element.variable_sub_name_;
     }
+    void clear() {
+      string_buffer_.clear();
+      variant_ = EMPTY_VARIANT;
+      variable_sub_name_ = {};
+    }
   };
 
 public:
