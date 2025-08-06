@@ -33,23 +33,25 @@ bool TransformBase::evaluate(Transaction& t, const Variable::VariableBase* varia
   // Check the cache
   std::string_view input_data_view = std::get<std::string_view>(input.variant_);
   auto& transform_cache = t.getTransformCache();
-  auto iter_data = transform_cache.find(input_data_view);
-  if (iter_data != transform_cache.end()) {
-    auto iter_transform_result = iter_data->second.find(name());
-    if (iter_transform_result != iter_data->second.end()) {
-      if (!input.variable_sub_name_.empty())
-        [[unlikely]] {
-          WGE_LOG_TRACE("transform cache hit: {}:{} {}", variable->fullName().main_name_,
-                        input.variable_sub_name_, name());
-        }
-      else {
-        WGE_LOG_TRACE("transform cache hit: {} {}", variable->fullName().main_name_, name());
-      }
+  auto iter = transform_cache.find({input_data_view, name()});
+  if (iter != transform_cache.end())
+    [[likely]] {
+      WGE_LOG_TRACE(
+          "transform cache hit: {} {}",
+          [&]() {
+            if (input.variable_sub_name_.empty()) {
+              return std::string(variable->fullName().main_name_);
+            } else {
+              return std::format("{}:{}", variable->fullName().main_name_,
+                                 input.variable_sub_name_);
+            }
+          }(),
+          name());
 
       // The transformation has been evaluated before.
-      if (iter_transform_result->second.has_value())
+      if (iter->second.has_value())
         [[likely]] {
-          output.variant_ = iter_transform_result->second.value().variant_;
+          output.variant_ = iter->second.value().variant_;
           output.variable_sub_name_ = input.variable_sub_name_;
           return true;
         }
@@ -57,33 +59,27 @@ bool TransformBase::evaluate(Transaction& t, const Variable::VariableBase* varia
         return false;
       }
     }
-  } else {
-    iter_data =
-        transform_cache
-            .emplace(input_data_view,
-                     boost::unordered_flat_map<const char*,
-                                               std::optional<Common::EvaluateResults::Element>>{})
-            .first;
-
-    iter_data->second.reserve(16);
-  }
 
   // Evaluate the transformation and store the result in the cache
   std::string output_buffer;
   bool ret = evaluate(input_data_view, output_buffer);
   if (ret) {
     auto iter_transform_result =
-        iter_data->second.emplace(name(), Common::EvaluateResults::Element()).first;
+        transform_cache
+            .emplace(Wge::Transaction::TransformCacheKey{input_data_view, name()},
+                     Common::EvaluateResults::Element())
+            .first;
     Common::EvaluateResults::Element& result = iter_transform_result->second.value();
     result.string_buffer_ = std::move(output_buffer);
     result.variant_ = result.string_buffer_;
     output.variant_ = result.variant_;
     output.variable_sub_name_ = input.variable_sub_name_;
   } else {
-    auto iter_transform_result = iter_data->second.emplace(name(), std::nullopt).first;
+    transform_cache.emplace(Wge::Transaction::TransformCacheKey{input_data_view, name()},
+                            std::nullopt); // Store an empty optional to indicate failure
   }
 
   return ret;
-}
+} // namespace Transformation
 } // namespace Transformation
 } // namespace Wge

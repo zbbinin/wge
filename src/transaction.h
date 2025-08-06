@@ -96,20 +96,6 @@ public:
     std::string_view protocol_;
   };
 
-  // Used by transform_cache_'s outer unordered_map
-  struct StringViewPtrHash {
-    size_t operator()(std::string_view v) const noexcept {
-      return std::hash<const void*>()(v.data()) ^ std::hash<size_t>()(v.size());
-    }
-  };
-
-  // Used by transform_cache_'s outer unordered_map
-  struct StringViewPtrEqual {
-    bool operator()(std::string_view lhs, std::string_view rhs) const noexcept {
-      return lhs.data() == rhs.data() && lhs.size() == rhs.size();
-    }
-  };
-
   // For the MATCHED_VAR_NAME, MATCHED_VAR, MATCHED_VARS_NAMES, MATCHED_VARS
   struct MatchedVariable {
     const Variable::VariableBase* variable_;
@@ -124,6 +110,28 @@ public:
         : variable_(variable), original_value_(std::move(original_value)),
           transformed_value_(std::move(transformed_value)),
           transform_list_(std::move(transform_list)) {}
+  };
+
+  struct TransformCacheKey {
+    std::string_view input_data_view_;
+    const char* transformation_name_;
+
+    struct Hash {
+      size_t operator()(const TransformCacheKey& key) const {
+        return std::hash<const void*>()(key.input_data_view_.data()) ^
+               (std::hash<size_t>()(key.input_data_view_.size()) << 2) ^
+               (std::hash<const char*>()(key.transformation_name_) << 4);
+      }
+    };
+
+    TransformCacheKey(std::string_view input_data_view, const char* transformation_name)
+        : input_data_view_(input_data_view), transformation_name_(transformation_name) {}
+
+    bool operator==(const TransformCacheKey& other) const {
+      return input_data_view_.data() == other.input_data_view_.data() &&
+             input_data_view_.size() == other.input_data_view_.size() &&
+             transformation_name_ == other.transformation_name_;
+    }
   };
 
 public:
@@ -467,10 +475,8 @@ public:
    * Get the transformation cache.
    * @return the transformation cache.
    */
-  boost::unordered_flat_map<
-      std::string_view,
-      boost::unordered_flat_map<const char*, std::optional<Common::EvaluateResults::Element>>,
-      StringViewPtrHash, StringViewPtrEqual>&
+  boost::unordered_flat_map<TransformCacheKey, std::optional<Common::EvaluateResults::Element>,
+                            TransformCacheKey::Hash>&
   getTransformCache() {
     return transform_cache_;
   }
@@ -607,13 +613,8 @@ private:
   std::vector<MatchedVariable> matched_variables_;
   Common::EvaluateResults::Element msg_macro_expanded_;
   Common::EvaluateResults::Element log_data_macro_expanded_;
-  // Use the detection variable string_view and the result of the subsequent transformation function
-  // as the key, and reimplement the hash function and comparison function of the outer
-  // unordered_map based on the address and size of the string_view
-  boost::unordered_flat_map<
-      std::string_view,
-      boost::unordered_flat_map<const char*, std::optional<Common::EvaluateResults::Element>>,
-      StringViewPtrHash, StringViewPtrEqual>
+  boost::unordered_flat_map<TransformCacheKey, std::optional<Common::EvaluateResults::Element>,
+                            TransformCacheKey::Hash>
       transform_cache_;
   bool init_cookies_{false};
   std::unordered_multimap<std::string_view, std::string_view> cookies_;
