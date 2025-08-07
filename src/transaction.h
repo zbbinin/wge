@@ -107,16 +107,20 @@ public:
     // The transformed value of the matched variable
     Common::EvaluateResults::Element transformed_value_;
 
+    // The captured value of the matched variable
+    Common::EvaluateResults::Element captured_value_;
+
     // The list of transformations that applied to the matched variable
     std::list<const Transformation::TransformBase*> transform_list_;
 
     MatchedVariable(const Variable::VariableBase* variable,
                     Common::EvaluateResults::Element&& original_value,
                     Common::EvaluateResults::Element&& transformed_value,
+                    Common::EvaluateResults::Element&& captured_value,
                     std::list<const Transformation::TransformBase*>&& transform_list)
         : variable_(variable), original_value_(std::move(original_value)),
           transformed_value_(std::move(transformed_value)),
-          transform_list_(std::move(transform_list)) {}
+          captured_value_(std::move(captured_value)), transform_list_(std::move(transform_list)) {}
   };
 
   struct TransformCacheKey {
@@ -374,8 +378,9 @@ public:
   /**
    * Merge the temporary captured strings into the main captured strings.
    * After calling this method, we can use getCapture() to get the captured strings.
+   * @return the number of captured strings that are merged.
    */
-  void mergeCapture();
+  size_t mergeCapture();
 
   /**
    * Get the captured string that is captured by the operator.
@@ -481,12 +486,14 @@ public:
    * @param rule_chain_index the chain index of the rule that matched this variable.
    * @param original_value the original value of the matched variable.
    * @param transformed_value the transformed value of the matched variable.
+   * @param captured_value the captured value of the matched variable.
    * @param transform_list the list of transformations that applied to the matched variable.
    * @param result the result of the matched variable.
    */
   void pushMatchedVariable(const Variable::VariableBase* variable, int rule_chain_index,
                            Common::EvaluateResults::Element&& original_value,
                            Common::EvaluateResults::Element&& transformed_value,
+                           Common::EvaluateResults::Element&& captured_value,
                            std::list<const Transformation::TransformBase*>&& transform_list);
 
   /**

@@ -81,7 +81,8 @@ public:
     // Check if the variable is removed by the ctl action
     Variable::FullName full_name{variable_main_name, variable_sub_name};
     const Rule* rule = t.getCurrentEvaluateRule();
-    if (rule) {
+    // Only top-level rules can remove variables by ctl action
+    if (rule && rule->chainIndex() == -1) {
       if (t.isRuleTargetRemoved(rule, full_name)) {
         WGE_LOG_TRACE("variable {}:{} is removed by ctl action", variable_main_name,
                       variable_sub_name);

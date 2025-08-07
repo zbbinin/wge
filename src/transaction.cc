@@ -412,9 +412,12 @@ void Transaction::setTempCapture(size_t index, Common::EvaluateResults::Element&
     }
 }
 
-void Transaction::mergeCapture() {
+size_t Transaction::mergeCapture() {
+  size_t merged_count = 0;
+
   // Merge the temp_captured_ into captured_
   if (!temp_captured_.empty()) {
+    merged_count = temp_captured_.size();
     if (temp_captured_.size() >= captured_.size()) {
       captured_.swap(temp_captured_);
     } else {
@@ -424,6 +427,8 @@ void Transaction::mergeCapture() {
     }
     temp_captured_.clear();
   }
+
+  return merged_count;
 }
 
 const Common::Variant& Transaction::getCapture(size_t index) const {
@@ -524,12 +529,13 @@ void Transaction::pushMatchedVariable(
     const Variable::VariableBase* variable, int rule_chain_index,
     Common::EvaluateResults::Element&& original_value,
     Common::EvaluateResults::Element&& transformed_value,
+    Common::EvaluateResults::Element&& captured_value,
     std::list<const Transformation::TransformBase*>&& transform_list) {
   auto& variables = matched_variables_.try_emplace(rule_chain_index, std::vector<MatchedVariable>())
                         .first->second;
 
   variables.emplace_back(variable, std::move(original_value), std::move(transformed_value),
-                         std::move(transform_list));
+                         std::move(captured_value), std::move(transform_list));
 
   if (IS_EMPTY_VARIANT(variables.back().transformed_value_.variant_))
     [[unlikely]] {

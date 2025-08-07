@@ -135,6 +135,7 @@ bool Rule::evaluate(Transaction& t) const {
     }
 
   Common::EvaluateResults::Element transformed_value;
+  Common::EvaluateResults::Element captured_value;
   std::list<const Transformation::TransformBase*> transform_list;
 
   // Evaluate the variables
@@ -148,6 +149,7 @@ bool Rule::evaluate(Transaction& t) const {
       Common::EvaluateResults::Element& variable_value = result.get(i);
       bool variable_matched = false;
       transformed_value.clear();
+      captured_value.clear();
       transform_list.clear();
       if (IS_STRING_VIEW_VARIANT(variable_value.variant_))
         [[likely]] {
@@ -157,15 +159,17 @@ bool Rule::evaluate(Transaction& t) const {
 
       // Evaluate the operator
       if (transform_list.empty())
-        [[unlikely]] { variable_matched = evaluateOperator(t, variable_value.variant_, var); }
+        [[unlikely]] {
+          variable_matched = evaluateOperator(t, variable_value.variant_, var, captured_value);
+        }
       else {
-        variable_matched = evaluateOperator(t, transformed_value.variant_, var);
+        variable_matched = evaluateOperator(t, transformed_value.variant_, var, captured_value);
       }
 
       // If the variable is matched, evaluate the actions
       if (variable_matched) {
         t.pushMatchedVariable(var.get(), chain_index_, result.move(i), std::move(transformed_value),
-                              std::move(transform_list));
+                              std::move(captured_value), std::move(transform_list));
         WGE_LOG_TRACE([&]() {
           if (!var->isCollection()) {
             return std::format("variable is matched. {}{}", var->mainName(),
@@ -298,7 +302,8 @@ Rule::evaluateTransform(Transaction& t, const Wge::Variable::VariableBase* var,
 }
 
 inline bool Rule::evaluateOperator(Transaction& t, const Common::Variant& var_value,
-                                   const std::unique_ptr<Wge::Variable::VariableBase>& var) const {
+                                   const std::unique_ptr<Wge::Variable::VariableBase>& var,
+                                   Common::EvaluateResults::Element& capture_value) const {
   bool matched = operator_->evaluate(t, var_value);
   matched = operator_->isNot() ^ matched;
 
@@ -311,7 +316,15 @@ inline bool Rule::evaluateOperator(Transaction& t, const Common::Variant& var_va
   }
 
   if (matched) {
-    t.mergeCapture();
+    auto merged_count = t.mergeCapture();
+    if (merged_count) {
+      auto& tx_0 = t.getCapture(0);
+
+      // Copy the first captured value to the capture_value. The copy is necessary because
+      // the captured value may be modified later.
+      capture_value.string_buffer_ = std::get<std::string_view>(tx_0);
+      capture_value.variant_ = capture_value.string_buffer_;
+    }
   } else {
     t.clearTempCapture();
   }
@@ -398,6 +411,7 @@ inline bool Rule::evaluateWithMultiMatch(Transaction& t) const {
   }
 
   Common::EvaluateResults::Element transformed_value;
+  Common::EvaluateResults::Element captured_value;
   std::list<const Transformation::TransformBase*> transform_list;
 
   // Evaluate the variables
@@ -410,6 +424,7 @@ inline bool Rule::evaluateWithMultiMatch(Transaction& t) const {
 
     // Evaluate each variable result
     transformed_value.clear();
+    captured_value.clear();
     transform_list.clear();
     Common::EvaluateResults::Element* evaluated_value = nullptr;
     for (size_t i = 0; i < result.size();) {
@@ -418,12 +433,12 @@ inline bool Rule::evaluateWithMultiMatch(Transaction& t) const {
       }
 
       // Evaluate the operator
-      bool variable_matched = evaluateOperator(t, evaluated_value->variant_, var);
+      bool variable_matched = evaluateOperator(t, evaluated_value->variant_, var, captured_value);
 
       // If the variable is matched, evaluate the actions
       if (variable_matched) {
         t.pushMatchedVariable(var.get(), chain_index_, result.move(i), std::move(transformed_value),
-                              std::move(transform_list));
+                              std::move(captured_value), std::move(transform_list));
         WGE_LOG_TRACE([&]() {
           if (!var->isCollection()) {
             return std::format("variable is matched. {}{}", var->mainName(),
