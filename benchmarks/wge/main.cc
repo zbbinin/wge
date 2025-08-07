@@ -192,6 +192,16 @@ int main(int argc, char* argv[]) {
 
   engine.init();
 
+  // CPU warmup
+  std::vector<std::thread> warmup_threads;
+  for (int i = 0; i < concurrency; ++i) {
+    warmup_threads.emplace_back(std::thread(thread_func, std::ref(engine), 1000,
+                                            std::ref(test_data_white), std::ref(test_data_black)));
+  }
+  for (auto& thread : warmup_threads) {
+    thread.join();
+  }
+
   // Start benchmark
   std::vector<std::thread> threads;
   Wge::Common::Duration duration;

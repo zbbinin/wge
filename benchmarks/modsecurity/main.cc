@@ -28,14 +28,16 @@ void process(modsecurity::ModSecurity& engine, modsecurity::RulesSet& rules_set,
     t.addRequestHeader({key.data(), key.length()}, {value.data(), value.length()});
   }
   t.processRequestHeaders();
-  t.appendRequestBody(reinterpret_cast<const unsigned char*>(http_info.request_body_.data()), http_info.request_body_.length());
+  t.appendRequestBody(reinterpret_cast<const unsigned char*>(http_info.request_body_.data()),
+                      http_info.request_body_.length());
   t.processRequestBody();
 
   for (auto& [key, value] : http_info.response_headers_) {
     t.addResponseHeader({key.data(), key.length()}, {value.data(), value.length()});
   }
   t.processResponseHeaders(200, "HTTP/1.1");
-  t.appendResponseBody(reinterpret_cast<const unsigned char*>(http_info.response_body_.data()), http_info.response_body_.length());
+  t.appendResponseBody(reinterpret_cast<const unsigned char*>(http_info.response_body_.data()),
+                       http_info.response_body_.length());
   t.processResponseBody();
 }
 
@@ -158,6 +160,17 @@ int main(int argc, char* argv[]) {
       std::cout << "Load rules error: " << rules_set.getParserError() << std::endl;
       return 1;
     }
+  }
+
+  // CPU warmup
+  std::vector<std::thread> warmup_threads;
+  for (int i = 0; i < concurrency; ++i) {
+    warmup_threads.emplace_back(std::thread(thread_func, std::ref(engine), std::ref(rules_set),
+                                            1000, std::ref(test_data_white),
+                                            std::ref(test_data_black)));
+  }
+  for (auto& thread : warmup_threads) {
+    thread.join();
   }
 
   // Start benchmark
