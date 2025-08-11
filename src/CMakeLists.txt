@@ -5,6 +5,7 @@ file(GLOB local_source
 
 add_subdirectory(action)
 add_subdirectory(antlr4)
+add_subdirectory(bytecode)
 add_subdirectory(common)
 add_subdirectory(macro)
 add_subdirectory(operator)
@@ -17,6 +18,7 @@ add_dependencies(common_ragel ragel)
 add_library(wge
   $<TARGET_OBJECTS:action>
   $<TARGET_OBJECTS:antlr4>
+  $<TARGET_OBJECTS:bytecode>
   $<TARGET_OBJECTS:common>
   $<TARGET_OBJECTS:common_ragel>
   $<TARGET_OBJECTS:macro>
