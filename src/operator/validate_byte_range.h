@@ -33,16 +33,26 @@ public:
   ValidateByteRange(std::string&& literal_value, bool is_not, std::string_view curr_rule_file_path)
       : OperatorBase(std::move(literal_value), is_not) {
     // Split the literal value into tokens.
-    std::vector<std::string_view> tokens = Common::SplitTokens(literal_value_);
+    std::vector<std::string_view> tokens = Common::SplitTokens(literal_value_, ',');
 
     // Fill the byte range.
     for (auto& token : tokens) {
+      // Trim left space
+      size_t left_space_count = 0;
+      for (auto c : token) {
+        if (c != ' ') {
+          break;
+        }
+        ++left_space_count;
+      }
+      token.remove_prefix(left_space_count);
+
       auto pos = token.find('-');
       if (pos != std::string_view::npos) {
         std::string_view start, end;
         start = token.substr(0, pos);
         end = token.substr(pos + 1);
-        uint32_t start_value, end_value;
+        uint32_t start_value = 0, end_value = 0;
         std::from_chars(start.data(), start.data() + start.size(), start_value);
         std::from_chars(end.data(), end.data() + end.size(), end_value);
         if (start_value < byte_range_.size() && end_value < byte_range_.size()) {
@@ -51,7 +61,7 @@ public:
           }
         }
       } else {
-        uint32_t value;
+        uint32_t value = 0;
         std::from_chars(token.data(), token.data() + token.size(), value);
         if (value < byte_range_.size()) {
           byte_range_.set(value);
