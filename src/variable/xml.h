@@ -26,34 +26,78 @@
 
 namespace Wge {
 namespace Variable {
+/**
+ * XML variable. Supports the following syntax:
+ * - `XML://@*` for all attributes of all tags. When filling Common::EvaluateResults, each element
+ * corresponds to the attribute value of a tag.
+ * - `XML:/*` for all tag values. When filling Common::EvaluateResults, there is only one element,
+ * which concatenates all XML tag values into a string.
+ * - `XML://@*@file@` for multi-pattern matching of attributes based on the specified file. When
+ * filling Common::EvaluateResults, each element corresponds to the attribute value of a tag.
+ * - `XML:/*@file@` for multi-pattern matching of tag values based on the specified file. When
+ * filling Common::EvaluateResults, each element corresponds to the value of a tag.
+ */
 class Xml : public VariableBase, public CollectionBase {
   DECLARE_VIRABLE_NAME(XML);
 
 public:
   Xml(std::string&& sub_name, bool is_not, bool is_counter, std::string_view curr_rule_file_path)
       : VariableBase(std::move(sub_name), is_not, is_counter),
-        CollectionBase(sub_name_, curr_rule_file_path) {
-    if (sub_name_ == "//@*") {
-      type_ = Type::AttrValue;
-    }
-  }
+        CollectionBase(
+            [&]() -> std::string {
+              std::string collection_sub_name;
+              if (sub_name_ == "//@*") {
+                type_ = Type::AttrValue;
+              } else if (sub_name_ == "/*") {
+                type_ = Type::TagValue;
+              } else if (sub_name_.ends_with("@")) {
+                if (sub_name_.starts_with("//@*@")) {
+                  type_ = Type::AttrValuePmf;
+                  collection_sub_name = sub_name_.substr(4);
+                } else if (sub_name_.starts_with("/*@")) {
+                  type_ = Type::TagValuePmf;
+                  collection_sub_name = sub_name_.substr(2);
+                }
+              }
+
+              return collection_sub_name;
+            }(),
+            curr_rule_file_path) {}
 
 public:
   void evaluate(Transaction& t, Common::EvaluateResults& result) const override {
-    const std::vector<std::string_view>* values = nullptr;
-    if (type_ == Type::TagValue) {
-      values = &(t.getBodyXml().getTagValues());
+    const std::vector<std::pair<std::string_view, std::string_view>>* kv_pairs = nullptr;
+    if (type_ == Type::TagValue || type_ == Type::TagValuePmf) {
+      kv_pairs = &(t.getBodyXml().getTags());
     } else {
-      values = &(t.getBodyXml().getAttrValues());
+      kv_pairs = &(t.getBodyXml().getAttributes());
     }
 
     RETURN_IF_COUNTER(
         // collection
-        { result.append(static_cast<int>(values->size())); },
+        { result.append(static_cast<int>(kv_pairs->size())); },
         // specify subname
-        { result.append(static_cast<int>(values->size())); });
+        { result.append(static_cast<int>(kv_pairs->size())); });
 
-    if (type_ == Type::TagValue) {
+    switch (type_) {
+    case Type::AttrValue: {
+      RETURN_VALUE(
+          // collection
+          {
+            for (auto& elem : *kv_pairs) {
+              result.append(elem.second);
+            }
+          },
+          // collection regex
+          { UNREACHABLE(); },
+          // specify subname
+          {
+            for (auto& elem : *kv_pairs) {
+              result.append(elem.second);
+            }
+          });
+    } break;
+    case Type::TagValue: {
       RETURN_VALUE(
           // collection
           {
@@ -71,34 +115,41 @@ public:
               result.append(tag_value_str);
             }
           });
-    } else {
+    } break;
+    case Type::AttrValuePmf:
+    case Type::TagValuePmf: {
       RETURN_VALUE(
           // collection
+          { UNREACHABLE(); },
+          // collection regex
           {
-            for (auto& elem : *values) {
-              result.append(elem);
+            for (auto& elem : *kv_pairs) {
+              if (elem.second.empty()) {
+                continue;
+              }
+
+              if (!hasExceptVariable(t, main_name_, elem.first))
+                [[likely]] {
+                  if (match(elem.first)) {
+                    result.append(elem.second, elem.first);
+                  }
+                }
             }
           },
-          // collection regex
-          { UNREACHABLE(); },
           // specify subname
-          {
-            for (auto& elem : *values) {
-              result.append(elem);
-            }
-          });
+          { UNREACHABLE(); });
+    } break;
+    default:
+      UNREACHABLE();
     }
   }
 
   bool isCollection() const override { return sub_name_.empty(); };
 
 private:
-  enum class Type {
-    AttrValue,
-    TagValue,
-  };
+  enum class Type { AttrValue, TagValue, AttrValuePmf, TagValuePmf };
 
-  Type type_{Type::TagValue};
+  Type type_;
 };
 } // namespace Variable
 } // namespace Wge

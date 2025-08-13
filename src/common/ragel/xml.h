@@ -33,18 +33,24 @@ public:
   void init(std::string_view xml_str);
 
 public:
-  const std::vector<std::string_view>& getAttrValues() const { return attr_values_; }
-  const std::vector<std::string_view>& getTagValues() const { return tag_values_; }
+  const std::vector<std::pair<std::string_view, std::string_view>>& getAttributes() const {
+    return attributes_;
+  }
+  const std::vector<std::pair<std::string_view, std::string_view>>& getTags() const {
+    return tags_;
+  }
   const std::string& getTagValuesStr() const { return tag_values_str_; }
 
   void clear() {
-    attr_values_.clear();
-    tag_values_.clear();
+    attributes_.clear();
+    tags_.clear();
+    html_decode_buffer_.clear();
+    tag_values_str_.clear();
   }
 
 private:
-  std::vector<std::string_view> attr_values_;
-  std::vector<std::string_view> tag_values_;
+  std::vector<std::pair<std::string_view, std::string_view>> attributes_;
+  std::vector<std::pair<std::string_view, std::string_view>> tags_;
   std::forward_list<std::string> html_decode_buffer_;
   std::string tag_values_str_;
 };

@@ -84,8 +84,6 @@ protected:
       {"x-forwarded-proto", "http"},
       {"cookie", "aa=bb"},
       {"cookie", "cc=dd"}};
-
-  std::vector<std::string_view> request_body_;
 };
 
 TEST_F(VariableTest, ARGS_COMBINED_SIZE) {
@@ -589,7 +587,54 @@ TEST_F(VariableTest, WEBAPPID) {
 }
 
 TEST_F(VariableTest, XML) {
-  // TODO(zhouyu 2025-03-27): add the test cast
+  std::string_view xml_body =
+      R"(<bookstore><book id="1" category="fiction"><title lang="en">XML Guide</title><author>John Doe</author></book></bookstore>)";
+
+  const std::string directive = R"(
+        SecRuleEngine On
+        SecAction "id:100,phase:1,ctl:requestBodyProcessor=XML"
+        SecRule XML:/* "@streq XML GuideJohn Doe" \
+          "id:1, \
+          phase: 2, \
+          setvar:tx.tag_values_str"
+        SecRule XML://@* "@unconditionalMatch" \
+          "id:2, \
+          phase: 2, \
+          setvar:tx.tag_values_str_count=+1, \
+          setvar:tx.tag_attr_str_%{tx.tag_values_str_count}=%{MATCHED_VAR}"
+        SecRule XML:/*@test/integration/01_variable_test.data@ "@unconditionalMatch" \
+          "id:3, \
+          phase: 2, \
+          setvar:tx.tag_value_pmf=%{MATCHED_VAR}"
+        SecRule XML://@*@test/integration/01_variable_test.data@ "@unconditionalMatch" \
+          "id:4, \
+          phase: 2, \
+          setvar:tx.tag_attr_value_pmf=%{MATCHED_VAR}")";
+
+  Engine engine(spdlog::level::off);
+  auto result = engine.load(directive);
+  engine.init();
+  auto t = engine.makeTransaction();
+  ASSERT_TRUE(result.has_value());
+
+  t->processRequestHeaders(request_header_find_, request_header_traversal_, request_headers_.size(),
+                           nullptr);
+  t->processRequestBody(xml_body);
+
+  // rule id: 1
+  EXPECT_TRUE(t->hasVariable("tag_values_str"));
+
+  // rule id: 2
+  EXPECT_EQ(std::get<int>(t->getVariable("tag_values_str_count")), 3);
+  EXPECT_EQ(std::get<std::string_view>(t->getVariable("tag_attr_str_1")), "1");
+  EXPECT_EQ(std::get<std::string_view>(t->getVariable("tag_attr_str_2")), "fiction");
+  EXPECT_EQ(std::get<std::string_view>(t->getVariable("tag_attr_str_3")), "en");
+
+  // rule id: 3
+  EXPECT_EQ(std::get<std::string_view>(t->getVariable("tag_value_pmf")), "XML Guide");
+
+  // rule id: 4
+  EXPECT_EQ(std::get<std::string_view>(t->getVariable("tag_attr_value_pmf")), "en");
 }
 } // namespace Integration
 } // namespace Wge
