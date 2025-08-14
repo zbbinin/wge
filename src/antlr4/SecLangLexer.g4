@@ -505,7 +505,8 @@ OP_IP_MATCH_FROM_FILE:
 	[iI][pP][mM][aA][tT][cC][hH][fF][rR][oO][mM][fF][iI][lL][eE];
 OP_LE: [lL][eE];
 OP_LT: [lL][tT];
-OP_NO_MATCH: [nN][oO][mM][aA][tT][cC][hH];
+OP_NO_MATCH:
+	[nN][oO][mM][aA][tT][cC][hH] -> popMode, pushMode( ModeSecRuleOperatorValue);
 OP_PM: [pP][mM];
 OP_PMF: [pP][mM][fF];
 OP_PM_FROM_FILE:
