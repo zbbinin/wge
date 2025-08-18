@@ -37,7 +37,7 @@ struct Instruction {
 
   // Destination register
   Register dst_{Register::UNKNOWN};
-  // Source register
+  // Source register or immediate value
   Register src_{Register::UNKNOWN};
   // Auxiliary register or immediate value
   Register aux_{Register::UNKNOWN};

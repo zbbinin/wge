@@ -20,4 +20,61 @@
  */
 #include <gtest/gtest.h>
 
+#include "bytecode/compiler.h"
 #include "bytecode/virtual_machine.h"
+#include "engine.h"
+
+#include "../mock/variable.h"
+
+namespace Wge {
+namespace Bytecode {
+
+using ::testing::_;
+using ::testing::NiceMock;
+
+class VirtualMachineTest : public testing::Test {
+public:
+  VirtualMachineTest() : engine_(spdlog::level::off) {}
+
+  void SetUp() override {
+    engine_.init();
+    vm_ = std::make_unique<VirtualMachine>(*engine_.makeTransaction());
+  }
+
+public:
+  Engine engine_;
+  std::unique_ptr<VirtualMachine> vm_;
+  const std::unordered_map<const char*, int64_t>& variable_index_map_{
+      Compiler::getVariableIndexMap()};
+  NiceMock<Mock::MockVariable> mock_args_;
+}; // namespace Bytecode
+
+TEST_F(VirtualMachineTest, executeLoadVar) {
+  // Create a dummy program with a load variable instruction
+  Program program;
+  Instruction instruction = {
+      OpCode::LOAD_VAR, Register::RDI,
+      static_cast<Register>(variable_index_map_.at(Variable::Args::main_name_.data())),
+      static_cast<Register>(reinterpret_cast<int64_t>(&mock_args_))};
+  program.emit(instruction);
+
+  EXPECT_CALL(mock_args_, evaluate(::testing::_, ::testing::_))
+      .WillOnce(::testing::Invoke([](Transaction& t, Common::EvaluateResults& result) {
+        result.append(std::string("value1"));
+        result.append(std::string("value2"));
+        result.append(std::string("value3"));
+      }));
+
+  // Execute the program
+  vm_->execute(program);
+
+  // Check if the variable was loaded correctly
+  auto& registers = vm_->registers();
+  auto& results = registers[static_cast<size_t>(Register::RDI)];
+  EXPECT_EQ(results.size(), 3);
+  EXPECT_EQ(std::get<std::string_view>(results.get(0).variant_), "value1");
+  EXPECT_EQ(std::get<std::string_view>(results.get(1).variant_), "value2");
+  EXPECT_EQ(std::get<std::string_view>(results.get(2).variant_), "value3");
+}
+} // namespace Bytecode
+} // namespace Wge

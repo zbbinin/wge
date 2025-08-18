@@ -20,48 +20,38 @@
  */
 #pragma once
 
-#include <array>
+#include <gmock/gmock.h>
 
-#include "program.h"
-#include "register.h"
-
-namespace Wge {
-class Transaction;
-}
+#include "variable/variables_include.h"
 
 namespace Wge {
-namespace Bytecode {
-/**
- * Bytecode Virtual Machine
- * Executes compiled bytecode programs for rule evaluation
- */
-class VirtualMachine {
+namespace Mock {
+class MockVariable : public Variable::VariableBase {
 public:
-  VirtualMachine(Transaction& transaction) : transaction_(transaction) {}
-
-public:
-  /**
-   * Execute a bytecode program
-   * @param program The compiled bytecode program
-   */
-  void execute(const Program& program);
-
-  // For testing purposes
-public:
-  /**
-   * Get the current state of the registers
-   * @return A const reference to the array of register values
-   */
-  const std::array<RegisterValue, static_cast<size_t>(Register::MAX_REGISTER)>& registers() const {
-    return registers_;
+  MockVariable() : VariableBase("", false, false) {
+    ON_CALL(*this, evaluate(::testing::_, ::testing::_))
+        .WillByDefault(::testing::Invoke([this](Transaction& t, Common::EvaluateResults& result) {
+          size_t size = evaluate_results_.size();
+          for (size_t i = 0; i < size; ++i) {
+            result.append(evaluate_results_.get(i).variant_);
+          }
+        }));
+    ON_CALL(*this, fullName()).WillByDefault(::testing::Return(full_name_));
+    ON_CALL(*this, mainName()).WillByDefault(::testing::Return(main_name_));
+    ON_CALL(*this, isCollection()).WillByDefault(::testing::Return(is_collection_));
   }
 
-private:
-  inline void executeLoadVar(const Instruction& instruction);
+public:
+  MOCK_METHOD(void, evaluate, (Transaction&, Common::EvaluateResults&), (const));
+  MOCK_METHOD(Variable::FullName, fullName, (), (const));
+  MOCK_METHOD(std::string_view, mainName, (), (const));
+  MOCK_METHOD(bool, isCollection, (), (const));
 
-private:
-  std::array<RegisterValue, static_cast<size_t>(Register::MAX_REGISTER)> registers_;
-  Transaction& transaction_;
+public:
+  Common::EvaluateResults evaluate_results_;
+  Variable::FullName full_name_{"fake_main_name", "fake_sub_name"};
+  std::string_view main_name_{"fake_main_name"};
+  bool is_collection_{false};
 };
-} // namespace Bytecode
+} // namespace Mock
 } // namespace Wge

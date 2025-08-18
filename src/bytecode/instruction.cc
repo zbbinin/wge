@@ -17,19 +17,20 @@ std::string Instruction::toString() const {
       {Register::R12, "R12"}, {Register::R13, "R13"}, {Register::R14, "R14"},
       {Register::R15, "R15"}};
 
-  static std::unordered_map<OpCode, std::function<std::string()>> to_string_map = {
-      {OpCode::LOAD_VAR,
-       [this]() {
-         std::string var_name =
-             reinterpret_cast<const Variable::VariableBase*>(static_cast<int64_t>(aux_))
-                 ->fullName()
-                 .tostring();
-         return std::format("LOAD_VAR {}, {}, {}", registerToString[dst_],
-                            static_cast<int64_t>(src_), var_name);
-       }},
-  };
+  static std::unordered_map<OpCode, std::function<std::string(const Instruction&)>> to_string_map =
+      {
+          {OpCode::LOAD_VAR,
+           [](const Instruction& instruction) {
+             std::string var_name = reinterpret_cast<const Variable::VariableBase*>(
+                                        static_cast<int64_t>(instruction.aux_))
+                                        ->fullName()
+                                        .tostring();
+             return std::format("LOAD_VAR {}, {}, {}", registerToString[instruction.dst_],
+                                static_cast<int64_t>(instruction.src_), var_name);
+           }},
+      };
 
-  return to_string_map[op_code_]();
+  return to_string_map[op_code_](*this);
 }
 } // namespace Bytecode
 } // namespace Wge
