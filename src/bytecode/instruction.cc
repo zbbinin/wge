@@ -1,14 +1,14 @@
 #include "instruction.h"
 
+#include <format>
+#include <functional>
 #include <unordered_map>
+
+#include "../variable/variable_base.h"
 
 namespace Wge {
 namespace Bytecode {
 std::string Instruction::toString() const {
-  static std::unordered_map<OpCode, std::string> opCodeToString = {
-      {OpCode::LOAD_VAR, "LOAD_VAR"},
-  };
-
   static std::unordered_map<Register, std::string> registerToString = {
       {Register::RAX, "RAX"}, {Register::RBX, "RBX"}, {Register::RCX, "RCX"},
       {Register::RDX, "RDX"}, {Register::RSI, "RSI"}, {Register::RDI, "RDI"},
@@ -17,19 +17,19 @@ std::string Instruction::toString() const {
       {Register::R12, "R12"}, {Register::R13, "R13"}, {Register::R14, "R14"},
       {Register::R15, "R15"}};
 
-  std::string str;
-  str += opCodeToString[op_code_];
-  if (dst_ != Register::UNKNOWN) {
-    str += " " + registerToString[dst_];
-  }
-  if (src_ != Register::UNKNOWN) {
-    str += " " + registerToString[src_];
-  }
-  if (aux_ != Register::UNKNOWN) {
-    str += " " + registerToString[aux_];
-  }
+  static std::unordered_map<OpCode, std::function<std::string()>> to_string_map = {
+      {OpCode::LOAD_VAR,
+       [this]() {
+         std::string var_name =
+             reinterpret_cast<const Variable::VariableBase*>(static_cast<int64_t>(aux_))
+                 ->fullName()
+                 .tostring();
+         return std::format("LOAD_VAR {}, {}, {}", registerToString[dst_],
+                            static_cast<int64_t>(src_), var_name);
+       }},
+  };
 
-  return str;
+  return to_string_map[op_code_]();
 }
 } // namespace Bytecode
 } // namespace Wge

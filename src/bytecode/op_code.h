@@ -29,7 +29,7 @@ namespace Bytecode {
  * and suitable for future JIT compilation
  */
 enum class OpCode {
-  // Load variable value: LOAD_VAR dst, var_name
+  // Load variable value: LOAD_VAR dst, variable_index, variable_instance
   LOAD_VAR,
 };
 } // namespace Bytecode

@@ -1,15 +1,12 @@
 #include "program.h"
 
+#include "../common/log.h"
+
 namespace Wge {
 namespace Bytecode {
-void Program::emit(const Instruction& instruction) {}
-
-void Program::emit(OpCode opcode) {}
-
-void Program::emit(OpCode opcode, Register operand1) {}
-
-void Program::emit(OpCode opcode, Register operand1, Register operand2) {}
-
-void Program::emit(OpCode opcode, Register operand1, Register operand2, Register operand3) {}
+void Program::emit(const Instruction& instruction) {
+  instructions_.emplace_back(instruction);
+  WGE_LOG_TRACE("emit instruction: {}", instruction.toString());
+}
 } // namespace Bytecode
 } // namespace Wge

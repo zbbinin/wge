@@ -21,6 +21,7 @@
 #pragma once
 
 #include <memory>
+#include <unordered_map>
 #include <vector>
 
 #include "program.h"
@@ -49,11 +50,24 @@ public:
    */
   std::unique_ptr<Program> compile(const std::vector<const Rule*>& rules);
 
+  // For testing purposes
+public:
+  /**
+   * Get the variable index map
+   * @return The variable index map
+   */
+  static const std::unordered_map<const char*, int64_t>& getVariableIndexMap() {
+    return variable_index_map_;
+  }
+
 private:
   void compileRule(const Rule* rule, Program& program);
   void compileVariable(const Variable::VariableBase* variable, Program& program);
   void compileOperator(const Operator::OperatorBase* op, Program& program);
   void compileAction(const Action::ActionBase* action, Program& program);
+
+private:
+  static const std::unordered_map<const char*, int64_t> variable_index_map_;
 };
 } // namespace Bytecode
 } // namespace Wge

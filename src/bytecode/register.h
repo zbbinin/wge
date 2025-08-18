@@ -20,17 +20,17 @@
  */
 #pragma once
 
-#include "../common/variant.h"
+#include "../common/evaluate_result.h"
 
 namespace Wge {
 namespace Bytecode {
-using RegisterValue = Common::Variant;
+using RegisterValue = Common::EvaluateResults;
 
 /**
  * x86-64 style register enumeration for the virtual machine
  * Using standard register names for better assembly-like syntax
  */
-enum class Register {
+enum class Register : int64_t {
   // General purpose registers (64-bit equivalents)
   RAX = 0, // Accumulator register
   RBX = 1, // Base register
@@ -53,6 +53,6 @@ enum class Register {
 
   MAX_REGISTER,
   UNKNOWN = MAX_REGISTER
-};
+}; // namespace Bytecode
 } // namespace Bytecode
 } // namespace Wge

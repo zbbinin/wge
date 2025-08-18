@@ -22,6 +22,7 @@
 
 #include "collection_base.h"
 
+#include "../engine.h"
 #include "../persistent_storage/storage.h"
 #include "../transaction.h"
 

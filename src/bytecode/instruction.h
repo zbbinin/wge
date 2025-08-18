@@ -39,11 +39,8 @@ struct Instruction {
   Register dst_{Register::UNKNOWN};
   // Source register
   Register src_{Register::UNKNOWN};
-  // Auxiliary register
+  // Auxiliary register or immediate value
   Register aux_{Register::UNKNOWN};
-
-  Instruction(OpCode op_code, Register dst, Register src, Register aux)
-      : op_code_(op_code), dst_(dst), src_(src), aux_(aux) {}
 
   // Convert instruction to human-readable string
   std::string toString() const;

@@ -39,10 +39,6 @@ public:
 public:
   // Add instruction to the program
   void emit(const Instruction& instruction);
-  void emit(OpCode opcode);
-  void emit(OpCode opcode, Register operand1);
-  void emit(OpCode opcode, Register operand1, Register operand2);
-  void emit(OpCode opcode, Register operand1, Register operand2, Register operand3);
 
   /**
    * Get the list of instructions in the program
