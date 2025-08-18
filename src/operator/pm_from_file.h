@@ -47,9 +47,9 @@ namespace Operator {
  * - Lines starting with "##!$ " are treated as suffixes. The patterns that follow will be suffixed
  * with this value, but the previous patterns will not be affected.
  * - Lines starting with "##!+ i" enable case-insensitive matching. The patterns that follow will be
- * suffixed with this value, but the previous patterns will not be affected. Default is enabled.
+ * case-insensitive, but the previous patterns will not be affected. Default is enabled.
  * - Lines starting with "##!+ -i" disable case-insensitive matching. The patterns that follow will
- * be suffixed with this value, but the previous patterns will not be affected.
+ * be case-sensitive, but the previous patterns will not be affected.
  * - Lines starting with "##!+ l" enable literal matching. The all patterns in the file will be
  * affected. Default is enable.
  * - Lines starting with "##!+ -l" disable literal matching. The all patterns in the file will be
