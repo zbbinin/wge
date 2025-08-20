@@ -10,12 +10,12 @@ namespace Wge {
 namespace Bytecode {
 std::string Instruction::toString() const {
   static const std::unordered_map<Register, std::string> registerToString = {
-      {Register::RAX, "RAX"}, {Register::RBX, "RBX"}, {Register::RCX, "RCX"},
-      {Register::RDX, "RDX"}, {Register::RSI, "RSI"}, {Register::RDI, "RDI"},
-      {Register::RBP, "RBP"}, {Register::RSP, "RSP"}, {Register::R8, "R8"},
-      {Register::R9, "R9"},   {Register::R10, "R10"}, {Register::R11, "R11"},
-      {Register::R12, "R12"}, {Register::R13, "R13"}, {Register::R14, "R14"},
-      {Register::R15, "R15"}};
+      {Register::RAX, "RAX"}, {Register::RBX, "RBX"},      {Register::RCX, "RCX"},
+      {Register::RDX, "RDX"}, {Register::RSI, "RSI"},      {Register::RDI, "RDI"},
+      {Register::RBP, "RBP"}, {Register::RSP, "RSP"},      {Register::R8, "R8"},
+      {Register::R9, "R9"},   {Register::R10, "R10"},      {Register::R11, "R11"},
+      {Register::R12, "R12"}, {Register::R13, "R13"},      {Register::R14, "R14"},
+      {Register::R15, "R15"}, {Register::RFLAGS, "RFLAGS"}};
 
   static const std::unordered_map<OpCode, std::function<std::string(const Instruction&)>>
       to_string_map = {
@@ -23,6 +23,18 @@ std::string Instruction::toString() const {
            [](const Instruction& instruction) {
              return std::format("MOV {}, {}", registerToString.at(instruction.dst_),
                                 static_cast<int64_t>(instruction.src_));
+           }},
+          {OpCode::JMP,
+           [](const Instruction& instruction) {
+             return std::format("JMP {}", static_cast<int64_t>(instruction.dst_));
+           }},
+          {OpCode::JZ,
+           [](const Instruction& instruction) {
+             return std::format("JMP {}", static_cast<int64_t>(instruction.dst_));
+           }},
+          {OpCode::JNZ,
+           [](const Instruction& instruction) {
+             return std::format("JNZ {}", static_cast<int64_t>(instruction.dst_));
            }},
           {OpCode::LOAD_VAR,
            [](const Instruction& instruction) {

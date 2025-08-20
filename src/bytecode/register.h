@@ -51,6 +51,9 @@ enum class Register : int64_t {
   R14,
   R15,
 
+  // Flag register
+  RFLAGS, // Flags register
+
   MAX_REGISTER,
   UNKNOWN = MAX_REGISTER
 }; // namespace Bytecode

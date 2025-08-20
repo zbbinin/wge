@@ -58,6 +58,15 @@ public:
 
 private:
   inline void execMov(const Instruction& instruction);
+  inline void execJmp(const Instruction& instruction,
+                      const std::vector<Wge::Bytecode::Instruction>& instruction_array,
+                      std::vector<Wge::Bytecode::Instruction>::const_iterator& iter);
+  inline void execJz(const Instruction& instruction,
+                     const std::vector<Wge::Bytecode::Instruction>& instruction_array,
+                     std::vector<Wge::Bytecode::Instruction>::const_iterator& iter);
+  inline void execJnz(const Instruction& instruction,
+                      const std::vector<Wge::Bytecode::Instruction>& instruction_array,
+                      std::vector<Wge::Bytecode::Instruction>::const_iterator& iter);
   inline void execLoadVar(const Instruction& instruction);
 
 private:

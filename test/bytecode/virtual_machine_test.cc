@@ -54,14 +54,71 @@ TEST_F(VirtualMachineTest, execMov) {
   Instruction instruction = {OpCode::MOV, Register::R8, static_cast<Register>(123456)};
   program.emit(instruction);
 
-  // Execute the program
   vm_->execute(program);
 
-  // Check if the variable was loaded correctly
   auto& registers = vm_->registers();
   auto& results = registers[static_cast<size_t>(Register::R8)];
   EXPECT_EQ(results.size(), 1);
   EXPECT_EQ(std::get<std::int64_t>(results.get(0).variant_), 123456);
+}
+
+TEST_F(VirtualMachineTest, execJmp) {
+  Program program;
+  program.emit({OpCode::JMP, static_cast<Register>(2)});
+  program.emit({OpCode::MOV, Register::R8, static_cast<Register>(100)});
+  program.emit({OpCode::MOV, Register::R9, static_cast<Register>(100)});
+
+  auto& registers = vm_->registers();
+  auto& r8 = registers[static_cast<size_t>(Register::R8)];
+  auto& r9 = registers[static_cast<size_t>(Register::R9)];
+  const_cast<Wge::Bytecode::RegisterValue&>(r8).clear();
+
+  vm_->execute(program);
+
+  EXPECT_EQ(r8.size(), 0);
+  EXPECT_EQ(r9.size(), 1);
+  EXPECT_EQ(std::get<std::int64_t>(r9.get(0).variant_), 100);
+}
+
+TEST_F(VirtualMachineTest, execJz) {
+  Program program;
+
+  program.emit({OpCode::MOV, Register::RFLAGS, static_cast<Register>(1)});
+  program.emit({OpCode::JZ, static_cast<Register>(3)});
+  program.emit({OpCode::MOV, Register::R8, static_cast<Register>(100)});
+  program.emit({OpCode::MOV, Register::R9, static_cast<Register>(100)});
+
+  auto& registers = vm_->registers();
+  auto& r8 = registers[static_cast<size_t>(Register::R8)];
+  auto& r9 = registers[static_cast<size_t>(Register::R9)];
+  const_cast<Wge::Bytecode::RegisterValue&>(r8).clear();
+
+  vm_->execute(program);
+
+  EXPECT_EQ(r8.size(), 1);
+  EXPECT_EQ(r9.size(), 1);
+  EXPECT_EQ(std::get<std::int64_t>(r8.get(0).variant_), 100);
+  EXPECT_EQ(std::get<std::int64_t>(r9.get(0).variant_), 100);
+}
+
+TEST_F(VirtualMachineTest, execJnz) {
+  Program program;
+
+  program.emit({OpCode::MOV, Register::RFLAGS, static_cast<Register>(1)});
+  program.emit({OpCode::JNZ, static_cast<Register>(3)});
+  program.emit({OpCode::MOV, Register::R8, static_cast<Register>(100)});
+  program.emit({OpCode::MOV, Register::R9, static_cast<Register>(100)});
+
+  auto& registers = vm_->registers();
+  auto& r8 = registers[static_cast<size_t>(Register::R8)];
+  auto& r9 = registers[static_cast<size_t>(Register::R9)];
+  const_cast<Wge::Bytecode::RegisterValue&>(r8).clear();
+
+  vm_->execute(program);
+
+  EXPECT_EQ(r8.size(), 0);
+  EXPECT_EQ(r9.size(), 1);
+  EXPECT_EQ(std::get<std::int64_t>(r9.get(0).variant_), 100);
 }
 
 TEST_F(VirtualMachineTest, execLoadVar) {

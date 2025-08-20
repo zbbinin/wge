@@ -32,6 +32,14 @@
     goto* dispatch_table[static_cast<size_t>(iter->op_code_)];                                     \
   } while (0)
 
+#define DISPATCH_NEXT_NO_ITER()                                                                    \
+  do {                                                                                             \
+    if (iter == instructions.end()) {                                                              \
+      return;                                                                                      \
+    }                                                                                              \
+    goto* dispatch_table[static_cast<size_t>(iter->op_code_)];                                     \
+  } while (0)
+
 #define REG_DST(instruction) registers_[static_cast<size_t>(instruction.dst_)]
 #define REG_SRC(instruction) registers_[static_cast<size_t>(instruction.src_)]
 #define REG_AUX(instruction) registers_[static_cast<size_t>(instruction.aux_)]
@@ -40,7 +48,7 @@ namespace Wge {
 namespace Bytecode {
 void VirtualMachine::execute(const Program& program) {
   // Dispatch table for bytecode instructions. We use computed gotos for efficiency
-  static const void* dispatch_table[] = {&&MOV, &&LOAD_VAR};
+  static const void* dispatch_table[] = {&&MOV, &&JMP, &&JZ, &&JNZ, &&LOAD_VAR};
 
   // Get instruction iterator
   auto& instructions = program.instructions();
@@ -54,6 +62,15 @@ void VirtualMachine::execute(const Program& program) {
 MOV:
   execMov(*iter);
   DISPATCH_NEXT();
+JMP:
+  execJmp(*iter, instructions, iter);
+  DISPATCH_NEXT_NO_ITER();
+JZ:
+  execJz(*iter, instructions, iter);
+  DISPATCH_NEXT_NO_ITER();
+JNZ:
+  execJnz(*iter, instructions, iter);
+  DISPATCH_NEXT_NO_ITER();
 LOAD_VAR:
   execLoadVar(*iter);
   DISPATCH_NEXT();
@@ -63,6 +80,51 @@ void VirtualMachine::execMov(const Instruction& instruction) {
   auto& results = REG_DST(instruction);
   results.clear();
   results.append(static_cast<int64_t>(instruction.src_));
+}
+
+void VirtualMachine::execJmp(const Instruction& instruction,
+                             const std::vector<Wge::Bytecode::Instruction>& instruction_array,
+                             std::vector<Wge::Bytecode::Instruction>::const_iterator& iter) {
+  int64_t target_address = static_cast<int64_t>(instruction.dst_);
+  if (target_address < 0 || target_address >= instruction_array.size())
+    [[unlikely]] { iter = instruction_array.end(); }
+  else {
+    iter = instruction_array.begin() + target_address;
+  }
+}
+
+void VirtualMachine::execJz(const Instruction& instruction,
+                            const std::vector<Wge::Bytecode::Instruction>& instruction_array,
+                            std::vector<Wge::Bytecode::Instruction>::const_iterator& iter) {
+  int64_t condition =
+      std::get<int64_t>(registers_[static_cast<size_t>(Register::RFLAGS)].front().variant_);
+  if (!condition) {
+    int64_t target_address = static_cast<int64_t>(instruction.dst_);
+    if (target_address < 0 || target_address >= instruction_array.size())
+      [[unlikely]] { iter = instruction_array.end(); }
+    else {
+      iter = instruction_array.begin() + target_address;
+    }
+  } else {
+    ++iter;
+  }
+}
+
+void VirtualMachine::execJnz(const Instruction& instruction,
+                             const std::vector<Wge::Bytecode::Instruction>& instruction_array,
+                             std::vector<Wge::Bytecode::Instruction>::const_iterator& iter) {
+  int64_t condition =
+      std::get<int64_t>(registers_[static_cast<size_t>(Register::RFLAGS)].front().variant_);
+  if (condition) {
+    int64_t target_address = static_cast<int64_t>(instruction.dst_);
+    if (target_address < 0 || target_address >= instruction_array.size())
+      [[unlikely]] { iter = instruction_array.end(); }
+    else {
+      iter = instruction_array.begin() + target_address;
+    }
+  } else {
+    ++iter;
+  }
 }
 
 void VirtualMachine::execLoadVar(const Instruction& instruction) {

@@ -33,6 +33,18 @@ enum class OpCode {
   // Syntax: MOV dst_register, immediate_value
   // Example: MOV EAX, 123456
   MOV,
+  // Unconditional jump
+  // Syntax: JMP target_address
+  // Example: JMP 123
+  JMP,
+  // If the front value of the RFLAGS register is zero, jump to the target address
+  // Syntax: JZ target_address
+  // Example: JZ 123
+  JZ,
+  // If the front value of the RFLAGS register is non-zero, jump to the target address
+  // Syntax: JNZ target_address
+  // Example: JNZ 123
+  JNZ,
   // Load variable value
   // Syntax: LOAD_VAR dst_register, variable_index, variable_instance_pointer
   // Example: LOAD_VAR RDI, 1, 123456
