@@ -45,6 +45,10 @@ enum class OpCode {
   // Syntax: JNZ target_address
   // Example: JNZ 123
   JNZ,
+  // No operation
+  // Syntax: NOP
+  // Example: NOP
+  NOP,
   // Load variable value
   // Syntax: LOAD_VAR dst_register, variable_index, variable_instance_pointer
   // Example: LOAD_VAR RDI, 1, 123456

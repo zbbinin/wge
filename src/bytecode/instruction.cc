@@ -36,6 +36,7 @@ std::string Instruction::toString() const {
            [](const Instruction& instruction) {
              return std::format("JNZ {}", static_cast<int64_t>(instruction.dst_));
            }},
+          {OpCode::NOP, [](const Instruction&) { return "NOP"; }},
           {OpCode::LOAD_VAR,
            [](const Instruction& instruction) {
              std::string var_name = reinterpret_cast<const Variable::VariableBase*>(

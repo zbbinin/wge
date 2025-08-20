@@ -48,7 +48,7 @@ namespace Wge {
 namespace Bytecode {
 void VirtualMachine::execute(const Program& program) {
   // Dispatch table for bytecode instructions. We use computed gotos for efficiency
-  static const void* dispatch_table[] = {&&MOV, &&JMP, &&JZ, &&JNZ, &&LOAD_VAR};
+  static const void* dispatch_table[] = {&&MOV, &&JMP, &&JZ, &&JNZ, &&NOP, &&LOAD_VAR};
 
   // Get instruction iterator
   auto& instructions = program.instructions();
@@ -71,6 +71,8 @@ JZ:
 JNZ:
   execJnz(*iter, instructions, iter);
   DISPATCH_NEXT_NO_ITER();
+NOP:
+  DISPATCH_NEXT();
 LOAD_VAR:
   execLoadVar(*iter);
   DISPATCH_NEXT();
