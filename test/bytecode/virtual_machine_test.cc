@@ -49,7 +49,22 @@ public:
   NiceMock<Mock::MockVariable> mock_args_;
 }; // namespace Bytecode
 
-TEST_F(VirtualMachineTest, executeLoadVar) {
+TEST_F(VirtualMachineTest, execMov) {
+  Program program;
+  Instruction instruction = {OpCode::MOV, Register::R8, static_cast<Register>(123456)};
+  program.emit(instruction);
+
+  // Execute the program
+  vm_->execute(program);
+
+  // Check if the variable was loaded correctly
+  auto& registers = vm_->registers();
+  auto& results = registers[static_cast<size_t>(Register::R8)];
+  EXPECT_EQ(results.size(), 1);
+  EXPECT_EQ(std::get<std::int64_t>(results.get(0).variant_), 123456);
+}
+
+TEST_F(VirtualMachineTest, execLoadVar) {
   // Create a dummy program with a load variable instruction
   Program program;
   Instruction instruction = {

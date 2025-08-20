@@ -29,7 +29,13 @@ namespace Bytecode {
  * and suitable for future JIT compilation
  */
 enum class OpCode {
-  // Load variable value: LOAD_VAR dst, variable_index, variable_instance
+  // Set immediate value to destination register
+  // Syntax: MOV dst_register, immediate_value
+  // Example: MOV EAX, 123456
+  MOV,
+  // Load variable value
+  // Syntax: LOAD_VAR dst_register, variable_index, variable_instance_pointer
+  // Example: LOAD_VAR RDI, 1, 123456
   LOAD_VAR,
 };
 } // namespace Bytecode

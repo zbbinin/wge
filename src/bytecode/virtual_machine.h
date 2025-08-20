@@ -57,7 +57,8 @@ public:
   }
 
 private:
-  inline void executeLoadVar(const Instruction& instruction);
+  inline void execMov(const Instruction& instruction);
+  inline void execLoadVar(const Instruction& instruction);
 
 private:
   std::array<RegisterValue, static_cast<size_t>(Register::MAX_REGISTER)> registers_;

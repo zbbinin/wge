@@ -40,7 +40,7 @@ namespace Wge {
 namespace Bytecode {
 void VirtualMachine::execute(const Program& program) {
   // Dispatch table for bytecode instructions. We use computed gotos for efficiency
-  static const void* dispatch_table[] = {&&OP_LOAD_VAR};
+  static const void* dispatch_table[] = {&&MOV, &&LOAD_VAR};
 
   // Get instruction iterator
   auto& instructions = program.instructions();
@@ -51,13 +51,21 @@ void VirtualMachine::execute(const Program& program) {
   // Dispatch first instruction
   goto* dispatch_table[static_cast<size_t>(iter->op_code_)];
 
-  // Handle the LOAD_VAR operation
-OP_LOAD_VAR:
-  executeLoadVar(*iter);
+MOV:
+  execMov(*iter);
+  DISPATCH_NEXT();
+LOAD_VAR:
+  execLoadVar(*iter);
   DISPATCH_NEXT();
 }
 
-void VirtualMachine::executeLoadVar(const Instruction& instruction) {
+void VirtualMachine::execMov(const Instruction& instruction) {
+  auto& results = REG_DST(instruction);
+  results.clear();
+  results.append(static_cast<int64_t>(instruction.src_));
+}
+
+void VirtualMachine::execLoadVar(const Instruction& instruction) {
   // Dispatch table for bytecode instructions. We use computed gotos for efficiency
   static const void* load_var_dispatch_table[] = {&&ArgsCombinedSize,
                                                   &&ArgsGetNames,
@@ -167,6 +175,7 @@ void VirtualMachine::executeLoadVar(const Instruction& instruction) {
   variable:                                                                                        \
   Variable::variable* v_##variable =                                                               \
       reinterpret_cast<Variable::variable*>(static_cast<int64_t>(instruction.aux_));               \
+  REG_DST(instruction).clear();                                                                    \
   v_##variable->evaluate(transaction_, REG_DST(instruction));                                      \
   return;
 
