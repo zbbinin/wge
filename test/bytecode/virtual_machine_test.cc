@@ -20,7 +20,7 @@
  */
 #include <gtest/gtest.h>
 
-#include "bytecode/compiler.h"
+#include "bytecode/variable_compiler.h"
 #include "bytecode/virtual_machine.h"
 #include "engine.h"
 
@@ -45,7 +45,7 @@ public:
   Engine engine_;
   std::unique_ptr<VirtualMachine> vm_;
   const std::unordered_map<const char*, int64_t>& variable_index_map_{
-      Compiler::getVariableIndexMap()};
+      VariableCompiler::getVariableIndexMap()};
   NiceMock<Mock::MockVariable> mock_args_;
 }; // namespace Bytecode
 

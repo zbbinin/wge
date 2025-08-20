@@ -21,6 +21,7 @@
 #include <gtest/gtest.h>
 
 #include "bytecode/compiler.h"
+#include "bytecode/variable_compiler.h"
 #include "engine.h"
 #include "rule.h"
 #include "variable/variables_include.h"
@@ -145,7 +146,7 @@ TEST(CompilerTest, compileVariable) {
   constexpr size_t variable_count = 101;
   EXPECT_EQ(instructions.size(), variable_count);
 
-  auto& variable_index_map = Wge::Bytecode::Compiler::getVariableIndexMap();
+  auto& variable_index_map = Wge::Bytecode::VariableCompiler::getVariableIndexMap();
   for (auto& instruction : instructions) {
     EXPECT_EQ(instruction.op_code_, Bytecode::OpCode::LOAD_VAR);
     EXPECT_EQ(instruction.dst_, Bytecode::Register::RDI);
