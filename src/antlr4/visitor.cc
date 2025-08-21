@@ -1934,6 +1934,24 @@ std::any Visitor::visitAction_non_disruptive_ctl_force_request_body_variable(
   return EMPTY_STRING;
 }
 
+std::any Visitor::visitAction_non_disruptive_ctl_parse_xml_into_args(
+    Antlr4Gen::SecLangParser::Action_non_disruptive_ctl_parse_xml_into_argsContext* ctx) {
+  using Option = Wge::ParseXmlIntoArgsOption;
+  Option option = Option::Off;
+
+  std::string option_str = ctx->OPTION()->getText();
+  if (option_str == "On") {
+    option = Option::On;
+  } else if (option_str == "OnlyArgs") {
+    option = Option::OnlyArgs;
+  }
+
+  auto& actions = (*current_rule_iter_)->actions();
+  actions.emplace_back(
+      std::make_unique<Action::Ctl>(Action::Ctl::CtlType::ParseXmlIntoArgs, option));
+  return EMPTY_STRING;
+}
+
 std::any Visitor::visitAction_non_disruptive_ctl_request_body_access(
     Antlr4Gen::SecLangParser::Action_non_disruptive_ctl_request_body_accessContext* ctx) {
   using Option = Wge::EngineConfig::Option;

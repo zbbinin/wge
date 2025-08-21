@@ -46,6 +46,7 @@ public:
   enum class CtlType {
     AuditEngine = 0,
     AuditLogParts,
+    ParseXmlIntoArgs,
     RequestBodyAccess,
     RequestBodyProcessor,
     RuleEngine,
@@ -79,6 +80,7 @@ public:
 private:
   void evaluate_audit_engine(Transaction& t) const;
   void evaluate_audit_log_parts(Transaction& t) const;
+  void evaluate_parse_xml_into_args(Transaction& t) const;
   void evaluate_request_body_access(Transaction& t) const;
   void evaluate_request_body_processor(Transaction& t) const;
   void evaluate_rule_engine(Transaction& t) const;

@@ -35,6 +35,9 @@ Ctl::Ctl(CtlType type, std::any&& value) : type_(type), value_(std::move(value))
   case CtlType::AuditLogParts:
     evaluate_func_ = std::bind(&Ctl::evaluate_audit_log_parts, this, std::placeholders::_1);
     break;
+  case CtlType::ParseXmlIntoArgs:
+    evaluate_func_ = std::bind(&Ctl::evaluate_parse_xml_into_args, this, std::placeholders::_1);
+    break;
   case CtlType::RequestBodyAccess:
     evaluate_func_ = std::bind(&Ctl::evaluate_request_body_access, this, std::placeholders::_1);
     break;
@@ -131,6 +134,11 @@ void Ctl::evaluate_audit_log_parts(Transaction& t) const {
   const std::string& parts = std::any_cast<std::string>(value_);
   UNREACHABLE();
   throw "Not implemented!";
+}
+
+void Ctl::evaluate_parse_xml_into_args(Transaction& t) const {
+  ParseXmlIntoArgsOption option = std::any_cast<ParseXmlIntoArgsOption>(value_);
+  t.setParseXmlIntoArgs(option);
 }
 
 void Ctl::evaluate_request_body_access(Transaction& t) const {

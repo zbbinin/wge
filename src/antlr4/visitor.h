@@ -709,6 +709,9 @@ public:
       Antlr4Gen::SecLangParser::Action_non_disruptive_ctl_force_request_body_variableContext* ctx)
       override;
 
+  std::any visitAction_non_disruptive_ctl_parse_xml_into_args(
+      Antlr4Gen::SecLangParser::Action_non_disruptive_ctl_parse_xml_into_argsContext* ctx) override;
+
   std::any visitAction_non_disruptive_ctl_request_body_access(
       Antlr4Gen::SecLangParser::Action_non_disruptive_ctl_request_body_accessContext* ctx) override;
 

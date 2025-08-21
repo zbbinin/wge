@@ -194,7 +194,7 @@ bool Transaction::processRequestBody(
     } break;
     case BodyProcessorType::Xml: {
       body_xml_.init(request_body_);
-      auto option = engine_.parseXmlIntoArgsOption();
+      auto option = getParseXmlIntoArgs();
       if (option != ParseXmlIntoArgsOption::Off) {
         body_query_param_.merge(body_xml_.getTags());
       }
@@ -447,6 +447,10 @@ const Common::Variant& Transaction::getCapture(size_t index) const {
                  index, captured_.size());
     return EMPTY_VARIANT;
   }
+}
+
+ParseXmlIntoArgsOption Transaction::getParseXmlIntoArgs() const {
+  return parse_xml_into_args_.value_or(engine_.parseXmlIntoArgsOption());
 }
 
 const std::string_view Transaction::getUniqueId() {

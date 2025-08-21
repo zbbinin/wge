@@ -740,6 +740,8 @@ CTL_AUDIT_LOG_PARTS:
 	'auditLogParts' -> popMode, pushMode(ModeSecRuleActionCtlAuditLogParts);
 CTL_FORCE_REQUEST_BODY_VARIABLE:
 	'forceRequestBodyVariable' -> popMode, pushMode(ModeSecRuleActionCtlForceRequestBodyVariable);
+CTL_PARSE_XML_INTO_ARGS:
+	'parseXmlIntoArgs' -> popMode, pushMode(ModeSecRuleActionCtlParseXmlIntoArgs);
 CTL_REQUEST_BODY_ACCESS:
 	'requestBodyAccess' -> popMode, pushMode(ModeSecRuleActionCtlForceRequestBodyVariable);
 CTL_REQUEST_BODY_PROCESSOR:
@@ -795,6 +797,12 @@ ModeSecRuleActionCtlForceRequestBodyVariable_ASSIGN:
 	ASSIGN -> type(ASSIGN);
 ModeSecRuleActionCtlForceRequestBodyVariable_OPTION:
 	OPTION -> type(OPTION), popMode;
+
+mode ModeSecRuleActionCtlParseXmlIntoArgs;
+ModeSecRuleActionCtlParseXmlIntoArgs_ASSIGN:
+	ASSIGN -> type(ASSIGN);
+ModeSecRuleActionCtlParseXmlIntoArgs_OPTION:
+	('On' | 'Off' | 'OnlyArgs') -> type(OPTION), popMode;
 
 mode ModeSecRuleActionCtlRequestBodyProcessor;
 ModeSecRuleActionCtlValueRequestBodyProcessor_ASSIGN:

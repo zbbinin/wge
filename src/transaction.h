@@ -408,6 +408,17 @@ public:
   BodyProcessorType getRequestBodyProcessor() const { return *request_body_processor_; }
 
   /**
+   * Set the parse XML into args option.
+   * @param option the parse XML into args option.
+   */
+  void setParseXmlIntoArgs(ParseXmlIntoArgsOption option) { parse_xml_into_args_ = option; }
+
+  /**
+   * Get the parse XML into args option.
+   */
+  ParseXmlIntoArgsOption getParseXmlIntoArgs() const;
+
+  /**
    * Get the Unique ID of the transaction.
    * @return the Unique ID of the transaction.
    */
@@ -672,6 +683,7 @@ private:
   std::optional<AuditLogConfig::AuditLogPart> audit_log_part_;
   std::optional<EngineConfig::Option> request_body_access_;
   std::optional<BodyProcessorType> request_body_processor_;
+  std::optional<ParseXmlIntoArgsOption> parse_xml_into_args_;
   std::optional<EngineConfig::Option> rule_engine_;
 
   // The http info

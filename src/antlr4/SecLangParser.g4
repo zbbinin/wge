@@ -1285,6 +1285,7 @@ action_non_disruptive_ctl:
 		action_non_disruptive_ctl_audit_engine
 		| action_non_disruptive_ctl_audit_log_parts
 		| action_non_disruptive_ctl_force_request_body_variable
+		| action_non_disruptive_ctl_parse_xml_into_args
 		| action_non_disruptive_ctl_request_body_access
 		| action_non_disruptive_ctl_request_body_processor
 		| action_non_disruptive_ctl_rule_engine
@@ -1299,6 +1300,8 @@ action_non_disruptive_ctl_audit_log_parts:
 	CTL_AUDIT_LOG_PARTS ASSIGN (PLUS | MINUS) AUDIT_PARTS;
 action_non_disruptive_ctl_force_request_body_variable:
 	CTL_FORCE_REQUEST_BODY_VARIABLE ASSIGN OPTION;
+action_non_disruptive_ctl_parse_xml_into_args:
+	CTL_PARSE_XML_INTO_ARGS ASSIGN OPTION;
 action_non_disruptive_ctl_request_body_access:
 	CTL_REQUEST_BODY_ACCESS ASSIGN OPTION;
 action_non_disruptive_ctl_request_body_processor:
