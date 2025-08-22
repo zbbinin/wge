@@ -149,11 +149,10 @@ TEST(CompilerTest, compileVariable) {
   auto& variable_index_map = Wge::Bytecode::VariableCompiler::getVariableIndexMap();
   for (auto& instruction : instructions) {
     EXPECT_EQ(instruction.op_code_, Bytecode::OpCode::LOAD_VAR);
-    EXPECT_EQ(instruction.dst_, Bytecode::Register::RDI);
-    Variable::VariableBase* var =
-        reinterpret_cast<Variable::VariableBase*>(static_cast<int64_t>(instruction.aux_));
-    EXPECT_EQ(static_cast<int64_t>(instruction.src_),
-              variable_index_map.at(var->mainName().data()));
+    EXPECT_EQ(instruction.op1_.reg_, Bytecode::Register::RDI);
+    const Variable::VariableBase* var =
+        reinterpret_cast<const Variable::VariableBase*>(instruction.op3_.cptr_);
+    EXPECT_EQ(instruction.op2_.index_, variable_index_map.at(var->mainName().data()));
   }
 }
 } // namespace Bytecode

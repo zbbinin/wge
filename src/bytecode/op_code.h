@@ -30,28 +30,41 @@ namespace Bytecode {
  */
 enum class OpCode {
   // Set immediate value to destination register
-  // Syntax: MOV dst_register, immediate_value
-  // Example: MOV EAX, 123456
+  // Syntax: MOV <dst_reg>, <imm_value>
+  // @param op1 [reg]: Destination register
+  // @param op2 [imm]: Immediate value to set
+  // Example: MOV RAX, 1
   MOV,
+
   // Unconditional jump
-  // Syntax: JMP target_address
+  // Syntax: JMP <target_addr>
+  // @param op1 [address]: Target jump address
   // Example: JMP 123
   JMP,
-  // If the front value of the RFLAGS register is zero, jump to the target address
-  // Syntax: JZ target_address
+
+  // Conditional jump if zero
+  // Syntax: JZ <target_addr>
+  // @param op1 [address]: Target jump address (jumps if RFLAGS front value == 0)
   // Example: JZ 123
   JZ,
-  // If the front value of the RFLAGS register is non-zero, jump to the target address
-  // Syntax: JNZ target_address
+
+  // Conditional jump if not zero
+  // Syntax: JNZ <target_addr>
+  // @param op1 [address]: Target jump address (jumps if RFLAGS front value != 0)
   // Example: JNZ 123
   JNZ,
+
   // No operation
   // Syntax: NOP
   // Example: NOP
   NOP,
-  // Load variable value
-  // Syntax: LOAD_VAR dst_register, variable_index, variable_instance_pointer
-  // Example: LOAD_VAR RDI, 1, 123456
+
+  // Load variable value into register
+  // Syntax: LOAD_VAR <dst_reg>, <var_index>, <var_ptr>
+  // @param op1 [reg]: Destination register
+  // @param op2 [index]: Variable index in symbol table
+  // @param op3 [cptr]: Constant pointer to variable instance
+  // Example: LOAD_VAR RDI, 1, 0x123456
   LOAD_VAR,
 };
 } // namespace Bytecode

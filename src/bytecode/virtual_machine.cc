@@ -40,10 +40,6 @@
     goto* dispatch_table[static_cast<size_t>(iter->op_code_)];                                     \
   } while (0)
 
-#define REG_DST(instruction) registers_[static_cast<size_t>(instruction.dst_)]
-#define REG_SRC(instruction) registers_[static_cast<size_t>(instruction.src_)]
-#define REG_AUX(instruction) registers_[static_cast<size_t>(instruction.aux_)]
-
 namespace Wge {
 namespace Bytecode {
 void VirtualMachine::execute(const Program& program) {
@@ -79,15 +75,15 @@ LOAD_VAR:
 }
 
 void VirtualMachine::execMov(const Instruction& instruction) {
-  auto& results = REG_DST(instruction);
+  auto& results = registers_[static_cast<size_t>(instruction.op1_.reg_)];
   results.clear();
-  results.append(static_cast<int64_t>(instruction.src_));
+  results.append(instruction.op2_.imm_);
 }
 
 void VirtualMachine::execJmp(const Instruction& instruction,
                              const std::vector<Wge::Bytecode::Instruction>& instruction_array,
                              std::vector<Wge::Bytecode::Instruction>::const_iterator& iter) {
-  int64_t target_address = static_cast<int64_t>(instruction.dst_);
+  const int64_t target_address = instruction.op1_.address_;
   if (target_address < 0 || target_address >= instruction_array.size())
     [[unlikely]] { iter = instruction_array.end(); }
   else {
@@ -98,10 +94,10 @@ void VirtualMachine::execJmp(const Instruction& instruction,
 void VirtualMachine::execJz(const Instruction& instruction,
                             const std::vector<Wge::Bytecode::Instruction>& instruction_array,
                             std::vector<Wge::Bytecode::Instruction>::const_iterator& iter) {
-  int64_t condition =
+  const int64_t condition =
       std::get<int64_t>(registers_[static_cast<size_t>(Register::RFLAGS)].front().variant_);
   if (!condition) {
-    int64_t target_address = static_cast<int64_t>(instruction.dst_);
+    const int64_t target_address = instruction.op1_.address_;
     if (target_address < 0 || target_address >= instruction_array.size())
       [[unlikely]] { iter = instruction_array.end(); }
     else {
@@ -118,7 +114,7 @@ void VirtualMachine::execJnz(const Instruction& instruction,
   int64_t condition =
       std::get<int64_t>(registers_[static_cast<size_t>(Register::RFLAGS)].front().variant_);
   if (condition) {
-    int64_t target_address = static_cast<int64_t>(instruction.dst_);
+    const int64_t target_address = instruction.op1_.address_;
     if (target_address < 0 || target_address >= instruction_array.size())
       [[unlikely]] { iter = instruction_array.end(); }
     else {
@@ -232,15 +228,14 @@ void VirtualMachine::execLoadVar(const Instruction& instruction) {
                                                   &&UserId,
                                                   &&WebAppId,
                                                   &&Xml};
-  const int64_t index = static_cast<int64_t>(instruction.src_);
-  goto* load_var_dispatch_table[index];
+  goto* load_var_dispatch_table[instruction.op2_.index_];
 
 #define DISPATCH(variable)                                                                         \
   variable:                                                                                        \
-  Variable::variable* v_##variable =                                                               \
-      reinterpret_cast<Variable::variable*>(static_cast<int64_t>(instruction.aux_));               \
-  REG_DST(instruction).clear();                                                                    \
-  v_##variable->evaluate(transaction_, REG_DST(instruction));                                      \
+  const Variable::variable* v_##variable =                                                         \
+      reinterpret_cast<const Variable::variable*>(instruction.op3_.cptr_);                         \
+  registers_[static_cast<size_t>(instruction.op1_.reg_)].clear();                                  \
+  v_##variable->evaluate(transaction_, registers_[static_cast<size_t>(instruction.op1_.reg_)]);    \
   return;
 
   DISPATCH(ArgsCombinedSize);

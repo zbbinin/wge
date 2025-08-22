@@ -20,7 +20,6 @@
  */
 #pragma once
 
-#include <array>
 #include <string>
 
 #include "op_code.h"
@@ -32,15 +31,24 @@ namespace Bytecode {
  * Bytecode instruction structure for register-based VM
  */
 struct Instruction {
+  union Operand {
+    Register reg_;
+    int64_t imm_;
+    int64_t index_;
+    int64_t offset_;
+    int64_t address_;
+    const void* cptr_;
+    void* ptr_;
+  };
+
   // Operation code
   OpCode op_code_;
 
-  // Destination register
-  Register dst_{Register::UNKNOWN};
-  // Source register or immediate value
-  Register src_{Register::UNKNOWN};
-  // Auxiliary register or immediate value
-  Register aux_{Register::UNKNOWN};
+  // Operands
+  Operand op1_{Register::UNKNOWN};
+  Operand op2_{Register::UNKNOWN};
+  Operand op3_{Register::UNKNOWN};
+  Operand op4_{Register::UNKNOWN};
 
   // Convert instruction to human-readable string
   std::string toString() const;
