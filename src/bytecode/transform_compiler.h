@@ -20,47 +20,38 @@
  */
 #pragma once
 
-#include <memory>
 #include <unordered_map>
-#include <vector>
 
-#include "program.h"
+#include <stdint.h>
+
+#include "register.h"
 
 namespace Wge {
-class Rule;
-namespace Variable {
-class VariableBase;
-}
 namespace Transformation {
 class TransformBase;
-}
-namespace Operator {
-class OperatorBase;
-}
-namespace Action {
-class ActionBase;
 }
 } // namespace Wge
 
 namespace Wge {
 namespace Bytecode {
-class Compiler {
+class Program;
+class TransformCompiler {
+public:
+  static void compile(Register dst_reg, Register src_reg,
+                      const Transformation::TransformBase* transform, Program& program);
+
+  // For testing purposes
 public:
   /**
-   * Compile multiple rules into a program
-   * @param rules The rules to compile
-   * @param default_action The default action for the program
-   * @return Compiled bytecode program
+   * Get the transform index map
+   * @return The transform index map
    */
-  std::unique_ptr<Program> compile(const std::vector<const Rule*>& rules,
-                                   const Rule* default_action);
+  static const std::unordered_map<const char*, int64_t>& getTransformIndexMap() {
+    return transform_index_map_;
+  }
 
 private:
-  void compileRule(const Rule* rule, const Rule* default_action, Program& program);
-  void compileVariable(const Variable::VariableBase* variable, Program& program);
-  void compileTransform(const Transformation::TransformBase* transform, Program& program);
-  void compileOperator(const Operator::OperatorBase* op, Program& program);
-  void compileAction(const Action::ActionBase* action, Program& program);
+  static const std::unordered_map<const char*, int64_t> transform_index_map_;
 };
 } // namespace Bytecode
 } // namespace Wge

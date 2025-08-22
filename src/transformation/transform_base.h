@@ -21,6 +21,7 @@
 #pragma once
 
 #include <functional>
+#include <optional>
 #include <string>
 
 #include "stream_util.h"
@@ -32,7 +33,7 @@
 public:                                                                                            \
   const char* name() const override { return name_; }                                              \
                                                                                                    \
-private:                                                                                           \
+public:                                                                                            \
   static constexpr char name_[] = #n;
 
 namespace Wge {
@@ -52,12 +53,45 @@ public:
    * @param variable the pointer to the variable.
    * @param input the reference to the data to be transformed
    * @param output the transformed data will be stored in it.
-   * @return ture if the transformation is successful, otherwise false the data will not be
+   * @return true if the transformation is successful, otherwise false the data will not be
    * modified.
    */
   bool evaluate(Transaction& t, const Variable::VariableBase* variable,
                 const Common::EvaluateResults::Element& input,
                 Common::EvaluateResults::Element& output) const;
+
+  /**
+   * Get the cached result of the transformation.
+   * @param t the reference to the transaction.
+   * @param input the reference to the data to be transformed
+   * @param transform_name the name of the transformation.
+   * @param output the transformed data will be stored in it.
+   * @return std::nullopt if the transformation has not been evaluated before, otherwise true if the
+   * transformation is successful, false if it failed.
+   */
+  std::optional<bool> getCache(Transaction& t, const Common::EvaluateResults::Element& input,
+                               const char* transform_name,
+                               Common::EvaluateResults::Element& output) const;
+
+  /**
+   * Set the cached result of the transformation.
+   * @param t the reference to the transaction.
+   * @param input_data_view the view of the input data.
+   * @param transform_name the name of the transformation.
+   * @param transformed_data the transformed data.
+   * @return the reference to the cached result.
+   */
+  Common::EvaluateResults::Element& setCache(Transaction& t, std::string_view input_data_view,
+                                             const char* transform_name,
+                                             std::string&& transformed_data) const;
+  /**
+   * Set an empty cache entry for the transformation. Use this when the transformation fails.
+   * @param t the reference to the transaction.
+   * @param input_data_view the view of the input data.
+   * @param transform_name the name of the transformation.
+   */
+  void setEmptyCache(Transaction& t, std::string_view input_data_view,
+                     const char* transform_name) const;
 
   virtual std::unique_ptr<StreamState, std::function<void(StreamState*)>> newStream() const {
     UNREACHABLE();

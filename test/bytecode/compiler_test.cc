@@ -140,7 +140,7 @@ TEST(CompilerTest, compileVariable) {
   rule.appendVariable(std::make_unique<Variable::Xml>("", false, false, ""));
 
   Wge::Bytecode::Compiler compiler;
-  auto program = compiler.compile(rules);
+  auto program = compiler.compile(rules, nullptr);
   auto& instructions = program->instructions();
 
   constexpr size_t variable_count = 101;

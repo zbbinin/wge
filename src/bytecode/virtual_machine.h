@@ -68,6 +68,7 @@ private:
                       const std::vector<Wge::Bytecode::Instruction>& instruction_array,
                       std::vector<Wge::Bytecode::Instruction>::const_iterator& iter);
   inline void execLoadVar(const Instruction& instruction);
+  inline void execTransform(const Instruction& instruction);
 
 private:
   std::array<RegisterValue, static_cast<size_t>(Register::MAX_REGISTER)> registers_;

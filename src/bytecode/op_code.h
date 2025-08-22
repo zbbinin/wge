@@ -66,6 +66,17 @@ enum class OpCode {
   // @param op3 [cptr]: Constant pointer to variable instance
   // Example: LOAD_VAR RDI, 1, 0x123456
   LOAD_VAR,
+
+  // Transform variable value. The operation needs the source data specified by RSI register
+  // Syntax: TRANSFORM <res_reg> <dst_reg>, <src_reg>, <transform_index>, <transform_instance_pointer>
+  // @param op1 [reg]: Result register
+  // @param op2 [reg]: Destination register
+  // @param op3 [reg]: Source register
+  // @param op4 [index]: Transformation index
+  // @param op5 [cptr]: Constant pointer to transformation instance
+  // Example:
+  // TRANSFORM RAX, RDI, RSI, 1, 123456
+  TRANSFORM,
 };
 } // namespace Bytecode
 } // namespace Wge
