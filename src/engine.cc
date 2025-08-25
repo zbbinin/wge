@@ -173,6 +173,11 @@ void Engine::initRules() {
     rule->initExceptVariables();
   }
 
+  // Initialize the Pmf operator
+  for (auto& rule : rules) {
+    rule->initPmfOperator(parser_->engineConfig().pmf_serialize_dir_);
+  }
+
   // Initialize the rules ctl
   for (auto& rule : rules) {
     auto& actions = rule->actions();

@@ -52,6 +52,15 @@ public:
    */
   void initExceptVariables();
 
+  /**
+   * Initialize the Pmf operator.
+   * We can't auto initialize the Pmf operator in the constructor because it requires the
+   * serialize_dir which is specified by SecPmfSerializeDir. The SecPmfSerializeDir directive may be
+   * defined after the SecRule, So We must manually initialize the pmf operator after the all
+   * directives are loaded. We must call this function and only once before evaluating the rule.
+   */
+  void initPmfOperator(const std::string& serialize_dir);
+
 public:
   /**
    * Evaluate the rule

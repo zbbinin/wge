@@ -59,31 +59,8 @@ class PmFromFile : public OperatorBase {
   DECLARE_OPERATOR_NAME(pmFromFile);
 
 public:
-  PmFromFile(std::string&& literal_value, bool is_not, std::string_view curr_rule_file_path,
-             const std::string& serialize_dir)
-      : OperatorBase(std::move(literal_value), is_not) {
-    // Make the file path absolute.
-    std::string file_path = Common::File::makeFilePath(curr_rule_file_path, literal_value_);
-
-    // Load the hyperscan database and create a scanner.
-    // We cache the hyperscan database to avoid loading(complie) the same database multiple times.
-    auto iter = database_cache_.find(file_path);
-    if (iter == database_cache_.end()) {
-      std::ifstream ifs(file_path);
-      if (!ifs.is_open()) {
-        WGE_LOG_ERROR("Failed to open hyperscan database file: {}", file_path);
-        return;
-      }
-
-      const char* serialize_dir_cstr = serialize_dir.empty() ? nullptr : serialize_dir.c_str();
-      auto hs_db = std::make_shared<Common::Hyperscan::HsDataBase>(ifs, true, true, true, false,
-                                                                   false, serialize_dir_cstr);
-      scanner_ = std::make_unique<Common::Hyperscan::Scanner>(hs_db);
-      database_cache_.emplace(file_path, hs_db);
-    } else {
-      scanner_ = std::make_unique<Common::Hyperscan::Scanner>(iter->second);
-    }
-  }
+  PmFromFile(std::string&& literal_value, bool is_not, std::string_view curr_rule_file_path)
+      : OperatorBase(std::move(literal_value), is_not), curr_rule_file_path_(curr_rule_file_path) {}
 
   PmFromFile(const std::shared_ptr<Macro::MacroBase> macro, bool is_not,
              std::string_view curr_rule_file_path)
@@ -91,6 +68,10 @@ public:
     // Not supported macro expansion
     UNREACHABLE();
   }
+
+public:
+  // The PmFromFile operator must be called init before call the evaluate function
+  void init(const std::string& serialize_dir);
 
 public:
   bool evaluate(Transaction& t, const Common::Variant& operand) const override {
@@ -135,6 +116,8 @@ private:
   // Cache the hyperscan database
   static std::unordered_map<std::string, std::shared_ptr<Common::Hyperscan::HsDataBase>>
       database_cache_;
+
+  std::string_view curr_rule_file_path_;
 };
 } // namespace Operator
 } // namespace Wge

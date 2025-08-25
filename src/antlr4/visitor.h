@@ -927,15 +927,9 @@ private:
             std::string original_operator_literal_value =
                 (*current_rule_iter_)->getOperator()->literalValue();
             if (!original_operator_literal_value.empty()) {
-              if constexpr (std::is_same_v<VarT, Operator::PmFromFile>) {
-                op = std::unique_ptr<Operator::OperatorBase>(
-                    new VarT(std::move(original_operator_literal_value), ctx->NOT() != nullptr,
-                             parser_->currLoadFile(), parser_->engineConfig().pmf_serialize_dir_));
-              } else {
-                op = std::unique_ptr<Operator::OperatorBase>(
-                    new VarT(std::move(original_operator_literal_value), ctx->NOT() != nullptr,
-                             parser_->currLoadFile()));
-              }
+              op = std::unique_ptr<Operator::OperatorBase>(
+                  new VarT(std::move(original_operator_literal_value), ctx->NOT() != nullptr,
+                           parser_->currLoadFile()));
             } else {
               op = std::unique_ptr<Operator::OperatorBase>(
                   new VarT((*current_rule_iter_)->getOperator()->macro(), ctx->NOT() != nullptr,
@@ -958,14 +952,8 @@ private:
             new VarT(macro.value(), ctx->NOT() != nullptr, parser_->currLoadFile()));
       }
     } else {
-      if constexpr (std::is_same_v<VarT, Operator::PmFromFile>) {
-        op = std::unique_ptr<Operator::OperatorBase>(
-            new VarT(ctx->string_with_macro()->getText(), ctx->NOT() != nullptr,
-                     parser_->currLoadFile(), parser_->engineConfig().pmf_serialize_dir_));
-      } else {
-        op = std::unique_ptr<Operator::OperatorBase>(new VarT(
-            ctx->string_with_macro()->getText(), ctx->NOT() != nullptr, parser_->currLoadFile()));
-      }
+      op = std::unique_ptr<Operator::OperatorBase>(new VarT(
+          ctx->string_with_macro()->getText(), ctx->NOT() != nullptr, parser_->currLoadFile()));
     }
 
     (*current_rule_iter_)->setOperator(std::move(op));

@@ -26,7 +26,7 @@
 #include "common/log.h"
 #include "common/try.h"
 #include "engine.h"
-#include "operator/rx.h"
+#include "operator/operator_include.h"
 #include "variable/collection_base.h"
 
 namespace Wge {
@@ -84,6 +84,16 @@ void Rule::initExceptVariables() {
       }
 
       ++iter;
+    }
+  }
+}
+
+void Rule::initPmfOperator(const std::string& serialize_dir) {
+  ASSERT_IS_MAIN_THREAD();
+  if (operator_) {
+    Operator::PmFromFile* pm_from_file = dynamic_cast<Operator::PmFromFile*>(operator_.get());
+    if (pm_from_file) {
+      pm_from_file->init(serialize_dir);
     }
   }
 }
