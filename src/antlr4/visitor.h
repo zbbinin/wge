@@ -120,6 +120,9 @@ public:
   std::any visitSec_collection_timeout(
       Antlr4Gen::SecLangParser::Sec_collection_timeoutContext* ctx) override;
 
+  std::any
+  visitSec_pmf_serialize_dir(Antlr4Gen::SecLangParser::Sec_pmf_serialize_dirContext* ctx) override;
+
   // Engine action
 public:
   std::any visitSec_action(Antlr4Gen::SecLangParser::Sec_actionContext* ctx) override;

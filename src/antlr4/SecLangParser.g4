@@ -61,7 +61,8 @@ engine_config:
 	| sec_parse_xml_into_args
 	| sec_pcre_match_limit
 	| sec_pcre_match_limit_recursion
-	| sec_collection_timeout;
+	| sec_collection_timeout
+	| sec_pmf_serialize_dir;
 sec_reqeust_body_access: SecRequestBodyAccess OPTION;
 sec_response_body_mime_type: SecResponseBodyMimeType MIME_TYPES;
 sec_response_body_mime_type_clear:
@@ -92,6 +93,7 @@ sec_parse_xml_into_args: SecParseXmlIntoArgs OPTION;
 sec_pcre_match_limit: SecPcreMatchLimit INT;
 sec_pcre_match_limit_recursion: SecPcreMatchLimitRecursion INT;
 sec_collection_timeout: SecCollectionTimeout INT;
+sec_pmf_serialize_dir: SecPmfSerializeDir STRING;
 
 engine_action: sec_action | sec_default_action;
 sec_action: SecAction QUOTE action ( COMMA action)* QUOTE;

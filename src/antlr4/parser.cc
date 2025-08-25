@@ -245,6 +245,10 @@ void Parser::secParseXmlIntoArgs(ParseXmlIntoArgsOption option) {
 
 void Parser::secPcreMatchLimit(uint32_t limit) { engine_config_.pcre_match_limit_ = limit; }
 
+void Parser::secPmfSerializeDir(std::string&& file_path) {
+  engine_config_.pmf_serialize_dir_ = std::move(file_path);
+}
+
 std::list<std::unique_ptr<Rule>>::iterator Parser::secAction(int line) {
   rules_.emplace_back(std::make_unique<Rule>(currLoadFile(), line));
   return std::prev(rules_.end());

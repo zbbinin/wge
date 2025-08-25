@@ -124,6 +124,11 @@ struct EngineConfig {
   // SecPcreMatchLimit
   // Sets the PCRE match limit for executions of the @rx and @rxGlobal operators.
   uint32_t pcre_match_limit_{0};
+
+  // SecPmfSerializeDir
+  // Configures the directory where the PMF files will be serialized.
+  // This is used to persist the PMF files across restarts to improve the initialization time.
+  std::string pmf_serialize_dir_;
 };
 
 /**

@@ -273,6 +273,12 @@ Visitor::visitSec_collection_timeout(Antlr4Gen::SecLangParser::Sec_collection_ti
   return EMPTY_STRING;
 }
 
+std::any
+Visitor::visitSec_pmf_serialize_dir(Antlr4Gen::SecLangParser::Sec_pmf_serialize_dirContext* ctx) {
+  parser_->secPmfSerializeDir(ctx->STRING()->getText());
+  return EMPTY_STRING;
+}
+
 std::any Visitor::visitSec_rule(Antlr4Gen::SecLangParser::Sec_ruleContext* ctx) {
   // Get line number
   int line = ctx->getStart()->getLine();

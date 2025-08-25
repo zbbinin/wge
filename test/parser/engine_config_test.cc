@@ -314,5 +314,18 @@ TEST_F(EngineConfigTest, PcreMatchLimit) {
   const auto& engine_config = parser.engineConfig();
   EXPECT_EQ(engine_config.pcre_match_limit_, 1024);
 }
+
+TEST_F(EngineConfigTest, PmfSerializeDir) {
+  const std::string directive = R"(# Test engine config
+  SecPmfSerializeDir /tmp/pmf-serialize-dir
+  )";
+
+  Antlr4::Parser parser;
+  auto result = parser.load(directive);
+  ASSERT_TRUE(result.has_value());
+
+  const auto& engine_config = parser.engineConfig();
+  EXPECT_EQ(engine_config.pmf_serialize_dir_, "/tmp/pmf-serialize-dir");
+}
 } // namespace Parsr
 } // namespace Wge

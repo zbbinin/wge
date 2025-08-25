@@ -81,6 +81,7 @@ public:
   void secUnicodeMapFile(std::string&& file_path, uint32_t code_point);
   void secParseXmlIntoArgs(ParseXmlIntoArgsOption option);
   void secPcreMatchLimit(uint32_t limit);
+  void secPmfSerializeDir(std::string&& file_path);
 
   // Engine action
   std::list<std::unique_ptr<Rule>>::iterator secAction(int line);
