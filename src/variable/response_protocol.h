@@ -34,8 +34,13 @@ public:
 
 public:
   void evaluate(Transaction& t, Common::EvaluateResults& result) const override {
-    assert(false);
-    throw "Not implemented!";
+    if (is_counter_)
+      [[unlikely]] {
+        result.append(t.getResponseLineInfo().protocol_.empty() ? 0 : 1);
+        return;
+      }
+
+    result.append(t.getResponseLineInfo().protocol_);
   }
 };
 } // namespace Variable

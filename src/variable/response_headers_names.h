@@ -36,8 +36,45 @@ public:
 
 public:
   void evaluate(Transaction& t, Common::EvaluateResults& result) const override {
-    assert(false);
-    throw "Not implemented!";
+    RETURN_IF_COUNTER(
+        // collection
+        { result.append(static_cast<int64_t>(t.httpExtractor().response_header_count_)); },
+        // specify subname
+        {
+          result.append(
+              static_cast<int64_t>(t.httpExtractor().response_header_find_(sub_name_).size()));
+        });
+
+    RETURN_VALUE(
+        // collection
+        {
+          t.httpExtractor().response_header_traversal_(
+              [&](std::string_view key, std::string_view value) {
+                if (!hasExceptVariable(t, main_name_, key))
+                  [[likely]] { result.append(key, key); }
+                return true;
+              });
+        },
+        // collection regex
+        {
+          t.httpExtractor().response_header_traversal_(
+              [&](std::string_view key, std::string_view value) {
+                if (!hasExceptVariable(t, main_name_, key))
+                  [[likely]] {
+                    if (match(key)) {
+                      result.append(key, key);
+                    }
+                  }
+                return true;
+              });
+        },
+        // specify subname
+        {
+          std::vector<std::string_view> values = t.httpExtractor().response_header_find_(sub_name_);
+          for (size_t i = 0; i < values.size(); ++i) {
+            result.append(sub_name_);
+          }
+        });
   }
 
   bool isCollection() const override { return sub_name_.empty(); };

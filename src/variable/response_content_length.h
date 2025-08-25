@@ -20,6 +20,7 @@
  */
 #pragma once
 
+#include "response_headers.h"
 #include "variable_base.h"
 
 namespace Wge {
@@ -30,13 +31,16 @@ class ResponseContentLength : public VariableBase {
 public:
   ResponseContentLength(std::string&& sub_name, bool is_not, bool is_counter,
                         std::string_view curr_rule_file_path)
-      : VariableBase(std::move(sub_name), is_not, is_counter) {}
+      : VariableBase(std::move(sub_name), is_not, is_counter),
+        response_content_length_("content-length", is_not, is_counter, curr_rule_file_path) {}
 
 public:
   void evaluate(Transaction& t, Common::EvaluateResults& result) const override {
-    assert(false);
-    throw "Not implemented!";
+    response_content_length_.evaluate(t, result);
   }
+
+private:
+  ResponseHeaders response_content_length_;
 };
 } // namespace Variable
 } // namespace Wge
