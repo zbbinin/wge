@@ -978,15 +978,15 @@ std::any Visitor::visitVariable_user(Antlr4Gen::SecLangParser::Variable_userCont
 }
 
 std::any Visitor::visitOp_begins_with(Antlr4Gen::SecLangParser::Op_begins_withContext* ctx) {
-  return setOprator<Operator::BeginsWith>(ctx);
+  return setOperator<Operator::BeginsWith>(ctx);
 }
 
 std::any Visitor::visitOp_contains(Antlr4Gen::SecLangParser::Op_containsContext* ctx) {
-  return setOprator<Operator::Contains>(ctx);
+  return setOperator<Operator::Contains>(ctx);
 }
 
 std::any Visitor::visitOp_contains_word(Antlr4Gen::SecLangParser::Op_contains_wordContext* ctx) {
-  return setOprator<Operator::ContainsWord>(ctx);
+  return setOperator<Operator::ContainsWord>(ctx);
 }
 
 std::any Visitor::visitOp_detect_sqli(Antlr4Gen::SecLangParser::Op_detect_sqliContext* ctx) {
@@ -1004,52 +1004,52 @@ std::any Visitor::visitOp_detect_xss(Antlr4Gen::SecLangParser::Op_detect_xssCont
 }
 
 std::any Visitor::visitOp_ends_with(Antlr4Gen::SecLangParser::Op_ends_withContext* ctx) {
-  return setOprator<Operator::EndsWith>(ctx);
+  return setOperator<Operator::EndsWith>(ctx);
 }
 
 std::any Visitor::visitOp_fuzzy_hash(Antlr4Gen::SecLangParser::Op_fuzzy_hashContext* ctx) {
-  return setOprator<Operator::FuzzyHash>(ctx);
+  return setOperator<Operator::FuzzyHash>(ctx);
 }
 
 std::any Visitor::visitOp_eq(Antlr4Gen::SecLangParser::Op_eqContext* ctx) {
-  return setOprator<Operator::Eq>(ctx);
+  return setOperator<Operator::Eq>(ctx);
 }
 
 std::any Visitor::visitOp_ge(Antlr4Gen::SecLangParser::Op_geContext* ctx) {
-  return setOprator<Operator::Ge>(ctx);
+  return setOperator<Operator::Ge>(ctx);
 }
 
 std::any Visitor::visitOp_geo_lookup(Antlr4Gen::SecLangParser::Op_geo_lookupContext* ctx) {
-  return setOprator<Operator::GeoLookup>(ctx);
+  return setOperator<Operator::GeoLookup>(ctx);
 }
 
 std::any Visitor::visitOp_gt(Antlr4Gen::SecLangParser::Op_gtContext* ctx) {
-  return setOprator<Operator::Gt>(ctx);
+  return setOperator<Operator::Gt>(ctx);
 }
 
 std::any Visitor::visitOp_inspect_file(Antlr4Gen::SecLangParser::Op_inspect_fileContext* ctx) {
-  return setOprator<Operator::InspectFile>(ctx);
+  return setOperator<Operator::InspectFile>(ctx);
 }
 
 std::any Visitor::visitOp_ip_match(Antlr4Gen::SecLangParser::Op_ip_matchContext* ctx) {
-  return setOprator<Operator::IpMatch>(ctx);
+  return setOperator<Operator::IpMatch>(ctx);
 }
 
 std::any Visitor::visitOp_ip_match_f(Antlr4Gen::SecLangParser::Op_ip_match_fContext* ctx) {
-  return setOprator<Operator::IpMatchFromFile>(ctx);
+  return setOperator<Operator::IpMatchFromFile>(ctx);
 }
 
 std::any
 Visitor::visitOp_ip_match_from_file(Antlr4Gen::SecLangParser::Op_ip_match_from_fileContext* ctx) {
-  return setOprator<Operator::IpMatchFromFile>(ctx);
+  return setOperator<Operator::IpMatchFromFile>(ctx);
 }
 
 std::any Visitor::visitOp_le(Antlr4Gen::SecLangParser::Op_leContext* ctx) {
-  return setOprator<Operator::Le>(ctx);
+  return setOperator<Operator::Le>(ctx);
 }
 
 std::any Visitor::visitOp_lt(Antlr4Gen::SecLangParser::Op_ltContext* ctx) {
-  return setOprator<Operator::Lt>(ctx);
+  return setOperator<Operator::Lt>(ctx);
 }
 
 std::any Visitor::visitOp_no_match(Antlr4Gen::SecLangParser::Op_no_matchContext* ctx) {
@@ -1060,39 +1060,39 @@ std::any Visitor::visitOp_no_match(Antlr4Gen::SecLangParser::Op_no_matchContext*
 }
 
 std::any Visitor::visitOp_pm(Antlr4Gen::SecLangParser::Op_pmContext* ctx) {
-  return setOprator<Operator::Pm>(ctx);
+  return setOperator<Operator::Pm>(ctx);
 }
 
 std::any Visitor::visitOp_pmf(Antlr4Gen::SecLangParser::Op_pmfContext* ctx) {
-  return setOprator<Operator::PmFromFile>(ctx);
+  return setOperator<Operator::PmFromFile>(ctx);
 }
 
 std::any Visitor::visitOp_pm_from_file(Antlr4Gen::SecLangParser::Op_pm_from_fileContext* ctx) {
-  return setOprator<Operator::PmFromFile>(ctx);
+  return setOperator<Operator::PmFromFile>(ctx);
 }
 
 std::any Visitor::visitOp_rbl(Antlr4Gen::SecLangParser::Op_rblContext* ctx) {
-  return setOprator<Operator::Rbl>(ctx);
+  return setOperator<Operator::Rbl>(ctx);
 }
 
 std::any Visitor::visitOp_rsub(Antlr4Gen::SecLangParser::Op_rsubContext* ctx) {
-  return setOprator<Operator::Rsub>(ctx);
+  return setOperator<Operator::Rsub>(ctx);
 }
 
 std::any Visitor::visitOp_rx(Antlr4Gen::SecLangParser::Op_rxContext* ctx) {
-  return setOprator<Operator::Rx>(ctx);
+  return setOperator<Operator::Rx>(ctx);
 }
 
 std::any Visitor::visitOp_rx_global(Antlr4Gen::SecLangParser::Op_rx_globalContext* ctx) {
-  return setOprator<Operator::RxGlobal>(ctx);
+  return setOperator<Operator::RxGlobal>(ctx);
 }
 
 std::any Visitor::visitOp_streq(Antlr4Gen::SecLangParser::Op_streqContext* ctx) {
-  return setOprator<Operator::Streq>(ctx);
+  return setOperator<Operator::Streq>(ctx);
 }
 
 std::any Visitor::visitOp_strmatch(Antlr4Gen::SecLangParser::Op_strmatchContext* ctx) {
-  return setOprator<Operator::Strmatch>(ctx);
+  return setOperator<Operator::Strmatch>(ctx);
 }
 
 std::any
@@ -1105,16 +1105,16 @@ Visitor::visitOp_unconditional_match(Antlr4Gen::SecLangParser::Op_unconditional_
 
 std::any
 Visitor::visitOp_validate_byte_range(Antlr4Gen::SecLangParser::Op_validate_byte_rangeContext* ctx) {
-  return setOprator<Operator::ValidateByteRange>(ctx);
+  return setOperator<Operator::ValidateByteRange>(ctx);
 }
 
 std::any Visitor::visitOp_validate_dtd(Antlr4Gen::SecLangParser::Op_validate_dtdContext* ctx) {
-  return setOprator<Operator::ValidateDTD>(ctx);
+  return setOperator<Operator::ValidateDTD>(ctx);
 }
 
 std::any
 Visitor::visitOp_validate_schema(Antlr4Gen::SecLangParser::Op_validate_schemaContext* ctx) {
-  return setOprator<Operator::ValidateSchema>(ctx);
+  return setOperator<Operator::ValidateSchema>(ctx);
 }
 
 std::any Visitor::visitOp_validate_url_encoding(
@@ -1134,19 +1134,19 @@ std::any Visitor::visitOp_validate_utf8_encoding(
 }
 
 std::any Visitor::visitOp_verify_cc(Antlr4Gen::SecLangParser::Op_verify_ccContext* ctx) {
-  return setOprator<Operator::VerifyCC>(ctx);
+  return setOperator<Operator::VerifyCC>(ctx);
 }
 
 std::any Visitor::visitOp_verify_cpf(Antlr4Gen::SecLangParser::Op_verify_cpfContext* ctx) {
-  return setOprator<Operator::VerifyCPF>(ctx);
+  return setOperator<Operator::VerifyCPF>(ctx);
 }
 
 std::any Visitor::visitOp_verify_ssn(Antlr4Gen::SecLangParser::Op_verify_ssnContext* ctx) {
-  return setOprator<Operator::VerifySSN>(ctx);
+  return setOperator<Operator::VerifySSN>(ctx);
 }
 
 std::any Visitor::visitOp_within(Antlr4Gen::SecLangParser::Op_withinContext* ctx) {
-  return setOprator<Operator::Within>(ctx);
+  return setOperator<Operator::Within>(ctx);
 }
 
 std::any Visitor::visitOp_rx_default(Antlr4Gen::SecLangParser::Op_rx_defaultContext* ctx) {

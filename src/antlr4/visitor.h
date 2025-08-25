@@ -897,7 +897,7 @@ private:
     }
   }
 
-  template <class VarT, class CtxT> std::any setOprator(CtxT* ctx) {
+  template <class VarT, class CtxT> std::any setOperator(CtxT* ctx) {
     std::expected<std::shared_ptr<Wge::Macro::MacroBase>, std::string> macro =
         getMacro(ctx->string_with_macro()->getText(), ctx->string_with_macro()->variable(),
                  ctx->string_with_macro()->STRING().empty());
