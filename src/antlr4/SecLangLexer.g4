@@ -641,7 +641,30 @@ ModeSecRuleActionSetVarValue_QUOTE:
 	QUOTE -> type(QUOTE), popMode, popMode;
 ModeSecRuleActionSetVarValue_PER_CENT:
 	PER_CENT -> type(PER_CENT), pushMode(ModeSecRuleVariableName);
-VAR_VALUE: ~[+\-'",](~[{}%'",] | ('%' ~[{]))*;
+LEFT_RAW_FLAG:
+	[rR][aA][wW]'(' -> pushMode(ModeSecRuleActionSetRawVarValue);
+// The VAR_VALUE is not begin with [+\-'",] and not begin with raw(
+VAR_VALUE:
+	~[+\-'",](~[{}%'",] | ('%' ~[{]))* {[&](){
+		std::string text = getText();
+		std::transform(text.begin(), text.end(), text.begin(), ::tolower);
+		return !text.starts_with("raw(");
+	}()}?;
+
+mode ModeSecRuleActionSetRawVarValue;
+VAR_RAW_VALUE:
+	.+? { [&](){
+        std::string lookahead;
+        for (int i = 1; i <= 4; i++) {
+            char c = _input->LA(i);
+            if (c == EOF) break;
+            lookahead += std::tolower(c);
+        }
+        return lookahead == ")raw";
+	}()}? -> popMode, pushMode(ModeSecRuleActionSetRawVarValueEnd);
+
+mode ModeSecRuleActionSetRawVarValueEnd;
+RIGHT_RAW_FLAG: ')' [rR][aA][wW] -> popMode;
 
 mode ModeSecRuleActionString;
 ModeSecRuleActionSetVarString_SINGLE_QUOTE:

@@ -1140,6 +1140,7 @@ action_non_disruptive_setvar_create_init_value: (
 				VAR_VALUE? PER_CENT LEFT_BRACKET variable RIGHT_BRACKET VAR_VALUE?
 			)+
 		)
+		| (LEFT_RAW_FLAG VAR_RAW_VALUE RIGHT_RAW_FLAG)
 	);
 action_non_disruptive_setvar_remove:
 	Setvar COLON (

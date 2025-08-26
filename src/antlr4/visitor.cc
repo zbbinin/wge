@@ -1388,8 +1388,13 @@ std::any Visitor::visitAction_non_disruptive_setvar_create_init(
   std::string value_string;
   Common::Variant value_variant;
   if (!value_macro.value()) {
-    value_string =
-        ctx->action_non_disruptive_setvar_create_init_value()->VAR_VALUE().front()->getText();
+    if (ctx->action_non_disruptive_setvar_create_init_value()->VAR_RAW_VALUE()) {
+      value_string =
+          ctx->action_non_disruptive_setvar_create_init_value()->VAR_RAW_VALUE()->getText();
+    } else {
+      value_string =
+          ctx->action_non_disruptive_setvar_create_init_value()->VAR_VALUE().front()->getText();
+    }
     Common::Variant variant;
     if (std::all_of(value_string.begin(), value_string.end(), ::isdigit)) {
       value_variant = ::atoll(value_string.c_str());
