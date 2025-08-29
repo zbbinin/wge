@@ -51,74 +51,67 @@ public:
 
 TEST_F(VirtualMachineTest, execMov) {
   Program program;
-  Instruction instruction = {OpCode::MOV, Register::R8, static_cast<Register>(123456)};
+  Instruction instruction = {OpCode::MOV, {.g_reg_ = GeneralRegister::RAX}, {.imm_ = 123456}};
   program.emit(instruction);
 
   vm_->execute(program);
 
-  auto& registers = vm_->registers();
-  auto& results = registers[static_cast<size_t>(Register::R8)];
-  EXPECT_EQ(results.size(), 1);
-  EXPECT_EQ(std::get<std::int64_t>(results.get(0).variant_), 123456);
+  auto& registers = vm_->generalRegisters();
+  EXPECT_EQ(registers[GeneralRegister::RAX], 123456);
 }
 
 TEST_F(VirtualMachineTest, execJmp) {
   Program program;
-  program.emit({OpCode::JMP, static_cast<Register>(2)});
-  program.emit({OpCode::MOV, Register::R8, static_cast<Register>(100)});
-  program.emit({OpCode::MOV, Register::R9, static_cast<Register>(100)});
+  program.emit({OpCode::JMP, {.address_ = 2}});
+  program.emit({OpCode::MOV, {.g_reg_ = GeneralRegister::RAX}, {.imm_ = 100}});
+  program.emit({OpCode::MOV, {.g_reg_ = GeneralRegister::RBX}, {.imm_ = 100}});
 
-  auto& registers = vm_->registers();
-  auto& r8 = registers[static_cast<size_t>(Register::R8)];
-  auto& r9 = registers[static_cast<size_t>(Register::R9)];
-  const_cast<Wge::Bytecode::RegisterValue&>(r8).clear();
+  auto& registers = vm_->generalRegisters();
+  registers[GeneralRegister::RAX] = 0;
+  registers[GeneralRegister::RBX] = 0;
 
   vm_->execute(program);
 
-  EXPECT_EQ(r8.size(), 0);
-  EXPECT_EQ(r9.size(), 1);
-  EXPECT_EQ(std::get<std::int64_t>(r9.get(0).variant_), 100);
+  EXPECT_EQ(registers[GeneralRegister::RAX], 0);
+  EXPECT_EQ(registers[GeneralRegister::RBX], 100);
 }
 
 TEST_F(VirtualMachineTest, execJz) {
   Program program;
 
-  program.emit({OpCode::MOV, Register::RFLAGS, static_cast<Register>(1)});
-  program.emit({OpCode::JZ, static_cast<Register>(3)});
-  program.emit({OpCode::MOV, Register::R8, static_cast<Register>(100)});
-  program.emit({OpCode::MOV, Register::R9, static_cast<Register>(100)});
+  vm_->rflags() = 1;
 
-  auto& registers = vm_->registers();
-  auto& r8 = registers[static_cast<size_t>(Register::R8)];
-  auto& r9 = registers[static_cast<size_t>(Register::R9)];
-  const_cast<Wge::Bytecode::RegisterValue&>(r8).clear();
+  program.emit({OpCode::JZ, {.address_ = 2}});
+  program.emit({OpCode::MOV, {.g_reg_ = GeneralRegister::RAX}, {.imm_ = 100}});
+  program.emit({OpCode::MOV, {.g_reg_ = GeneralRegister::RBX}, {.imm_ = 100}});
+
+  auto& registers = vm_->generalRegisters();
+  registers[GeneralRegister::RAX] = 0;
+  registers[GeneralRegister::RBX] = 0;
 
   vm_->execute(program);
 
-  EXPECT_EQ(r8.size(), 1);
-  EXPECT_EQ(r9.size(), 1);
-  EXPECT_EQ(std::get<std::int64_t>(r8.get(0).variant_), 100);
-  EXPECT_EQ(std::get<std::int64_t>(r9.get(0).variant_), 100);
+  EXPECT_EQ(registers[GeneralRegister::RAX], 100);
+  EXPECT_EQ(registers[GeneralRegister::RBX], 100);
 }
 
 TEST_F(VirtualMachineTest, execJnz) {
   Program program;
 
-  program.emit({OpCode::MOV, Register::RFLAGS, static_cast<Register>(1)});
-  program.emit({OpCode::JNZ, static_cast<Register>(3)});
-  program.emit({OpCode::MOV, Register::R8, static_cast<Register>(100)});
-  program.emit({OpCode::MOV, Register::R9, static_cast<Register>(100)});
+  vm_->rflags() = 1;
 
-  auto& registers = vm_->registers();
-  auto& r8 = registers[static_cast<size_t>(Register::R8)];
-  auto& r9 = registers[static_cast<size_t>(Register::R9)];
-  const_cast<Wge::Bytecode::RegisterValue&>(r8).clear();
+  program.emit({OpCode::JNZ, {.address_ = 2}});
+  program.emit({OpCode::MOV, {.g_reg_ = GeneralRegister::RAX}, {.imm_ = 100}});
+  program.emit({OpCode::MOV, {.g_reg_ = GeneralRegister::RBX}, {.imm_ = 100}});
+
+  auto& registers = vm_->generalRegisters();
+  registers[GeneralRegister::RAX] = 0;
+  registers[GeneralRegister::RBX] = 0;
 
   vm_->execute(program);
 
-  EXPECT_EQ(r8.size(), 0);
-  EXPECT_EQ(r9.size(), 1);
-  EXPECT_EQ(std::get<std::int64_t>(r9.get(0).variant_), 100);
+  EXPECT_EQ(registers[GeneralRegister::RAX], 0);
+  EXPECT_EQ(registers[GeneralRegister::RBX], 100);
 }
 
 TEST_F(VirtualMachineTest, execNop) {
@@ -128,30 +121,28 @@ TEST_F(VirtualMachineTest, execNop) {
   program.emit({OpCode::NOP});
   program.emit({OpCode::NOP});
   program.emit({OpCode::NOP});
-  program.emit({OpCode::MOV, Register::R8, static_cast<Register>(100)});
+  program.emit({OpCode::MOV, {.g_reg_ = GeneralRegister::RAX}, {.imm_ = 100}});
   program.emit({OpCode::NOP});
-  program.emit({OpCode::MOV, Register::R9, static_cast<Register>(100)});
+  program.emit({OpCode::MOV, {.g_reg_ = GeneralRegister::RBX}, {.imm_ = 100}});
   program.emit({OpCode::NOP});
 
-  auto& registers = vm_->registers();
-  auto& r8 = registers[static_cast<size_t>(Register::R8)];
-  auto& r9 = registers[static_cast<size_t>(Register::R9)];
+  auto& registers = vm_->generalRegisters();
+  registers[GeneralRegister::RAX] = 0;
+  registers[GeneralRegister::RBX] = 0;
 
   vm_->execute(program);
 
-  EXPECT_EQ(r8.size(), 1);
-  EXPECT_EQ(r9.size(), 1);
-  EXPECT_EQ(std::get<std::int64_t>(r8.get(0).variant_), 100);
-  EXPECT_EQ(std::get<std::int64_t>(r9.get(0).variant_), 100);
+  EXPECT_EQ(registers[GeneralRegister::RAX], 100);
+  EXPECT_EQ(registers[GeneralRegister::RBX], 100);
 }
 
 TEST_F(VirtualMachineTest, execLoadVar) {
   // Create a dummy program with a load variable instruction
   Program program;
-  Instruction instruction = {
-      OpCode::LOAD_VAR, Register::RDI,
-      static_cast<Register>(variable_index_map_.at(Variable::Args::main_name_.data())),
-      static_cast<Register>(reinterpret_cast<int64_t>(&mock_args_))};
+  Instruction instruction = {OpCode::LOAD_VAR,
+                             {.ex_reg_ = ExtraRegister::R16},
+                             {.index_ = variable_index_map_.at(Variable::Args::main_name_.data())},
+                             {.cptr_ = &mock_args_}};
   program.emit(instruction);
 
   EXPECT_CALL(mock_args_, evaluate(::testing::_, ::testing::_))
@@ -165,40 +156,14 @@ TEST_F(VirtualMachineTest, execLoadVar) {
   vm_->execute(program);
 
   // Check if the variable was loaded correctly
-  auto& registers = vm_->registers();
-  auto& results = registers[static_cast<size_t>(Register::RDI)];
+  auto& registers = vm_->extraRegisters();
+  auto& results = registers[ExtraRegister::R16];
   EXPECT_EQ(results.size(), 3);
   EXPECT_EQ(std::get<std::string_view>(results.get(0).variant_), "value1");
   EXPECT_EQ(std::get<std::string_view>(results.get(1).variant_), "value2");
   EXPECT_EQ(std::get<std::string_view>(results.get(2).variant_), "value3");
 }
 
-TEST_F(VirtualMachineTest, execTransform) {
-  // Create a dummy program with a load variable instruction
-  Program program;
-  Instruction instruction = {
-      OpCode::LOAD_VAR, Register::RDI,
-      static_cast<Register>(variable_index_map_.at(Variable::Args::main_name_.data())),
-      static_cast<Register>(reinterpret_cast<int64_t>(&mock_args_))};
-  program.emit(instruction);
-
-  EXPECT_CALL(mock_args_, evaluate(::testing::_, ::testing::_))
-      .WillOnce(::testing::Invoke([](Transaction& t, Common::EvaluateResults& result) {
-        result.append(std::string("value1"));
-        result.append(std::string("value2"));
-        result.append(std::string("value3"));
-      }));
-
-  // Execute the program
-  vm_->execute(program);
-
-  // Check if the variable was loaded correctly
-  auto& registers = vm_->registers();
-  auto& results = registers[static_cast<size_t>(Register::RDI)];
-  EXPECT_EQ(results.size(), 3);
-  EXPECT_EQ(std::get<std::string_view>(results.get(0).variant_), "value1");
-  EXPECT_EQ(std::get<std::string_view>(results.get(1).variant_), "value2");
-  EXPECT_EQ(std::get<std::string_view>(results.get(2).variant_), "value3");
-}
+TEST_F(VirtualMachineTest, execTransform) {}
 } // namespace Bytecode
 } // namespace Wge

@@ -76,9 +76,7 @@ LOAD_VAR:
 }
 
 void VirtualMachine::execMov(const Instruction& instruction) {
-  auto& results = registers_[static_cast<size_t>(instruction.op1_.reg_)];
-  results.clear();
-  results.append(instruction.op2_.imm_);
+  general_registers_[instruction.op1_.g_reg_] = instruction.op2_.imm_;
 }
 
 void VirtualMachine::execJmp(const Instruction& instruction,
@@ -95,9 +93,7 @@ void VirtualMachine::execJmp(const Instruction& instruction,
 void VirtualMachine::execJz(const Instruction& instruction,
                             const std::vector<Wge::Bytecode::Instruction>& instruction_array,
                             std::vector<Wge::Bytecode::Instruction>::const_iterator& iter) {
-  const int64_t condition =
-      std::get<int64_t>(registers_[static_cast<size_t>(Register::RFLAGS)].front().variant_);
-  if (!condition) {
+  if (!rflags_) {
     const int64_t target_address = instruction.op1_.address_;
     if (target_address < 0 || target_address >= instruction_array.size())
       [[unlikely]] { iter = instruction_array.end(); }
@@ -112,9 +108,7 @@ void VirtualMachine::execJz(const Instruction& instruction,
 void VirtualMachine::execJnz(const Instruction& instruction,
                              const std::vector<Wge::Bytecode::Instruction>& instruction_array,
                              std::vector<Wge::Bytecode::Instruction>::const_iterator& iter) {
-  int64_t condition =
-      std::get<int64_t>(registers_[static_cast<size_t>(Register::RFLAGS)].front().variant_);
-  if (condition) {
+  if (rflags_) {
     const int64_t target_address = instruction.op1_.address_;
     if (target_address < 0 || target_address >= instruction_array.size())
       [[unlikely]] { iter = instruction_array.end(); }
@@ -235,8 +229,8 @@ void VirtualMachine::execLoadVar(const Instruction& instruction) {
   variable:                                                                                        \
   const Variable::variable* v_##variable =                                                         \
       reinterpret_cast<const Variable::variable*>(instruction.op3_.cptr_);                         \
-  registers_[static_cast<size_t>(instruction.op1_.reg_)].clear();                                  \
-  v_##variable->evaluate(transaction_, registers_[static_cast<size_t>(instruction.op1_.reg_)]);    \
+  extra_registers_[instruction.op1_.ex_reg_].clear();                                              \
+  v_##variable->evaluate(transaction_, extra_registers_[instruction.op1_.ex_reg_]);                \
   return;
 
   DISPATCH(ArgsCombinedSize);
@@ -345,99 +339,100 @@ void VirtualMachine::execLoadVar(const Instruction& instruction) {
 }
 
 void VirtualMachine::execTransform(const Instruction& instruction) {
-  // Dispatch table for bytecode instructions. We use computed gotos for efficiency
-  static const void* transform_dispatch_table[] = {&&Base64DecodeExt,    &&Base64Decode,
-                                                   &&Base64Encode,       &&CmdLine,
-                                                   &&CompressWhiteSpace, &&CssDecode,
-                                                   &&EscapeSeqDecode,    &&HexDecode,
-                                                   &&HexEncode,          &&HtmlEntityDecode,
-                                                   &&JsDecode,           &&Length,
-                                                   &&LowerCase,          &&Md5,
-                                                   &&NormalisePathWin,   &&NormalisePath,
-                                                   &&NormalizePathWin,   &&NormalizePath,
-                                                   &&ParityEven7Bit,     &&ParityOdd7Bit,
-                                                   &&ParityZero7Bit,     &&RemoveCommentsChar,
-                                                   &&RemoveComments,     &&RemoveNulls,
-                                                   &&RemoveWhitespace,   &&ReplaceComments,
-                                                   &&ReplaceNulls,       &&Sha1,
-                                                   &&SqlHexDecode,       &&TrimLeft,
-                                                   &&TrimRight,          &&Trim,
-                                                   &&UpperCase,          &&UrlDecodeUni,
-                                                   &&UrlDecode,          &&UrlEncode,
-                                                   &&Utf8ToUnicode};
-  goto* transform_dispatch_table[instruction.op4_.index_];
+  // // Dispatch table for bytecode instructions. We use computed gotos for efficiency
+  // static const void* transform_dispatch_table[] = {&&Base64DecodeExt,    &&Base64Decode,
+  //                                                  &&Base64Encode,       &&CmdLine,
+  //                                                  &&CompressWhiteSpace, &&CssDecode,
+  //                                                  &&EscapeSeqDecode,    &&HexDecode,
+  //                                                  &&HexEncode,          &&HtmlEntityDecode,
+  //                                                  &&JsDecode,           &&Length,
+  //                                                  &&LowerCase,          &&Md5,
+  //                                                  &&NormalisePathWin,   &&NormalisePath,
+  //                                                  &&NormalizePathWin,   &&NormalizePath,
+  //                                                  &&ParityEven7Bit,     &&ParityOdd7Bit,
+  //                                                  &&ParityZero7Bit,     &&RemoveCommentsChar,
+  //                                                  &&RemoveComments,     &&RemoveNulls,
+  //                                                  &&RemoveWhitespace,   &&ReplaceComments,
+  //                                                  &&ReplaceNulls,       &&Sha1,
+  //                                                  &&SqlHexDecode,       &&TrimLeft,
+  //                                                  &&TrimRight,          &&Trim,
+  //                                                  &&UpperCase,          &&UrlDecodeUni,
+  //                                                  &&UrlDecode,          &&UrlEncode,
+  //                                                  &&Utf8ToUnicode};
+  // goto* transform_dispatch_table[instruction.op4_.index_];
+  //
+  // #define DISPATCH(transform) \
+//   transform : { \
+//     const Transformation::transform* v_##transform = \
+//         reinterpret_cast<const Transformation::transform*>(instruction.op3_.cptr_); \
+//                                                                                                    \
+//     auto& input = extra_registers_[instruction.op3_.ex_reg_].front(); \
+//                                                                                                    \
+//     /* Check the cache */ \
+//     Common::EvaluateResults::Element output; \
+//     std::optional<bool> cache_result = \
+//         v_##transform->getCache(transaction_, input, v_##transform->name(), output); \
+//     if (cache_result.has_value()) { \
+//       registers_[static_cast<size_t>(instruction.op1_.reg_)].clear(); \
+//       registers_[static_cast<size_t>(instruction.op1_.reg_)].append(*cache_result ? 1 : 0); \
+//       return; \
+//     } \
+//                                                                                                    \
+//     /* Evaluate the transformation and store the result in the cache */ \
+//     std::string_view input_data_view = std::get<std::string_view>(input.variant_); \
+//     std::string output_buffer; \
+//     bool ret = v_##transform->evaluate(input_data_view, output_buffer); \
+//     if (ret) { \
+//       auto& result = v_##transform->setCache(transaction_, input_data_view,
+  //       v_##transform->name(), \
+//                                              std::move(output_buffer)); \
+//       output.variant_ = result.variant_; \
+//       output.variable_sub_name_ = input.variable_sub_name_; \
+//     } else { \
+//       v_##transform->setEmptyCache(transaction_, input_data_view, v_##transform->name()); \
+//     } \
+//     return; \
+//   }
 
-#define DISPATCH(transform)                                                                        \
-  transform : {                                                                                    \
-    const Transformation::transform* v_##transform =                                               \
-        reinterpret_cast<const Transformation::transform*>(instruction.op3_.cptr_);                \
-                                                                                                   \
-    auto& input = registers_[static_cast<size_t>(instruction.op3_.reg_)].front();                  \
-                                                                                                   \
-    /* Check the cache */                                                                          \
-    Common::EvaluateResults::Element output;                                                       \
-    std::optional<bool> cache_result =                                                             \
-        v_##transform->getCache(transaction_, input, v_##transform->name(), output);               \
-    if (cache_result.has_value()) {                                                                \
-      registers_[static_cast<size_t>(instruction.op1_.reg_)].clear();                              \
-      registers_[static_cast<size_t>(instruction.op1_.reg_)].append(*cache_result ? 1 : 0);        \
-      return;                                                                                      \
-    }                                                                                              \
-                                                                                                   \
-    /* Evaluate the transformation and store the result in the cache */                            \
-    std::string_view input_data_view = std::get<std::string_view>(input.variant_);                 \
-    std::string output_buffer;                                                                     \
-    bool ret = v_##transform->evaluate(input_data_view, output_buffer);                            \
-    if (ret) {                                                                                     \
-      auto& result = v_##transform->setCache(transaction_, input_data_view, v_##transform->name(), \
-                                             std::move(output_buffer));                            \
-      output.variant_ = result.variant_;                                                           \
-      output.variable_sub_name_ = input.variable_sub_name_;                                        \
-    } else {                                                                                       \
-      v_##transform->setEmptyCache(transaction_, input_data_view, v_##transform->name());          \
-    }                                                                                              \
-    return;                                                                                        \
-  }
+  //   DISPATCH(Base64DecodeExt);
+  //   DISPATCH(Base64Decode);
+  //   DISPATCH(Base64Encode);
+  //   DISPATCH(CmdLine);
+  //   DISPATCH(CompressWhiteSpace);
+  //   DISPATCH(CssDecode);
+  //   DISPATCH(EscapeSeqDecode);
+  //   DISPATCH(HexDecode);
+  //   DISPATCH(HexEncode);
+  //   DISPATCH(HtmlEntityDecode);
+  //   DISPATCH(JsDecode);
+  //   DISPATCH(Length);
+  //   DISPATCH(LowerCase);
+  //   DISPATCH(Md5);
+  //   DISPATCH(NormalisePathWin);
+  //   DISPATCH(NormalisePath);
+  //   DISPATCH(NormalizePathWin);
+  //   DISPATCH(NormalizePath);
+  //   DISPATCH(ParityEven7Bit);
+  //   DISPATCH(ParityOdd7Bit);
+  //   DISPATCH(ParityZero7Bit);
+  //   DISPATCH(RemoveCommentsChar);
+  //   DISPATCH(RemoveComments);
+  //   DISPATCH(RemoveNulls);
+  //   DISPATCH(RemoveWhitespace);
+  //   DISPATCH(ReplaceComments);
+  //   DISPATCH(ReplaceNulls);
+  //   DISPATCH(Sha1);
+  //   DISPATCH(SqlHexDecode);
+  //   DISPATCH(TrimLeft);
+  //   DISPATCH(TrimRight);
+  //   DISPATCH(Trim);
+  //   DISPATCH(UpperCase);
+  //   DISPATCH(UrlDecodeUni);
+  //   DISPATCH(UrlDecode);
+  //   DISPATCH(UrlEncode);
+  //   DISPATCH(Utf8ToUnicode);
 
-  DISPATCH(Base64DecodeExt);
-  DISPATCH(Base64Decode);
-  DISPATCH(Base64Encode);
-  DISPATCH(CmdLine);
-  DISPATCH(CompressWhiteSpace);
-  DISPATCH(CssDecode);
-  DISPATCH(EscapeSeqDecode);
-  DISPATCH(HexDecode);
-  DISPATCH(HexEncode);
-  DISPATCH(HtmlEntityDecode);
-  DISPATCH(JsDecode);
-  DISPATCH(Length);
-  DISPATCH(LowerCase);
-  DISPATCH(Md5);
-  DISPATCH(NormalisePathWin);
-  DISPATCH(NormalisePath);
-  DISPATCH(NormalizePathWin);
-  DISPATCH(NormalizePath);
-  DISPATCH(ParityEven7Bit);
-  DISPATCH(ParityOdd7Bit);
-  DISPATCH(ParityZero7Bit);
-  DISPATCH(RemoveCommentsChar);
-  DISPATCH(RemoveComments);
-  DISPATCH(RemoveNulls);
-  DISPATCH(RemoveWhitespace);
-  DISPATCH(ReplaceComments);
-  DISPATCH(ReplaceNulls);
-  DISPATCH(Sha1);
-  DISPATCH(SqlHexDecode);
-  DISPATCH(TrimLeft);
-  DISPATCH(TrimRight);
-  DISPATCH(Trim);
-  DISPATCH(UpperCase);
-  DISPATCH(UrlDecodeUni);
-  DISPATCH(UrlDecode);
-  DISPATCH(UrlEncode);
-  DISPATCH(Utf8ToUnicode);
-
-#undef DISPATCH
+  // #undef DISPATCH
 }
 } // namespace Bytecode
 } // namespace Wge

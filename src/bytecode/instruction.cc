@@ -9,19 +9,25 @@
 namespace Wge {
 namespace Bytecode {
 std::string Instruction::toString() const {
-  static const std::unordered_map<Register, std::string> registerToString = {
-      {Register::RAX, "RAX"}, {Register::RBX, "RBX"},      {Register::RCX, "RCX"},
-      {Register::RDX, "RDX"}, {Register::RSI, "RSI"},      {Register::RDI, "RDI"},
-      {Register::RBP, "RBP"}, {Register::RSP, "RSP"},      {Register::R8, "R8"},
-      {Register::R9, "R9"},   {Register::R10, "R10"},      {Register::R11, "R11"},
-      {Register::R12, "R12"}, {Register::R13, "R13"},      {Register::R14, "R14"},
-      {Register::R15, "R15"}, {Register::RFLAGS, "RFLAGS"}};
+  static const std::unordered_map<GeneralRegister, std::string> GeneralRegister2String = {
+      {GeneralRegister::RAX, "RAX"}, {GeneralRegister::RBX, "RBX"}, {GeneralRegister::RCX, "RCX"},
+      {GeneralRegister::RDX, "RDX"}, {GeneralRegister::RSI, "RSI"}, {GeneralRegister::RDI, "RDI"},
+      {GeneralRegister::RBP, "RBP"}, {GeneralRegister::RSP, "RSP"}};
+  static const std::unordered_map<ExtendedRegister, std::string> ExtendedRegister2String = {
+      {ExtendedRegister::R8, "R8"},   {ExtendedRegister::R9, "R9"},
+      {ExtendedRegister::R10, "R10"}, {ExtendedRegister::R11, "R11"},
+      {ExtendedRegister::R12, "R12"}, {ExtendedRegister::R13, "R13"},
+      {ExtendedRegister::R14, "R14"}, {ExtendedRegister::R15, "R15"}};
+  static const std::unordered_map<ExtraRegister, std::string> ExtraRegister2String = {
+      {ExtraRegister::R16, "R16"}, {ExtraRegister::R17, "R17"}, {ExtraRegister::R18, "R18"},
+      {ExtraRegister::R19, "R19"}, {ExtraRegister::R20, "R20"}, {ExtraRegister::R21, "R21"},
+      {ExtraRegister::R22, "R22"}, {ExtraRegister::R23, "R23"}};
 
   static const std::unordered_map<OpCode, std::function<std::string(const Instruction&)>>
       to_string_map = {
           {OpCode::MOV,
            [](const Instruction& instruction) {
-             return std::format("MOV {}, {}", registerToString.at(instruction.op1_.reg_),
+             return std::format("MOV {}, {}", GeneralRegister2String.at(instruction.op1_.g_reg_),
                                 instruction.op2_.imm_);
            }},
           {OpCode::JMP,
@@ -43,7 +49,8 @@ std::string Instruction::toString() const {
                  reinterpret_cast<const Variable::VariableBase*>(instruction.op3_.ptr_)
                      ->fullName()
                      .tostring();
-             return std::format("LOAD_VAR {}, {}, {}", registerToString.at(instruction.op1_.reg_),
+             return std::format("LOAD_VAR {}, {}, {}",
+                                ExtraRegister2String.at(instruction.op1_.ex_reg_),
                                 instruction.op2_.index_, var_name);
            }},
       };

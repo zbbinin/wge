@@ -20,29 +20,38 @@
  */
 #pragma once
 
+#include <array>
+
 #include "../common/evaluate_result.h"
 
 namespace Wge {
 namespace Bytecode {
-using RegisterValue = Common::EvaluateResults;
-
 /**
+ * General purpose registers (64-bit equivalents)
  * x86-64 style register enumeration for the virtual machine
  * Using standard register names for better assembly-like syntax
  */
-enum class Register : int64_t {
-  // General purpose registers (64-bit equivalents)
+enum class GeneralRegister : uint64_t {
   RAX = 0, // Accumulator register
-  RBX = 1, // Base register
-  RCX = 2, // Counter register
-  RDX = 3, // Data register
-  RSI = 4, // Source index register
-  RDI = 5, // Destination index register
-  RBP = 6, // Base pointer register
-  RSP = 7, // Stack pointer register
+  RBX,     // Base register
+  RCX,     // Counter register
+  RDX,     // Data register
+  RSI,     // Source index register
+  RDI,     // Destination index register
+  RBP,     // Base pointer register
+  RSP,     // Stack pointer register
 
-  // Extended registers R8-R15
-  R8,
+  MAX_GENERAL_REGISTER
+};
+using GeneralRegisterValue = int64_t;
+
+/**
+ * Extended registers R8-R15 (Common::EvaluateResults::Element equivalents)
+ * x86-64 style register enumeration for the virtual machine
+ * Using standard register names for better assembly-like syntax
+ */
+enum class ExtendedRegister : uint64_t {
+  R8 = 0,
   R9,
   R10,
   R11,
@@ -51,11 +60,50 @@ enum class Register : int64_t {
   R14,
   R15,
 
-  // Flag register
-  RFLAGS, // Flags register
+  MAX_EXTENDED_REGISTER
+};
+using ExtendedRegisterValue = Common::EvaluateResults::Element;
 
-  MAX_REGISTER,
-  UNKNOWN = MAX_REGISTER
-}; // namespace Bytecode
+/**
+ * Extra registers R16-R23 (Common::EvaluateResults equivalents)
+ * x86-64 style register enumeration for the virtual machine
+ * Using standard register names for better assembly-like syntax
+ */
+enum class ExtraRegister : uint64_t {
+  R16 = 0,
+  R17,
+  R18,
+  R19,
+  R20,
+  R21,
+  R22,
+  R23,
+
+  MAX_EXTRA_REGISTER
+};
+using ExtraRegisterValue = Common::EvaluateResults;
+
+template <class EnumType, class ValueType, std::size_t size>
+class RegisterArray : public std::array<ValueType, size> {
+public:
+  ValueType& operator[](EnumType reg) {
+    return std::array<ValueType, size>::operator[](static_cast<size_t>(reg));
+  }
+  const ValueType& operator[](EnumType reg) const {
+    return std::array<ValueType, size>::operator[](static_cast<size_t>(reg));
+  }
+};
+
+using GeneralRegisterArray =
+    RegisterArray<GeneralRegister, GeneralRegisterValue,
+                  static_cast<size_t>(GeneralRegister::MAX_GENERAL_REGISTER)>;
+
+using ExtendedRegisterArray =
+    RegisterArray<ExtendedRegister, ExtendedRegisterValue,
+                  static_cast<size_t>(ExtendedRegister::MAX_EXTENDED_REGISTER)>;
+
+using ExtraRegisterArray = RegisterArray<ExtraRegister, ExtraRegisterValue,
+                                         static_cast<size_t>(ExtraRegister::MAX_EXTRA_REGISTER)>;
+
 } // namespace Bytecode
 } // namespace Wge

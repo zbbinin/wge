@@ -37,7 +37,7 @@ namespace Bytecode {
 class Program;
 class TransformCompiler {
 public:
-  static void compile(Register dst_reg, Register src_reg,
+  static void compile(ExtraRegister dst_reg, ExtraRegister src_reg,
                       const Transformation::TransformBase* transform, Program& program);
 
   // For testing purposes

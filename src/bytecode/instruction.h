@@ -32,7 +32,9 @@ namespace Bytecode {
  */
 struct Instruction {
   union Operand {
-    Register reg_;
+    GeneralRegister g_reg_;
+    ExtendedRegister x_reg_;
+    ExtraRegister ex_reg_;
     int64_t imm_;
     int64_t index_;
     int64_t offset_;
@@ -45,10 +47,10 @@ struct Instruction {
   OpCode op_code_;
 
   // Operands
-  Operand op1_{Register::UNKNOWN};
-  Operand op2_{Register::UNKNOWN};
-  Operand op3_{Register::UNKNOWN};
-  Operand op4_{Register::UNKNOWN};
+  Operand op1_{};
+  Operand op2_{};
+  Operand op3_{};
+  Operand op4_{};
 
   // Convert instruction to human-readable string
   std::string toString() const;

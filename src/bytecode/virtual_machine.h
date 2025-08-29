@@ -20,8 +20,6 @@
  */
 #pragma once
 
-#include <array>
-
 #include "program.h"
 #include "register.h"
 
@@ -49,12 +47,28 @@ public:
   // For testing purposes
 public:
   /**
-   * Get the current state of the registers
-   * @return A const reference to the array of register values
+   * Get the current state of the general registers
+   * @return reference to the array of register values
    */
-  const std::array<RegisterValue, static_cast<size_t>(Register::MAX_REGISTER)>& registers() const {
-    return registers_;
-  }
+  GeneralRegisterArray& generalRegisters() { return general_registers_; }
+
+  /**
+   * Get the current state of the extended registers
+   * @return reference to the array of extended register values
+   */
+  ExtendedRegisterArray& extendedRegisters() { return extended_registers_; }
+
+  /**
+   * Get the current state of the extra registers
+   * @return reference to the array of extra register values
+   */
+  ExtraRegisterArray& extraRegisters() { return extra_registers_; }
+
+  /**
+   * Get the current state of the flags register
+   * @return reference to the flags register value
+   */
+  int64_t& rflags() { return rflags_; }
 
 private:
   inline void execMov(const Instruction& instruction);
@@ -71,7 +85,14 @@ private:
   inline void execTransform(const Instruction& instruction);
 
 private:
-  std::array<RegisterValue, static_cast<size_t>(Register::MAX_REGISTER)> registers_;
+  // Registers
+  GeneralRegisterArray general_registers_{};
+  ExtendedRegisterArray extended_registers_{};
+  ExtraRegisterArray extra_registers_{};
+
+  // Simple flag register for conditions
+  int64_t rflags_ = 0;
+
   Transaction& transaction_;
 };
 } // namespace Bytecode

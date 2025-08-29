@@ -136,8 +136,10 @@ void VariableCompiler::compile(const Variable::VariableBase* variable, Program& 
   auto iter = variable_index_map_.find(variable->mainName().data());
   assert(iter != variable_index_map_.end());
   if (iter != variable_index_map_.end()) {
-    program.emit(
-        {OpCode::LOAD_VAR, {.reg_ = Register::RDI}, {.index_ = iter->second}, {.cptr_ = variable}});
+    program.emit({OpCode::LOAD_VAR,
+                  {.ex_reg_ = ExtraRegister::R16},
+                  {.index_ = iter->second},
+                  {.cptr_ = variable}});
   }
 }
 } // namespace Bytecode

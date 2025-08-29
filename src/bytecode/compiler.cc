@@ -25,19 +25,19 @@ void Compiler::compileRule(const Rule* rule, const Rule* default_action, Program
   for (const auto& var : variables) {
     // Compile variable
     compileVariable(var.get(), program);
-    const Register load_var_result_reg = Register::RDI;
+    const ExtraRegister load_var_result_reg = ExtraRegister::R16;
 
     // Compile transformations
-    Register transform_dst_reg = Register::RAX;
-    Register transform_src_reg = load_var_result_reg;
+    ExtraRegister transform_dst_reg = ExtraRegister::R17;
+    ExtraRegister transform_src_reg = load_var_result_reg;
     if (!rule->isIgnoreDefaultTransform() && default_action) {
       // Get the default transformation
       auto& transforms = default_action->transforms();
       for (auto& transform : transforms) {
         TransformCompiler::compile(transform_dst_reg, transform_src_reg, transform.get(), program);
         if (transform_src_reg == load_var_result_reg) {
-          transform_src_reg = Register::RAX;
-          transform_dst_reg = Register::RBX;
+          transform_src_reg = ExtraRegister::R17;
+          transform_dst_reg = ExtraRegister::R18;
         } else {
           std::swap(transform_dst_reg, transform_src_reg);
         }
@@ -46,9 +46,9 @@ void Compiler::compileRule(const Rule* rule, const Rule* default_action, Program
     auto& transforms = rule->transforms();
     for (auto& transform : transforms) {
       TransformCompiler::compile(transform_dst_reg, transform_src_reg, transform.get(), program);
-      if (transform_src_reg == Register::RDI) {
-        transform_src_reg = Register::RAX;
-        transform_dst_reg = Register::RBX;
+      if (transform_src_reg == load_var_result_reg) {
+        transform_src_reg = ExtraRegister::R17;
+        transform_dst_reg = ExtraRegister::R18;
       } else {
         std::swap(transform_dst_reg, transform_src_reg);
       }

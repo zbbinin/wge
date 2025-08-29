@@ -31,7 +31,7 @@ namespace Bytecode {
 enum class OpCode {
   // Set immediate value to destination register
   // Syntax: MOV <dst_reg>, <imm_value>
-  // @param op1 [reg]: Destination register
+  // @param op1 [g_reg]: Destination register
   // @param op2 [imm]: Immediate value to set
   // Example: MOV RAX, 1
   MOV,
@@ -61,17 +61,18 @@ enum class OpCode {
 
   // Load variable value into register
   // Syntax: LOAD_VAR <dst_reg>, <var_index>, <var_ptr>
-  // @param op1 [reg]: Destination register
+  // @param op1 [ex_reg]: Destination register
   // @param op2 [index]: Variable index in symbol table
   // @param op3 [cptr]: Constant pointer to variable instance
   // Example: LOAD_VAR RDI, 1, 0x123456
   LOAD_VAR,
 
   // Transform variable value. The operation needs the source data specified by RSI register
-  // Syntax: TRANSFORM <res_reg> <dst_reg>, <src_reg>, <transform_index>, <transform_instance_pointer>
-  // @param op1 [reg]: Result register
-  // @param op2 [reg]: Destination register
-  // @param op3 [reg]: Source register
+  // Syntax: TRANSFORM <res_reg> <dst_reg>, <src_reg>, <transform_index>,
+  // <transform_instance_pointer>
+  // @param op1 [g_reg]: Result register
+  // @param op2 [ex_reg]: Destination register
+  // @param op3 [ex_reg]: Source register
   // @param op4 [index]: Transformation index
   // @param op5 [cptr]: Constant pointer to transformation instance
   // Example:
