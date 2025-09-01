@@ -23,6 +23,7 @@
 #include "bytecode/variable_compiler.h"
 #include "bytecode/virtual_machine.h"
 #include "engine.h"
+#include "transformation/transform_include.h"
 
 #include "../mock/variable.h"
 
@@ -164,6 +165,33 @@ TEST_F(VirtualMachineTest, execLoadVar) {
   EXPECT_EQ(std::get<std::string_view>(results.get(2).variant_), "value3");
 }
 
-TEST_F(VirtualMachineTest, execTransform) {}
+TEST_F(VirtualMachineTest, execTransform) {
+  Transformation::LowerCase lower_cast;
+
+  // Create a dummy program with a transform instruction
+  Program program;
+  Instruction instruction = {OpCode::TRANSFORM,
+                             {.ex_reg_ = ExtraRegister::R17},
+                             {.ex_reg_ = ExtraRegister::R16},
+                             {.imm_ = 12},
+                             {.cptr_ = &lower_cast}};
+  program.emit(instruction);
+
+  // Initialize registers
+  auto& src = vm_->extraRegisters()[ExtraRegister::R16];
+  auto& dst = vm_->extraRegisters()[ExtraRegister::R17];
+  src.clear();
+  dst.clear();
+  src.append(std::string("VALUE1"), "sub1");
+  src.append(std::string("VALUE2"), "sub2");
+  src.append(std::string("VALUE3"), "sub3");
+
+  vm_->execute(program);
+
+  EXPECT_EQ(dst.size(), 3);
+  EXPECT_EQ(std::get<std::string_view>(dst.get(0).variant_), "value1");
+  EXPECT_EQ(std::get<std::string_view>(dst.get(1).variant_), "value2");
+  EXPECT_EQ(std::get<std::string_view>(dst.get(2).variant_), "value3");
+}
 } // namespace Bytecode
 } // namespace Wge

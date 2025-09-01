@@ -70,13 +70,12 @@ enum class OpCode {
   // Transform variable value. The operation needs the source data specified by RSI register
   // Syntax: TRANSFORM <res_reg> <dst_reg>, <src_reg>, <transform_index>,
   // <transform_instance_pointer>
-  // @param op1 [g_reg]: Result register
-  // @param op2 [ex_reg]: Destination register
-  // @param op3 [ex_reg]: Source register
-  // @param op4 [index]: Transformation index
-  // @param op5 [cptr]: Constant pointer to transformation instance
+  // @param op1 [ex_reg]: Destination register
+  // @param op2 [ex_reg]: Source register
+  // @param op3 [index]: Transformation index
+  // @param op4 [cptr]: Constant pointer to transformation instance
   // Example:
-  // TRANSFORM RAX, RDI, RSI, 1, 123456
+  // TRANSFORM R17, R16, 1, 123456
   TRANSFORM,
 };
 } // namespace Bytecode

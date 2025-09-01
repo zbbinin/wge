@@ -4,6 +4,7 @@
 #include <functional>
 #include <unordered_map>
 
+#include "../transformation/transform_base.h"
 #include "../variable/variable_base.h"
 
 namespace Wge {
@@ -53,7 +54,15 @@ std::string Instruction::toString() const {
                                 ExtraRegister2String.at(instruction.op1_.ex_reg_),
                                 instruction.op2_.index_, var_name);
            }},
-      };
+          {OpCode::TRANSFORM, [](const Instruction& instruction) {
+             std::string transform_name =
+                 reinterpret_cast<const Transformation::TransformBase*>(instruction.op4_.ptr_)
+                     ->name();
+             return std::format("TRANSFORM {}, {}, {}, {}",
+                                ExtraRegister2String.at(instruction.op1_.ex_reg_),
+                                ExtraRegister2String.at(instruction.op2_.ex_reg_),
+                                instruction.op3_.index_, transform_name);
+           }}};
 
   std::string result;
   auto iter = to_string_map.find(op_code_);

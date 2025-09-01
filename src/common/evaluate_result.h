@@ -122,11 +122,19 @@ public:
   template <class T> void append(T&& value, std::string_view variable_sub_name = "") {
     if (size_ < stack_result_size)
       [[likely]] {
-        stack_results_[size_].variant_ = std::forward<T>(value);
-        stack_results_[size_].variable_sub_name_ = variable_sub_name;
+        if constexpr (std::is_same_v<T, Element>) {
+          stack_results_[size_] = std::move(value);
+        } else {
+          stack_results_[size_].variant_ = std::forward<T>(value);
+          stack_results_[size_].variable_sub_name_ = variable_sub_name;
+        }
       }
     else {
-      heap_results_.emplace_back(std::forward<T>(value), variable_sub_name);
+      if constexpr (std::is_same_v<T, Element>) {
+        heap_results_.emplace_back(std::forward<T>(value));
+      } else {
+        heap_results_.emplace_back(std::forward<T>(value), variable_sub_name);
+      }
     }
     ++size_;
   }
