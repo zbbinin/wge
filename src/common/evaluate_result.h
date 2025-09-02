@@ -122,11 +122,16 @@ public:
   template <class T> void append(T&& value, std::string_view variable_sub_name = "") {
     if (size_ < stack_result_size)
       [[likely]] {
-        if constexpr (std::is_same_v<T, Element>) {
-          stack_results_[size_] = std::move(value);
+        auto& result = stack_results_[size_];
+        if constexpr (std::is_same_v<std::decay_t<T>, Element>) {
+          result = std::move(value);
+        } else if constexpr (std::is_same_v<std::decay_t<T>, std::string>) {
+          result.string_buffer_ = std::forward<T>(value);
+          result.variant_ = result.string_buffer_;
+          result.variable_sub_name_ = variable_sub_name;
         } else {
-          stack_results_[size_].variant_ = std::forward<T>(value);
-          stack_results_[size_].variable_sub_name_ = variable_sub_name;
+          result.variant_ = std::forward<T>(value);
+          result.variable_sub_name_ = variable_sub_name;
         }
       }
     else {
@@ -143,6 +148,9 @@ public:
    * Clear the result.
    */
   void clear() {
+    for (auto& result : stack_results_) {
+      result.clear();
+    }
     heap_results_.clear();
     size_ = 0;
   }
@@ -192,19 +200,5 @@ private:
   std::vector<Element> heap_results_;
   size_t size_{0};
 };
-
-template <>
-inline void EvaluateResults::append(std::string&& value, std::string_view variable_sub_name) {
-  if (size_ < stack_result_size)
-    [[likely]] {
-      auto& result = stack_results_[size_];
-      result.string_buffer_ = std::move(value);
-      result.variant_ = result.string_buffer_;
-    }
-  else {
-    heap_results_.emplace_back(std::move(value), variable_sub_name);
-  }
-  ++size_;
-}
 } // namespace Common
 } // namespace Wge
