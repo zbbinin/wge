@@ -20,48 +20,38 @@
  */
 #pragma once
 
-#include <memory>
 #include <unordered_map>
-#include <vector>
 
-#include "program.h"
+#include <stdint.h>
+
+#include "register.h"
 
 namespace Wge {
-class Rule;
-namespace Variable {
-class VariableBase;
-}
-namespace Transformation {
-class TransformBase;
-}
 namespace Operator {
 class OperatorBase;
-}
-namespace Action {
-class ActionBase;
 }
 } // namespace Wge
 
 namespace Wge {
 namespace Bytecode {
-class Compiler {
+class Program;
+class OperatorCompiler {
+public:
+  static void compile(ExtraRegister res_reg, ExtraRegister src_reg,
+                      const Operator::OperatorBase* op, Program& program);
+
+  // For testing purposes
 public:
   /**
-   * Compile multiple rules into a program
-   * @param rules The rules to compile
-   * @param default_action The default action for the program
-   * @return Compiled bytecode program
+   * Get the transform index map
+   * @return The transform index map
    */
-  std::unique_ptr<Program> compile(const std::vector<const Rule*>& rules,
-                                   const Rule* default_action);
-
-public:
-  static constexpr GeneralRegister curr_rule_reg_{GeneralRegister::RCX};
-  static constexpr GeneralRegister curr_variable_reg_{GeneralRegister::RDX};
+  static const std::unordered_map<const char*, int64_t>& getOperatorIndexMap() {
+    return operator_index_map_;
+  }
 
 private:
-  void compileRule(const Rule* rule, const Rule* default_action, Program& program);
-  void compileAction(const Action::ActionBase* action, Program& program);
+  static const std::unordered_map<const char*, int64_t> operator_index_map_;
 };
 } // namespace Bytecode
 } // namespace Wge

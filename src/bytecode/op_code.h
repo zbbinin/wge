@@ -67,9 +67,8 @@ enum class OpCode {
   // Example: LOAD_VAR RDI, 1, 0x123456
   LOAD_VAR,
 
-  // Transform variable value. The operation needs the source data specified by RSI register
-  // Syntax: TRANSFORM <res_reg> <dst_reg>, <src_reg>, <transform_index>,
-  // <transform_instance_pointer>
+  // Transform variable value.
+  // Syntax: TRANSFORM <dst_reg>, <src_reg>, <transform_index>, <transform_instance_pointer>
   // @param op1 [ex_reg]: Destination register
   // @param op2 [ex_reg]: Source register
   // @param op3 [index]: Transformation index
@@ -77,6 +76,16 @@ enum class OpCode {
   // Example:
   // TRANSFORM R17, R16, 1, 123456
   TRANSFORM,
+
+  // Match variable value with operator.
+  // Syntax: OPERATE <res_reg>  <src_reg>, <operator_index>, <operator_instance_pointer>
+  // @param op1 [ex_reg]: Result register
+  // @param op2 [ex_reg]: Source register
+  // @param op3 [index]: Operator index
+  // @param op4 [cptr]: Constant pointer to operator instance
+  // Example:
+  // OPERATE R19, R16, 1, 123456
+  OPERATE,
 };
 } // namespace Bytecode
 } // namespace Wge

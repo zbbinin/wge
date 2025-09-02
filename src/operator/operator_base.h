@@ -30,7 +30,7 @@
 public:                                                                                            \
   const char* name() const override { return name_; }                                              \
                                                                                                    \
-private:                                                                                           \
+public:                                                                                            \
   static constexpr char name_[] = #n;
 
 #define MACRO_EXPAND_STRING_VIEW(var)                                                              \

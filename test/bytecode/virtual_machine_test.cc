@@ -20,9 +20,12 @@
  */
 #include <gtest/gtest.h>
 
+#include "bytecode/operator_compiler.h"
+#include "bytecode/transform_compiler.h"
 #include "bytecode/variable_compiler.h"
 #include "bytecode/virtual_machine.h"
 #include "engine.h"
+#include "operator/operator_include.h"
 #include "transformation/transform_include.h"
 
 #include "../mock/variable.h"
@@ -39,14 +42,20 @@ public:
 
   void SetUp() override {
     engine_.init();
-    vm_ = std::make_unique<VirtualMachine>(*engine_.makeTransaction());
+    t_ = engine_.makeTransaction();
+    vm_ = std::make_unique<VirtualMachine>(*t_);
   }
 
 public:
   Engine engine_;
   std::unique_ptr<VirtualMachine> vm_;
+  TransactionPtr t_;
   const std::unordered_map<const char*, int64_t>& variable_index_map_{
       VariableCompiler::getVariableIndexMap()};
+  const std::unordered_map<const char*, int64_t>& transform_index_map_{
+      TransformCompiler::getTransformIndexMap()};
+  const std::unordered_map<const char*, int64_t>& operator_index_map_{
+      OperatorCompiler::getOperatorIndexMap()};
   NiceMock<Mock::MockVariable> mock_args_;
 }; // namespace Bytecode
 
@@ -173,7 +182,7 @@ TEST_F(VirtualMachineTest, execTransform) {
   Instruction instruction = {OpCode::TRANSFORM,
                              {.ex_reg_ = ExtraRegister::R17},
                              {.ex_reg_ = ExtraRegister::R16},
-                             {.imm_ = 12},
+                             {.imm_ = transform_index_map_.at(lower_cast.name_)},
                              {.cptr_ = &lower_cast}};
   program.emit(instruction);
 
@@ -192,6 +201,34 @@ TEST_F(VirtualMachineTest, execTransform) {
   EXPECT_EQ(std::get<std::string_view>(dst.get(0).variant_), "value1");
   EXPECT_EQ(std::get<std::string_view>(dst.get(1).variant_), "value2");
   EXPECT_EQ(std::get<std::string_view>(dst.get(2).variant_), "value3");
+}
+
+TEST_F(VirtualMachineTest, execOperate) {
+  Operator::Rx rx(std::string("hello"), false, "");
+
+  // Create a dummy program with a operate instruction
+  Program program;
+  Instruction instruction = {OpCode::OPERATE,
+                             {.ex_reg_ = ExtraRegister::R17},
+                             {.ex_reg_ = ExtraRegister::R16},
+                             {.imm_ = operator_index_map_.at(rx.name_)},
+                             {.cptr_ = &rx}};
+  program.emit(instruction);
+
+  // Initialize registers
+  auto& src = vm_->extraRegisters()[ExtraRegister::R16];
+  auto& res = vm_->extraRegisters()[ExtraRegister::R17];
+  src.clear();
+  res.clear();
+  src.append(std::string("helloworld"), "sub1");
+  src.append(std::string("111helloworld222"), "sub2");
+  src.append(std::string("111world222"), "sub3");
+
+  vm_->execute(program);
+
+  EXPECT_EQ(res.size(), 2);
+  EXPECT_EQ(std::get<std::string_view>(res.get(0).variant_), "hello");
+  EXPECT_EQ(std::get<std::string_view>(res.get(1).variant_), "hello");
 }
 } // namespace Bytecode
 } // namespace Wge

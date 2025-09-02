@@ -83,6 +83,7 @@ private:
                       std::vector<Wge::Bytecode::Instruction>::const_iterator& iter);
   inline void execLoadVar(const Instruction& instruction);
   inline void execTransform(const Instruction& instruction);
+  inline void execOperate(const Instruction& instruction);
 
 private:
   // Registers

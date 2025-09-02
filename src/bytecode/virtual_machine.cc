@@ -20,6 +20,10 @@
  */
 #include "virtual_machine.h"
 
+#include "compiler.h"
+
+#include "../operator/operator_include.h"
+#include "../rule.h"
 #include "../transformation/transform_include.h"
 #include "../variable/variables_include.h"
 
@@ -45,7 +49,8 @@ namespace Wge {
 namespace Bytecode {
 void VirtualMachine::execute(const Program& program) {
   // Dispatch table for bytecode instructions. We use computed gotos for efficiency
-  static const void* dispatch_table[] = {&&MOV, &&JMP, &&JZ, &&JNZ, &&NOP, &&LOAD_VAR, &&TRANSFORM};
+  static constexpr void* dispatch_table[] = {&&MOV, &&JMP,      &&JZ,        &&JNZ,
+                                             &&NOP, &&LOAD_VAR, &&TRANSFORM, &&OPERATE};
 
   // Get instruction iterator
   auto& instructions = program.instructions();
@@ -75,6 +80,9 @@ LOAD_VAR:
   DISPATCH_NEXT();
 TRANSFORM:
   execTransform(*iter);
+  DISPATCH_NEXT();
+OPERATE:
+  execOperate(*iter);
   DISPATCH_NEXT();
 }
 
@@ -125,107 +133,107 @@ void VirtualMachine::execJnz(const Instruction& instruction,
 
 void VirtualMachine::execLoadVar(const Instruction& instruction) {
   // Dispatch table for bytecode instructions. We use computed gotos for efficiency
-  static const void* load_var_dispatch_table[] = {&&ArgsCombinedSize,
-                                                  &&ArgsGetNames,
-                                                  &&ArgsGet,
-                                                  &&ArgsNames,
-                                                  &&ArgsPostNames,
-                                                  &&ArgsPost,
-                                                  &&Args,
-                                                  &&AuthType,
-                                                  &&Duration,
-                                                  &&Env,
-                                                  &&FilesCombinedSize,
-                                                  &&FilesNames,
-                                                  &&FilesSizes,
-                                                  &&FilesTmpContent,
-                                                  &&FilesTmpNames,
-                                                  &&Files,
-                                                  &&FullRequestLength,
-                                                  &&FullRequest,
-                                                  &&Geo,
-                                                  &&Global,
-                                                  &&HighestSeverity,
-                                                  &&InboundDataError,
-                                                  &&Ip,
-                                                  &&MatchedVarName,
-                                                  &&MatchedVar,
-                                                  &&MatchedVarsNames,
-                                                  &&MatchedVars,
-                                                  &&ModSecBuild,
-                                                  &&MscPcreLimitsExceeded,
-                                                  &&MultipartBoundaryQuoted,
-                                                  &&MultipartBoundaryWhitespace,
-                                                  &&MultipartCrlfLfLines,
-                                                  &&MultipartDataAfter,
-                                                  &&MultipartDataBefore,
-                                                  &&MultipartFileLimitExceeded,
-                                                  &&MultipartFileName,
-                                                  &&MultipartHeaderFolding,
-                                                  &&MultipartInvalidHeaderFolding,
-                                                  &&MultipartInvalidPart,
-                                                  &&MultipartInvalidQuoting,
-                                                  &&MultipartLfLine,
-                                                  &&MultipartMissingSemicolon,
-                                                  &&MultipartName,
-                                                  &&MultipartPartHeaders,
-                                                  &&MultipartStrictError,
-                                                  &&MultipartUnmatchedBoundary,
-                                                  &&OutboundDataError,
-                                                  &&PathInfo,
-                                                  &&QueryString,
-                                                  &&RemoteAddr,
-                                                  &&RemoteHost,
-                                                  &&RemotePort,
-                                                  &&RemoteUser,
-                                                  &&ReqBodyErrorMsg,
-                                                  &&ReqBodyError,
-                                                  &&ReqbodyProcessorError,
-                                                  &&ReqBodyProcessor,
-                                                  &&RequestBaseName,
-                                                  &&RequestBodyLength,
-                                                  &&RequestBody,
-                                                  &&RequestCookiesNames,
-                                                  &&RequestCookies,
-                                                  &&RequestFileName,
-                                                  &&RequestHeadersNames,
-                                                  &&RequestHeaders,
-                                                  &&RequestLine,
-                                                  &&RequestMothod,
-                                                  &&RequestProtocol,
-                                                  &&RequestUriRaw,
-                                                  &&RequestUri,
-                                                  &&Resource,
-                                                  &&ResponseBody,
-                                                  &&ResponseContentLength,
-                                                  &&ResponseContentType,
-                                                  &&ResponseHeadersNames,
-                                                  &&ResponseHeaders,
-                                                  &&ResponseProtocol,
-                                                  &&ResponseStatus,
-                                                  &&Rule,
-                                                  &&ServerAddr,
-                                                  &&ServerName,
-                                                  &&ServerPort,
-                                                  &&Session,
-                                                  &&SessionId,
-                                                  &&StatusLine,
-                                                  &&TimeDay,
-                                                  &&TimeEpoch,
-                                                  &&TimeHour,
-                                                  &&TimeMin,
-                                                  &&TimeMon,
-                                                  &&TimeSec,
-                                                  &&TimeWDay,
-                                                  &&TimeYear,
-                                                  &&Time,
-                                                  &&Tx,
-                                                  &&UniqueId,
-                                                  &&UrlenCodedError,
-                                                  &&User,
-                                                  &&UserId,
-                                                  &&WebAppId,
-                                                  &&Xml};
+  static constexpr void* load_var_dispatch_table[] = {&&ArgsCombinedSize,
+                                                      &&ArgsGetNames,
+                                                      &&ArgsGet,
+                                                      &&ArgsNames,
+                                                      &&ArgsPostNames,
+                                                      &&ArgsPost,
+                                                      &&Args,
+                                                      &&AuthType,
+                                                      &&Duration,
+                                                      &&Env,
+                                                      &&FilesCombinedSize,
+                                                      &&FilesNames,
+                                                      &&FilesSizes,
+                                                      &&FilesTmpContent,
+                                                      &&FilesTmpNames,
+                                                      &&Files,
+                                                      &&FullRequestLength,
+                                                      &&FullRequest,
+                                                      &&Geo,
+                                                      &&Global,
+                                                      &&HighestSeverity,
+                                                      &&InboundDataError,
+                                                      &&Ip,
+                                                      &&MatchedVarName,
+                                                      &&MatchedVar,
+                                                      &&MatchedVarsNames,
+                                                      &&MatchedVars,
+                                                      &&ModSecBuild,
+                                                      &&MscPcreLimitsExceeded,
+                                                      &&MultipartBoundaryQuoted,
+                                                      &&MultipartBoundaryWhitespace,
+                                                      &&MultipartCrlfLfLines,
+                                                      &&MultipartDataAfter,
+                                                      &&MultipartDataBefore,
+                                                      &&MultipartFileLimitExceeded,
+                                                      &&MultipartFileName,
+                                                      &&MultipartHeaderFolding,
+                                                      &&MultipartInvalidHeaderFolding,
+                                                      &&MultipartInvalidPart,
+                                                      &&MultipartInvalidQuoting,
+                                                      &&MultipartLfLine,
+                                                      &&MultipartMissingSemicolon,
+                                                      &&MultipartName,
+                                                      &&MultipartPartHeaders,
+                                                      &&MultipartStrictError,
+                                                      &&MultipartUnmatchedBoundary,
+                                                      &&OutboundDataError,
+                                                      &&PathInfo,
+                                                      &&QueryString,
+                                                      &&RemoteAddr,
+                                                      &&RemoteHost,
+                                                      &&RemotePort,
+                                                      &&RemoteUser,
+                                                      &&ReqBodyErrorMsg,
+                                                      &&ReqBodyError,
+                                                      &&ReqbodyProcessorError,
+                                                      &&ReqBodyProcessor,
+                                                      &&RequestBaseName,
+                                                      &&RequestBodyLength,
+                                                      &&RequestBody,
+                                                      &&RequestCookiesNames,
+                                                      &&RequestCookies,
+                                                      &&RequestFileName,
+                                                      &&RequestHeadersNames,
+                                                      &&RequestHeaders,
+                                                      &&RequestLine,
+                                                      &&RequestMothod,
+                                                      &&RequestProtocol,
+                                                      &&RequestUriRaw,
+                                                      &&RequestUri,
+                                                      &&Resource,
+                                                      &&ResponseBody,
+                                                      &&ResponseContentLength,
+                                                      &&ResponseContentType,
+                                                      &&ResponseHeadersNames,
+                                                      &&ResponseHeaders,
+                                                      &&ResponseProtocol,
+                                                      &&ResponseStatus,
+                                                      &&Rule,
+                                                      &&ServerAddr,
+                                                      &&ServerName,
+                                                      &&ServerPort,
+                                                      &&Session,
+                                                      &&SessionId,
+                                                      &&StatusLine,
+                                                      &&TimeDay,
+                                                      &&TimeEpoch,
+                                                      &&TimeHour,
+                                                      &&TimeMin,
+                                                      &&TimeMon,
+                                                      &&TimeSec,
+                                                      &&TimeWDay,
+                                                      &&TimeYear,
+                                                      &&Time,
+                                                      &&Tx,
+                                                      &&UniqueId,
+                                                      &&UrlenCodedError,
+                                                      &&User,
+                                                      &&UserId,
+                                                      &&WebAppId,
+                                                      &&Xml};
   goto* load_var_dispatch_table[instruction.op2_.index_];
 
 #define DISPATCH(variable)                                                                         \
@@ -343,25 +351,25 @@ void VirtualMachine::execLoadVar(const Instruction& instruction) {
 
 void VirtualMachine::execTransform(const Instruction& instruction) {
   // Dispatch table for bytecode instructions. We use computed gotos for efficiency
-  static const void* transform_dispatch_table[] = {&&Base64DecodeExt,    &&Base64Decode,
-                                                   &&Base64Encode,       &&CmdLine,
-                                                   &&CompressWhiteSpace, &&CssDecode,
-                                                   &&EscapeSeqDecode,    &&HexDecode,
-                                                   &&HexEncode,          &&HtmlEntityDecode,
-                                                   &&JsDecode,           &&Length,
-                                                   &&LowerCase,          &&Md5,
-                                                   &&NormalisePathWin,   &&NormalisePath,
-                                                   &&NormalizePathWin,   &&NormalizePath,
-                                                   &&ParityEven7Bit,     &&ParityOdd7Bit,
-                                                   &&ParityZero7Bit,     &&RemoveCommentsChar,
-                                                   &&RemoveComments,     &&RemoveNulls,
-                                                   &&RemoveWhitespace,   &&ReplaceComments,
-                                                   &&ReplaceNulls,       &&Sha1,
-                                                   &&SqlHexDecode,       &&TrimLeft,
-                                                   &&TrimRight,          &&Trim,
-                                                   &&UpperCase,          &&UrlDecodeUni,
-                                                   &&UrlDecode,          &&UrlEncode,
-                                                   &&Utf8ToUnicode};
+  static constexpr void* transform_dispatch_table[] = {&&Base64DecodeExt,    &&Base64Decode,
+                                                       &&Base64Encode,       &&CmdLine,
+                                                       &&CompressWhiteSpace, &&CssDecode,
+                                                       &&EscapeSeqDecode,    &&HexDecode,
+                                                       &&HexEncode,          &&HtmlEntityDecode,
+                                                       &&JsDecode,           &&Length,
+                                                       &&LowerCase,          &&Md5,
+                                                       &&NormalisePathWin,   &&NormalisePath,
+                                                       &&NormalizePathWin,   &&NormalizePath,
+                                                       &&ParityEven7Bit,     &&ParityOdd7Bit,
+                                                       &&ParityZero7Bit,     &&RemoveCommentsChar,
+                                                       &&RemoveComments,     &&RemoveNulls,
+                                                       &&RemoveWhitespace,   &&ReplaceComments,
+                                                       &&ReplaceNulls,       &&Sha1,
+                                                       &&SqlHexDecode,       &&TrimLeft,
+                                                       &&TrimRight,          &&Trim,
+                                                       &&UpperCase,          &&UrlDecodeUni,
+                                                       &&UrlDecode,          &&UrlEncode,
+                                                       &&Utf8ToUnicode};
   goto* transform_dispatch_table[instruction.op3_.index_];
 
 #define DISPATCH(transform)                                                                        \
@@ -453,6 +461,142 @@ void VirtualMachine::execTransform(const Instruction& instruction) {
 
 #undef DISPATCH
 }
+
+template <class OperatorType>
+void dispatchOperator(const OperatorType* op, Transaction& t, const Rule* rule,
+                      const std::unique_ptr<Wge::Variable::VariableBase>* var,
+                      const Common::EvaluateResults& input, Common::EvaluateResults& output) {
+  size_t input_size = input.size();
+  for (size_t i = 0; i < input_size; ++i) {
+    auto& var_value = input.get(i).variant_;
+    bool matched = op->OperatorType::evaluate(t, var_value);
+    matched = op->OperatorType::isNot() ^ matched;
+
+    // Call additional conditions if they are defined
+    if (matched && t.getAdditionalCond()) {
+      if (IS_STRING_VIEW_VARIANT(var_value)) {
+        if (rule && var) {
+          matched = t.getAdditionalCond()(*rule, std::get<std::string_view>(var_value), *var);
+          WGE_LOG_TRACE("call additional condition: {}", matched);
+        }
+      }
+    }
+
+    if (matched) {
+      auto merged_count = t.mergeCapture();
+      if (merged_count) {
+        std::string_view tx_0 = std::get<std::string_view>(t.getCapture(0));
+
+        // Copy the first captured value to the capture_value. The copy is necessary because
+        // the captured value may be modified later.
+        output.append(std::string(tx_0.data(), tx_0.size()));
+      } else {
+        output.append(std::string());
+      }
+    } else {
+      t.clearTempCapture();
+    }
+
+    WGE_LOG_TRACE("evaluate operator: {} {}@{} {} = {}", VISTIT_VARIANT_AS_STRING(var_value),
+                  op->OperatorType::isNot() ? "!" : "", op->OperatorType::name(),
+                  op->OperatorType::macro() ? op->OperatorType::macro()->literalValue()
+                                            : op->OperatorType::literalValue(),
+                  matched);
+  }
+}
+
+void VirtualMachine::execOperate(const Instruction& instruction) {
+  // Dispatch table for bytecode instructions. We use computed gotos for efficiency
+  static constexpr void* operate_dispatch_table[] = {&&BeginsWith,
+                                                     &&ContainsWord,
+                                                     &&Contains,
+                                                     &&DetectSqli,
+                                                     &&DetectXSS,
+                                                     &&EndsWith,
+                                                     &&Eq,
+                                                     &&FuzzyHash,
+                                                     &&Ge,
+                                                     &&GeoLookup,
+                                                     &&Gt,
+                                                     &&InspectFile,
+                                                     &&IpMatchFromFile,
+                                                     &&IpMatch,
+                                                     &&Le,
+                                                     &&Lt,
+                                                     &&NoMatch,
+                                                     &&PmFromFile,
+                                                     &&Pm,
+                                                     &&Rbl,
+                                                     &&Rsub,
+                                                     &&RxGlobal,
+                                                     &&Rx,
+                                                     &&Streq,
+                                                     &&Strmatch,
+                                                     &&UnconditionalMatch,
+                                                     &&ValidateByteRange,
+                                                     &&ValidateDTD,
+                                                     &&ValidateSchema,
+                                                     &&ValidateUrlEncoding,
+                                                     &&ValidateUtf8Encoding,
+                                                     &&VerifyCC,
+                                                     &&VerifyCPF,
+                                                     &&VerifySSN,
+                                                     &&Within};
+
+  const Rule* curr_rule =
+      reinterpret_cast<const Rule*>(general_registers_[Compiler::curr_rule_reg_]);
+  const std::unique_ptr<Variable::VariableBase>* curr_var =
+      reinterpret_cast<const std::unique_ptr<Variable::VariableBase>*>(
+          general_registers_[Compiler::curr_variable_reg_]);
+  const auto& input = extra_registers_[instruction.op2_.ex_reg_];
+  auto& output = extra_registers_[instruction.op1_.ex_reg_];
+
+  goto* operate_dispatch_table[instruction.op3_.index_];
+
+#define DISPATCH(operator)                                                                         \
+  operator                                                                                         \
+      : dispatchOperator(reinterpret_cast < const Operator::operator*>(instruction.op4_.cptr_),    \
+                         transaction_, curr_rule, curr_var, input, output);                        \
+  return;
+
+  DISPATCH(BeginsWith);
+  DISPATCH(ContainsWord);
+  DISPATCH(Contains);
+  DISPATCH(DetectSqli);
+  DISPATCH(DetectXSS);
+  DISPATCH(EndsWith);
+  DISPATCH(Eq);
+  DISPATCH(FuzzyHash);
+  DISPATCH(Ge);
+  DISPATCH(GeoLookup);
+  DISPATCH(Gt);
+  DISPATCH(InspectFile);
+  DISPATCH(IpMatchFromFile);
+  DISPATCH(IpMatch);
+  DISPATCH(Le);
+  DISPATCH(Lt);
+  DISPATCH(NoMatch);
+  DISPATCH(PmFromFile);
+  DISPATCH(Pm);
+  DISPATCH(Rbl);
+  DISPATCH(Rsub);
+  DISPATCH(RxGlobal);
+  DISPATCH(Rx);
+  DISPATCH(Streq);
+  DISPATCH(Strmatch);
+  DISPATCH(UnconditionalMatch);
+  DISPATCH(ValidateByteRange);
+  DISPATCH(ValidateDTD);
+  DISPATCH(ValidateSchema);
+  DISPATCH(ValidateUrlEncoding);
+  DISPATCH(ValidateUtf8Encoding);
+  DISPATCH(VerifyCC);
+  DISPATCH(VerifyCPF);
+  DISPATCH(VerifySSN);
+  DISPATCH(Within);
+
+#undef DISPATCH
+} // namespace Bytecode
 
 } // namespace Bytecode
 } // namespace Wge

@@ -144,16 +144,20 @@ TEST(CompilerTest, compileVariable) {
   auto& instructions = program->instructions();
 
   constexpr size_t variable_count = 101;
-  EXPECT_EQ(instructions.size(), variable_count);
+  EXPECT_EQ(instructions.size(), variable_count * 2 + 1);
 
   auto& variable_index_map = Wge::Bytecode::VariableCompiler::getVariableIndexMap();
+  size_t load_var_count = 0;
   for (auto& instruction : instructions) {
-    EXPECT_EQ(instruction.op_code_, Bytecode::OpCode::LOAD_VAR);
-    EXPECT_EQ(instruction.op1_.ex_reg_, Bytecode::ExtraRegister::R16);
-    const Variable::VariableBase* var =
-        reinterpret_cast<const Variable::VariableBase*>(instruction.op3_.cptr_);
-    EXPECT_EQ(instruction.op2_.index_, variable_index_map.at(var->mainName().data()));
+    if (instruction.op_code_ == Bytecode::OpCode::LOAD_VAR) {
+      ++load_var_count;
+      EXPECT_EQ(instruction.op1_.ex_reg_, Bytecode::ExtraRegister::R16);
+      const Variable::VariableBase* var =
+          reinterpret_cast<const Variable::VariableBase*>(instruction.op3_.cptr_);
+      EXPECT_EQ(instruction.op2_.index_, variable_index_map.at(var->mainName().data()));
+    }
   }
+  EXPECT_EQ(load_var_count, variable_count);
 }
 } // namespace Bytecode
 } // namespace Wge

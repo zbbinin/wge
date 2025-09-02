@@ -1,5 +1,6 @@
 #include "compiler.h"
 
+#include "operator_compiler.h"
 #include "transform_compiler.h"
 #include "variable_compiler.h"
 
@@ -21,10 +22,16 @@ std::unique_ptr<Program> Compiler::compile(const std::vector<const Rule*>& rules
 }
 
 void Compiler::compileRule(const Rule* rule, const Rule* default_action, Program& program) {
+  // Set current rule
+  program.emit({OpCode::MOV, {.g_reg_ = curr_rule_reg_}, {.cptr_ = rule}});
+
   auto& variables = rule->variables();
   for (const auto& var : variables) {
+    // Set current variable
+    program.emit({OpCode::MOV, {.g_reg_ = curr_variable_reg_}, {.cptr_ = &var}});
+
     // Compile variable
-    compileVariable(var.get(), program);
+    VariableCompiler::compile(var.get(), program);
     const ExtraRegister load_var_result_reg = ExtraRegister::R16;
 
     // Compile transformations
@@ -56,7 +63,11 @@ void Compiler::compileRule(const Rule* rule, const Rule* default_action, Program
 
     // Compile operator
     auto& op = rule->getOperator();
-    compileOperator(op.get(), program);
+    if (op) {
+      const ExtraRegister op_res_reg = ExtraRegister::R19;
+      const ExtraRegister op_src_reg = transform_dst_reg;
+      OperatorCompiler::compile(op_res_reg, op_src_reg, op.get(), program);
+    }
   }
 
   // Compile each action in the rule
@@ -65,14 +76,6 @@ void Compiler::compileRule(const Rule* rule, const Rule* default_action, Program
     compileAction(action.get(), program);
   }
 }
-
-void Compiler::compileVariable(const Variable::VariableBase* variable, Program& program) {
-  VariableCompiler::compile(variable, program);
-}
-
-void Compiler::compileTransform(const Transformation::TransformBase* transform, Program& program) {}
-
-void Compiler::compileOperator(const Operator::OperatorBase* op, Program& program) {}
 
 void Compiler::compileAction(const Action::ActionBase* action, Program& program) {}
 } // namespace Bytecode
