@@ -27,6 +27,9 @@
 #include "../transformation/transform_include.h"
 #include "../variable/variables_include.h"
 
+// Dispatch instruction with index
+#define DISPATCH(index) goto* index
+
 // Dispatch the next instruction
 #define DISPATCH_NEXT()                                                                            \
   do {                                                                                             \
@@ -129,6 +132,30 @@ void VirtualMachine::execJnz(const Instruction& instruction,
   } else {
     ++iter;
   }
+}
+
+template <class VariableType>
+void dispatchVariable(const VariableType* variable, Transaction& t,
+                      Common::EvaluateResults& output) {
+  variable->VariableType::evaluate(t, output);
+  WGE_LOG_TRACE([&]() {
+    if (!variable->VariableType::isCollection()) {
+      return std::format(
+          "evaluate variable: {}{}{}{} = {}", variable->VariableType::isNot() ? "!" : "",
+          variable->VariableType::isCounter() ? "&" : "", variable->VariableType::mainName(),
+          variable->VariableType::subName().empty() ? "" : ":" + variable->VariableType::subName(),
+          VISTIT_VARIANT_AS_STRING(output.front().variant_));
+    } else {
+      if (variable->VariableType::isCounter()) {
+        return std::format(
+            "evaluate collection: {}&{} = {}", variable->VariableType::isNot() ? "!" : "",
+            variable->VariableType::mainName(), VISTIT_VARIANT_AS_STRING(output.front().variant_));
+      } else {
+        return std::format("evaluate collection: {}{}", variable->VariableType::isNot() ? "!" : "",
+                           variable->VariableType::mainName());
+      }
+    }
+  }());
 }
 
 void VirtualMachine::execLoadVar(const Instruction& instruction) {
@@ -234,119 +261,173 @@ void VirtualMachine::execLoadVar(const Instruction& instruction) {
                                                       &&UserId,
                                                       &&WebAppId,
                                                       &&Xml};
-  goto* load_var_dispatch_table[instruction.op2_.index_];
-
-#define DISPATCH(variable)                                                                         \
+#define CASE(variable)                                                                             \
   variable:                                                                                        \
-  const Variable::variable* v_##variable =                                                         \
-      reinterpret_cast<const Variable::variable*>(instruction.op3_.cptr_);                         \
-  extra_registers_[instruction.op1_.ex_reg_].clear();                                              \
-  v_##variable->evaluate(transaction_, extra_registers_[instruction.op1_.ex_reg_]);                \
+  dispatchVariable(reinterpret_cast<const Variable::variable*>(instruction.op3_.cptr_),            \
+                   transaction_, output);                                                          \
   return;
 
-  DISPATCH(ArgsCombinedSize);
-  DISPATCH(ArgsGetNames);
-  DISPATCH(ArgsGet);
-  DISPATCH(ArgsNames);
-  DISPATCH(ArgsPostNames);
-  DISPATCH(ArgsPost);
-  DISPATCH(Args);
-  DISPATCH(AuthType);
-  DISPATCH(Duration);
-  DISPATCH(Env);
-  DISPATCH(FilesCombinedSize);
-  DISPATCH(FilesNames);
-  DISPATCH(FilesSizes);
-  DISPATCH(FilesTmpContent);
-  DISPATCH(FilesTmpNames);
-  DISPATCH(Files);
-  DISPATCH(FullRequestLength);
-  DISPATCH(FullRequest);
-  DISPATCH(Geo);
-  DISPATCH(Global);
-  DISPATCH(HighestSeverity);
-  DISPATCH(InboundDataError);
-  DISPATCH(Ip);
-  DISPATCH(MatchedVarName);
-  DISPATCH(MatchedVar);
-  DISPATCH(MatchedVarsNames);
-  DISPATCH(MatchedVars);
-  DISPATCH(ModSecBuild);
-  DISPATCH(MscPcreLimitsExceeded);
-  DISPATCH(MultipartBoundaryQuoted);
-  DISPATCH(MultipartBoundaryWhitespace);
-  DISPATCH(MultipartCrlfLfLines);
-  DISPATCH(MultipartDataAfter);
-  DISPATCH(MultipartDataBefore);
-  DISPATCH(MultipartFileLimitExceeded);
-  DISPATCH(MultipartFileName);
-  DISPATCH(MultipartHeaderFolding);
-  DISPATCH(MultipartInvalidHeaderFolding);
-  DISPATCH(MultipartInvalidPart);
-  DISPATCH(MultipartInvalidQuoting);
-  DISPATCH(MultipartLfLine);
-  DISPATCH(MultipartMissingSemicolon);
-  DISPATCH(MultipartName);
-  DISPATCH(MultipartPartHeaders);
-  DISPATCH(MultipartStrictError);
-  DISPATCH(MultipartUnmatchedBoundary);
-  DISPATCH(OutboundDataError);
-  DISPATCH(PathInfo);
-  DISPATCH(QueryString);
-  DISPATCH(RemoteAddr);
-  DISPATCH(RemoteHost);
-  DISPATCH(RemotePort);
-  DISPATCH(RemoteUser);
-  DISPATCH(ReqBodyErrorMsg);
-  DISPATCH(ReqBodyError);
-  DISPATCH(ReqbodyProcessorError);
-  DISPATCH(ReqBodyProcessor);
-  DISPATCH(RequestBaseName);
-  DISPATCH(RequestBodyLength);
-  DISPATCH(RequestBody);
-  DISPATCH(RequestCookiesNames);
-  DISPATCH(RequestCookies);
-  DISPATCH(RequestFileName);
-  DISPATCH(RequestHeadersNames);
-  DISPATCH(RequestHeaders);
-  DISPATCH(RequestLine);
-  DISPATCH(RequestMothod);
-  DISPATCH(RequestProtocol);
-  DISPATCH(RequestUriRaw);
-  DISPATCH(RequestUri);
-  DISPATCH(Resource);
-  DISPATCH(ResponseBody);
-  DISPATCH(ResponseContentLength);
-  DISPATCH(ResponseContentType);
-  DISPATCH(ResponseHeadersNames);
-  DISPATCH(ResponseHeaders);
-  DISPATCH(ResponseProtocol);
-  DISPATCH(ResponseStatus);
-  DISPATCH(Rule);
-  DISPATCH(ServerAddr);
-  DISPATCH(ServerName);
-  DISPATCH(ServerPort);
-  DISPATCH(Session);
-  DISPATCH(SessionId);
-  DISPATCH(StatusLine);
-  DISPATCH(TimeDay);
-  DISPATCH(TimeEpoch);
-  DISPATCH(TimeHour);
-  DISPATCH(TimeMin);
-  DISPATCH(TimeMon);
-  DISPATCH(TimeSec);
-  DISPATCH(TimeWDay);
-  DISPATCH(TimeYear);
-  DISPATCH(Time);
-  DISPATCH(Tx);
-  DISPATCH(UniqueId);
-  DISPATCH(UrlenCodedError);
-  DISPATCH(User);
-  DISPATCH(UserId);
-  DISPATCH(WebAppId);
-  DISPATCH(Xml);
+  auto& output = extra_registers_[instruction.op1_.ex_reg_];
 
-#undef DISPATCH
+  DISPATCH(load_var_dispatch_table[instruction.op2_.index_]);
+  CASE(ArgsCombinedSize);
+  CASE(ArgsGetNames);
+  CASE(ArgsGet);
+  CASE(ArgsNames);
+  CASE(ArgsPostNames);
+  CASE(ArgsPost);
+  CASE(Args);
+  CASE(AuthType);
+  CASE(Duration);
+  CASE(Env);
+  CASE(FilesCombinedSize);
+  CASE(FilesNames);
+  CASE(FilesSizes);
+  CASE(FilesTmpContent);
+  CASE(FilesTmpNames);
+  CASE(Files);
+  CASE(FullRequestLength);
+  CASE(FullRequest);
+  CASE(Geo);
+  CASE(Global);
+  CASE(HighestSeverity);
+  CASE(InboundDataError);
+  CASE(Ip);
+  CASE(MatchedVarName);
+  CASE(MatchedVar);
+  CASE(MatchedVarsNames);
+  CASE(MatchedVars);
+  CASE(ModSecBuild);
+  CASE(MscPcreLimitsExceeded);
+  CASE(MultipartBoundaryQuoted);
+  CASE(MultipartBoundaryWhitespace);
+  CASE(MultipartCrlfLfLines);
+  CASE(MultipartDataAfter);
+  CASE(MultipartDataBefore);
+  CASE(MultipartFileLimitExceeded);
+  CASE(MultipartFileName);
+  CASE(MultipartHeaderFolding);
+  CASE(MultipartInvalidHeaderFolding);
+  CASE(MultipartInvalidPart);
+  CASE(MultipartInvalidQuoting);
+  CASE(MultipartLfLine);
+  CASE(MultipartMissingSemicolon);
+  CASE(MultipartName);
+  CASE(MultipartPartHeaders);
+  CASE(MultipartStrictError);
+  CASE(MultipartUnmatchedBoundary);
+  CASE(OutboundDataError);
+  CASE(PathInfo);
+  CASE(QueryString);
+  CASE(RemoteAddr);
+  CASE(RemoteHost);
+  CASE(RemotePort);
+  CASE(RemoteUser);
+  CASE(ReqBodyErrorMsg);
+  CASE(ReqBodyError);
+  CASE(ReqbodyProcessorError);
+  CASE(ReqBodyProcessor);
+  CASE(RequestBaseName);
+  CASE(RequestBodyLength);
+  CASE(RequestBody);
+  CASE(RequestCookiesNames);
+  CASE(RequestCookies);
+  CASE(RequestFileName);
+  CASE(RequestHeadersNames);
+  CASE(RequestHeaders);
+  CASE(RequestLine);
+  CASE(RequestMothod);
+  CASE(RequestProtocol);
+  CASE(RequestUriRaw);
+  CASE(RequestUri);
+  CASE(Resource);
+  CASE(ResponseBody);
+  CASE(ResponseContentLength);
+  CASE(ResponseContentType);
+  CASE(ResponseHeadersNames);
+  CASE(ResponseHeaders);
+  CASE(ResponseProtocol);
+  CASE(ResponseStatus);
+  CASE(Rule);
+  CASE(ServerAddr);
+  CASE(ServerName);
+  CASE(ServerPort);
+  CASE(Session);
+  CASE(SessionId);
+  CASE(StatusLine);
+  CASE(TimeDay);
+  CASE(TimeEpoch);
+  CASE(TimeHour);
+  CASE(TimeMin);
+  CASE(TimeMon);
+  CASE(TimeSec);
+  CASE(TimeWDay);
+  CASE(TimeYear);
+  CASE(Time);
+  CASE(Tx);
+  CASE(UniqueId);
+  CASE(UrlenCodedError);
+  CASE(User);
+  CASE(UserId);
+  CASE(WebAppId);
+  CASE(Xml);
+#undef CASE
+}
+
+template <class TransformType>
+void dispatchTransform(const TransformType* transform, Transaction& t,
+                       const std::unique_ptr<Wge::Variable::VariableBase>* curr_var,
+                       const Common::EvaluateResults& input, Common::EvaluateResults& output) {
+  size_t input_size = input.size();
+  for (size_t i = 0; i < input_size; ++i) {
+    const Common::EvaluateResults::Element& input_element = input.get(i);
+    if (!IS_STRING_VIEW_VARIANT(input_element.variant_)) {
+      continue;
+    }
+
+    /* Check the cache */
+    std::string_view input_data_view = std::get<std::string_view>(input_element.variant_);
+    Common::EvaluateResults::Element output_element;
+    std::optional<bool> cache_result = transform->TransformType::getCache(
+        t, input_element, transform->TransformType::name(), output_element);
+    if (cache_result.has_value()) {
+      WGE_LOG_TRACE(
+          "transform cache hit: {} {}",
+          [&]() {
+            if (curr_var) {
+              if (input_element.variable_sub_name_.empty()) {
+                return std::string((*curr_var)->fullName().main_name_);
+              } else {
+                return std::format("{}:{}", (*curr_var)->fullName().main_name_,
+                                   input_element.variable_sub_name_);
+              }
+            } else {
+              return std::string();
+            }
+          }(),
+          transform->TransformType::name());
+      if (!*cache_result) {
+        output_element.variant_ = input_data_view;
+        output_element.variable_sub_name_ = input_element.variable_sub_name_;
+      }
+      output.append(std::move(output_element));
+      continue;
+    }
+
+    /* Evaluate the transformation and store the result in the cache */
+    std::string output_buffer;
+    bool ret = transform->TransformType::evaluate(input_data_view, output_buffer);
+    if (ret) {
+      auto& result = transform->TransformType::setCache(
+          t, input_data_view, transform->TransformType::name(), std::move(output_buffer));
+      output_element.variant_ = result.variant_;
+    } else {
+      transform->TransformType::setEmptyCache(t, input_data_view, transform->TransformType::name());
+      output_element.variant_ = input_data_view;
+    }
+    output_element.variable_sub_name_ = input_element.variable_sub_name_;
+    output.append(std::move(output_element));
+  }
 }
 
 void VirtualMachine::execTransform(const Instruction& instruction) {
@@ -370,101 +451,63 @@ void VirtualMachine::execTransform(const Instruction& instruction) {
                                                        &&UpperCase,          &&UrlDecodeUni,
                                                        &&UrlDecode,          &&UrlEncode,
                                                        &&Utf8ToUnicode};
-  goto* transform_dispatch_table[instruction.op3_.index_];
+#define CASE(transform)                                                                            \
+  transform:                                                                                       \
+  dispatchTransform(reinterpret_cast<const Transformation::transform*>(instruction.op4_.cptr_),    \
+                    transaction_, curr_var, input, output);                                        \
+  return;
 
-#define DISPATCH(transform)                                                                        \
-  transform : {                                                                                    \
-    const Transformation::transform* v_##transform =                                               \
-        reinterpret_cast<const Transformation::transform*>(instruction.op4_.cptr_);                \
-                                                                                                   \
-    auto& input = extra_registers_[instruction.op2_.ex_reg_];                                      \
-    auto& output = extra_registers_[instruction.op1_.ex_reg_];                                     \
-    size_t input_size = input.size();                                                              \
-    for (size_t i = 0; i < input_size; ++i) {                                                      \
-      const Common::EvaluateResults::Element& input_element = input.get(i);                        \
-      if (!IS_STRING_VIEW_VARIANT(input_element.variant_)) {                                       \
-        continue;                                                                                  \
-      }                                                                                            \
-                                                                                                   \
-      /* Check the cache */                                                                        \
-      std::string_view input_data_view = std::get<std::string_view>(input_element.variant_);       \
-      Common::EvaluateResults::Element output_element;                                             \
-      std::optional<bool> cache_result = v_##transform->getCache(                                  \
-          transaction_, input_element, v_##transform->Transformation::transform::name(),           \
-          output_element);                                                                         \
-      if (cache_result.has_value()) {                                                              \
-        if (!*cache_result) {                                                                      \
-          output_element.variant_ = input_data_view;                                               \
-          output_element.variable_sub_name_ = input_element.variable_sub_name_;                    \
-        }                                                                                          \
-        output.append(std::move(output_element));                                                  \
-        continue;                                                                                  \
-      }                                                                                            \
-                                                                                                   \
-      /* Evaluate the transformation and store the result in the cache */                          \
-      std::string output_buffer;                                                                   \
-      bool ret =                                                                                   \
-          v_##transform->Transformation::transform::evaluate(input_data_view, output_buffer);      \
-      if (ret) {                                                                                   \
-        auto& result = v_##transform->setCache(transaction_, input_data_view,                      \
-                                               v_##transform->Transformation::transform::name(),   \
-                                               std::move(output_buffer));                          \
-        output_element.variant_ = result.variant_;                                                 \
-      } else {                                                                                     \
-        v_##transform->setEmptyCache(transaction_, input_data_view,                                \
-                                     v_##transform->Transformation::transform::name());            \
-        output_element.variant_ = input_data_view;                                                 \
-      }                                                                                            \
-      output_element.variable_sub_name_ = input_element.variable_sub_name_;                        \
-      output.append(std::move(output_element));                                                    \
-    }                                                                                              \
-    return;                                                                                        \
-  }
+  const std::unique_ptr<Variable::VariableBase>* curr_var =
+      reinterpret_cast<const std::unique_ptr<Variable::VariableBase>*>(
+          general_registers_[Compiler::curr_variable_reg_]);
+  const auto& input = extra_registers_[instruction.op2_.ex_reg_];
+  auto& output = extra_registers_[instruction.op1_.ex_reg_];
+  output.clear();
 
-  DISPATCH(Base64DecodeExt);
-  DISPATCH(Base64Decode);
-  DISPATCH(Base64Encode);
-  DISPATCH(CmdLine);
-  DISPATCH(CompressWhiteSpace);
-  DISPATCH(CssDecode);
-  DISPATCH(EscapeSeqDecode);
-  DISPATCH(HexDecode);
-  DISPATCH(HexEncode);
-  DISPATCH(HtmlEntityDecode);
-  DISPATCH(JsDecode);
-  DISPATCH(Length);
-  DISPATCH(LowerCase);
-  DISPATCH(Md5);
-  DISPATCH(NormalisePathWin);
-  DISPATCH(NormalisePath);
-  DISPATCH(NormalizePathWin);
-  DISPATCH(NormalizePath);
-  DISPATCH(ParityEven7Bit);
-  DISPATCH(ParityOdd7Bit);
-  DISPATCH(ParityZero7Bit);
-  DISPATCH(RemoveCommentsChar);
-  DISPATCH(RemoveComments);
-  DISPATCH(RemoveNulls);
-  DISPATCH(RemoveWhitespace);
-  DISPATCH(ReplaceComments);
-  DISPATCH(ReplaceNulls);
-  DISPATCH(Sha1);
-  DISPATCH(SqlHexDecode);
-  DISPATCH(TrimLeft);
-  DISPATCH(TrimRight);
-  DISPATCH(Trim);
-  DISPATCH(UpperCase);
-  DISPATCH(UrlDecodeUni);
-  DISPATCH(UrlDecode);
-  DISPATCH(UrlEncode);
-  DISPATCH(Utf8ToUnicode);
-
-#undef DISPATCH
+  DISPATCH(transform_dispatch_table[instruction.op3_.index_]);
+  CASE(Base64DecodeExt);
+  CASE(Base64Decode);
+  CASE(Base64Encode);
+  CASE(CmdLine);
+  CASE(CompressWhiteSpace);
+  CASE(CssDecode);
+  CASE(EscapeSeqDecode);
+  CASE(HexDecode);
+  CASE(HexEncode);
+  CASE(HtmlEntityDecode);
+  CASE(JsDecode);
+  CASE(Length);
+  CASE(LowerCase);
+  CASE(Md5);
+  CASE(NormalisePathWin);
+  CASE(NormalisePath);
+  CASE(NormalizePathWin);
+  CASE(NormalizePath);
+  CASE(ParityEven7Bit);
+  CASE(ParityOdd7Bit);
+  CASE(ParityZero7Bit);
+  CASE(RemoveCommentsChar);
+  CASE(RemoveComments);
+  CASE(RemoveNulls);
+  CASE(RemoveWhitespace);
+  CASE(ReplaceComments);
+  CASE(ReplaceNulls);
+  CASE(Sha1);
+  CASE(SqlHexDecode);
+  CASE(TrimLeft);
+  CASE(TrimRight);
+  CASE(Trim);
+  CASE(UpperCase);
+  CASE(UrlDecodeUni);
+  CASE(UrlDecode);
+  CASE(UrlEncode);
+  CASE(Utf8ToUnicode);
+#undef CASE
 }
 
 template <class OperatorType>
-void dispatchOperator(const OperatorType* op, Transaction& t, const Rule* rule,
-                      const std::unique_ptr<Wge::Variable::VariableBase>* var,
+void dispatchOperator(const OperatorType* op, Transaction& t, const Rule* curr_rule,
+                      const std::unique_ptr<Wge::Variable::VariableBase>* curr_var,
                       const Common::EvaluateResults& input, Common::EvaluateResults& output) {
   size_t input_size = input.size();
   for (size_t i = 0; i < input_size; ++i) {
@@ -475,10 +518,9 @@ void dispatchOperator(const OperatorType* op, Transaction& t, const Rule* rule,
     // Call additional conditions if they are defined
     if (matched && t.getAdditionalCond()) {
       if (IS_STRING_VIEW_VARIANT(var_value)) {
-        if (rule && var) {
-          matched = t.getAdditionalCond()(*rule, std::get<std::string_view>(var_value), *var);
-          WGE_LOG_TRACE("call additional condition: {}", matched);
-        }
+        matched =
+            t.getAdditionalCond()(*curr_rule, std::get<std::string_view>(var_value), *curr_var);
+        WGE_LOG_TRACE("call additional condition: {}", matched);
       }
     }
 
@@ -542,6 +584,11 @@ void VirtualMachine::execOperate(const Instruction& instruction) {
                                                      &&VerifyCPF,
                                                      &&VerifySSN,
                                                      &&Within};
+#define CASE(operator)                                                                             \
+  operator                                                                                         \
+      : dispatchOperator(reinterpret_cast < const Operator::operator*>(instruction.op4_.cptr_),    \
+                         transaction_, curr_rule, curr_var, input, output);                        \
+  return;
 
   const Rule* curr_rule =
       reinterpret_cast<const Rule*>(general_registers_[Compiler::curr_rule_reg_]);
@@ -550,58 +597,49 @@ void VirtualMachine::execOperate(const Instruction& instruction) {
           general_registers_[Compiler::curr_variable_reg_]);
   const auto& input = extra_registers_[instruction.op2_.ex_reg_];
   auto& output = extra_registers_[instruction.op1_.ex_reg_];
+  output.clear();
 
-  goto* operate_dispatch_table[instruction.op3_.index_];
-
-#define DISPATCH(operator)                                                                         \
-  operator                                                                                         \
-      : dispatchOperator(reinterpret_cast < const Operator::operator*>(instruction.op4_.cptr_),    \
-                         transaction_, curr_rule, curr_var, input, output);                        \
-  return;
-
-  DISPATCH(BeginsWith);
-  DISPATCH(ContainsWord);
-  DISPATCH(Contains);
-  DISPATCH(DetectSqli);
-  DISPATCH(DetectXSS);
-  DISPATCH(EndsWith);
-  DISPATCH(Eq);
-  DISPATCH(FuzzyHash);
-  DISPATCH(Ge);
-  DISPATCH(GeoLookup);
-  DISPATCH(Gt);
-  DISPATCH(InspectFile);
-  DISPATCH(IpMatchFromFile);
-  DISPATCH(IpMatch);
-  DISPATCH(Le);
-  DISPATCH(Lt);
-  DISPATCH(NoMatch);
-  DISPATCH(PmFromFile);
-  DISPATCH(Pm);
-  DISPATCH(Rbl);
-  DISPATCH(Rsub);
-  DISPATCH(RxGlobal);
-  DISPATCH(Rx);
-  DISPATCH(Streq);
-  DISPATCH(Strmatch);
-  DISPATCH(UnconditionalMatch);
-  DISPATCH(ValidateByteRange);
-  DISPATCH(ValidateDTD);
-  DISPATCH(ValidateSchema);
-  DISPATCH(ValidateUrlEncoding);
-  DISPATCH(ValidateUtf8Encoding);
-  DISPATCH(VerifyCC);
-  DISPATCH(VerifyCPF);
-  DISPATCH(VerifySSN);
-  DISPATCH(Within);
-
-#undef DISPATCH
-} // namespace Bytecode
+  DISPATCH(operate_dispatch_table[instruction.op3_.index_]);
+  CASE(BeginsWith);
+  CASE(ContainsWord);
+  CASE(Contains);
+  CASE(DetectSqli);
+  CASE(DetectXSS);
+  CASE(EndsWith);
+  CASE(Eq);
+  CASE(FuzzyHash);
+  CASE(Ge);
+  CASE(GeoLookup);
+  CASE(Gt);
+  CASE(InspectFile);
+  CASE(IpMatchFromFile);
+  CASE(IpMatch);
+  CASE(Le);
+  CASE(Lt);
+  CASE(NoMatch);
+  CASE(PmFromFile);
+  CASE(Pm);
+  CASE(Rbl);
+  CASE(Rsub);
+  CASE(RxGlobal);
+  CASE(Rx);
+  CASE(Streq);
+  CASE(Strmatch);
+  CASE(UnconditionalMatch);
+  CASE(ValidateByteRange);
+  CASE(ValidateDTD);
+  CASE(ValidateSchema);
+  CASE(ValidateUrlEncoding);
+  CASE(ValidateUtf8Encoding);
+  CASE(VerifyCC);
+  CASE(VerifyCPF);
+  CASE(VerifySSN);
+  CASE(Within);
+#undef CASE
+}
 
 } // namespace Bytecode
 } // namespace Wge
 
+#undef DISPATCH
 #undef DISPATCH_NEXT
-#undef REG_DST
-#undef REG_SRC
-#undef REG_AUX
