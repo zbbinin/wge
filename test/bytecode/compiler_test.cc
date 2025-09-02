@@ -20,7 +20,10 @@
  */
 #include <gtest/gtest.h>
 
+#include "bytecode/action_compiler.h"
 #include "bytecode/compiler.h"
+#include "bytecode/operator_compiler.h"
+#include "bytecode/transform_compiler.h"
 #include "bytecode/variable_compiler.h"
 #include "engine.h"
 #include "rule.h"
@@ -28,7 +31,19 @@
 
 namespace Wge {
 namespace Bytecode {
-TEST(CompilerTest, compileVariable) {
+class CompilerTest : public testing::Test {
+public:
+  const std::unordered_map<const char*, int64_t>& variable_index_map_{
+      VariableCompiler::variable_index_map_};
+  const std::unordered_map<const char*, int64_t>& transform_index_map_{
+      TransformCompiler::transform_index_map_};
+  const std::unordered_map<const char*, int64_t>& operator_index_map_{
+      OperatorCompiler::operator_index_map_};
+  const std::unordered_map<const char*, int64_t>& action_index_map_{
+      ActionCompiler::action_index_map_};
+};
+
+TEST_F(CompilerTest, compileVariable) {
   // Just for init main thread id
   Engine engine;
 
@@ -146,7 +161,6 @@ TEST(CompilerTest, compileVariable) {
   constexpr size_t variable_count = 101;
   EXPECT_EQ(instructions.size(), variable_count * 2 + 1);
 
-  auto& variable_index_map = Wge::Bytecode::VariableCompiler::getVariableIndexMap();
   size_t load_var_count = 0;
   for (auto& instruction : instructions) {
     if (instruction.op_code_ == Bytecode::OpCode::LOAD_VAR) {
@@ -154,7 +168,7 @@ TEST(CompilerTest, compileVariable) {
       EXPECT_EQ(instruction.op1_.ex_reg_, Bytecode::ExtraRegister::R16);
       const Variable::VariableBase* var =
           reinterpret_cast<const Variable::VariableBase*>(instruction.op3_.cptr_);
-      EXPECT_EQ(instruction.op2_.index_, variable_index_map.at(var->mainName().data()));
+      EXPECT_EQ(instruction.op2_.index_, variable_index_map_.at(var->mainName().data()));
     }
   }
   EXPECT_EQ(load_var_count, variable_count);

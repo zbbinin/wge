@@ -36,19 +36,12 @@ namespace Wge {
 namespace Bytecode {
 class Program;
 class TransformCompiler {
+  friend class CompilerTest;
+  friend class VirtualMachineTest;
+
 public:
   static void compile(ExtraRegister dst_reg, ExtraRegister src_reg,
                       const Transformation::TransformBase* transform, Program& program);
-
-  // For testing purposes
-public:
-  /**
-   * Get the transform index map
-   * @return The transform index map
-   */
-  static const std::unordered_map<const char*, int64_t>& getTransformIndexMap() {
-    return transform_index_map_;
-  }
 
 private:
   static const std::unordered_map<const char*, int64_t> transform_index_map_;

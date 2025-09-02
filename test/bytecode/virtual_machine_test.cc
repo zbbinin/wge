@@ -20,6 +20,7 @@
  */
 #include <gtest/gtest.h>
 
+#include "bytecode/action_compiler.h"
 #include "bytecode/operator_compiler.h"
 #include "bytecode/transform_compiler.h"
 #include "bytecode/variable_compiler.h"
@@ -46,11 +47,11 @@ public:
   std::unique_ptr<VirtualMachine> vm_;
   TransactionPtr t_;
   const std::unordered_map<const char*, int64_t>& variable_index_map_{
-      VariableCompiler::getVariableIndexMap()};
+      VariableCompiler::variable_index_map_};
   const std::unordered_map<const char*, int64_t>& transform_index_map_{
-      TransformCompiler::getTransformIndexMap()};
+      TransformCompiler::transform_index_map_};
   const std::unordered_map<const char*, int64_t>& operator_index_map_{
-      OperatorCompiler::getOperatorIndexMap()};
+      OperatorCompiler::operator_index_map_};
 }; // namespace Bytecode
 
 TEST_F(VirtualMachineTest, execMov) {

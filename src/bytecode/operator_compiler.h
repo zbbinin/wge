@@ -36,19 +36,12 @@ namespace Wge {
 namespace Bytecode {
 class Program;
 class OperatorCompiler {
+  friend class CompilerTest;
+  friend class VirtualMachineTest;
+
 public:
   static void compile(ExtraRegister res_reg, ExtraRegister src_reg,
                       const Operator::OperatorBase* op, Program& program);
-
-  // For testing purposes
-public:
-  /**
-   * Get the transform index map
-   * @return The transform index map
-   */
-  static const std::unordered_map<const char*, int64_t>& getOperatorIndexMap() {
-    return operator_index_map_;
-  }
 
 private:
   static const std::unordered_map<const char*, int64_t> operator_index_map_;

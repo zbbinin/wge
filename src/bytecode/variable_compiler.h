@@ -34,18 +34,11 @@ namespace Wge {
 namespace Bytecode {
 class Program;
 class VariableCompiler {
+  friend class CompilerTest;
+  friend class VirtualMachineTest;
+
 public:
   static void compile(const Variable::VariableBase* variable, Program& program);
-
-  // For testing purposes
-public:
-  /**
-   * Get the variable index map
-   * @return The variable index map
-   */
-  static const std::unordered_map<const char*, int64_t>& getVariableIndexMap() {
-    return variable_index_map_;
-  }
 
 private:
   static const std::unordered_map<const char*, int64_t> variable_index_map_;
