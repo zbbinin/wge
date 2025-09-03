@@ -44,13 +44,13 @@ enum class OpCode {
 
   // Conditional jump if zero
   // Syntax: JZ <target_addr>
-  // @param op1 [address]: Target jump address (jumps if RFLAGS front value == 0)
+  // @param op1 [address]: Target jump address (jumps if RFLAGS == 0)
   // Example: JZ 123
   JZ,
 
   // Conditional jump if not zero
   // Syntax: JNZ <target_addr>
-  // @param op1 [address]: Target jump address (jumps if RFLAGS front value != 0)
+  // @param op1 [address]: Target jump address (jumps if RFLAGS != 0)
   // Example: JNZ 123
   JNZ,
 
@@ -85,6 +85,7 @@ enum class OpCode {
   // @param op4 [cptr]: Constant pointer to operator instance
   // Example:
   // OPERATE R19, R16, 1, 123456
+  // Note: The RFLAGS indicate whether the operation was matched
   OPERATE,
 
   // Perform an action

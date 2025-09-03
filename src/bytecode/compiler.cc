@@ -91,6 +91,27 @@ void Compiler::compileRule(const Rule* rule, const Rule* default_action, Program
       }
     }
   }
+
+  // Compile chain rule
+  std::optional<std::list<std::unique_ptr<Rule>>::const_iterator> chain_rule_iter =
+      rule->chainRule(0);
+  if (chain_rule_iter.has_value()) {
+    // Skip the instuctions of chain rule if the OPERATE was not matched
+    const size_t jnz_index = program.instructions().size();
+    constexpr int64_t relocation = -1;
+    program.emit({OpCode::JZ, {.address_ = relocation}});
+
+    // Compile chain rule
+    const Rule* chain_rule = (**chain_rule_iter).get();
+    compileRule(chain_rule, default_action, program);
+
+    // Relocate jump address
+    const size_t curr_index = program.instructions().size();
+    program.relocate(jnz_index, curr_index);
+
+    // Restore current rule
+    program.emit({OpCode::MOV, {.g_reg_ = curr_rule_reg_}, {.cptr_ = rule}});
+  }
 }
 } // namespace Bytecode
 } // namespace Wge

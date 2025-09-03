@@ -231,10 +231,9 @@ TEST_F(CompilerTest, compileTransform) {
 
   Wge::Bytecode::Compiler compiler;
   auto program = compiler.compile(rules, &default_action);
-  auto& instructions = program->instructions();
 
   size_t count = 0;
-  for (auto& instruction : instructions) {
+  for (auto& instruction : program->instructions()) {
     if (instruction.op_code_ == Bytecode::OpCode::TRANSFORM) {
       ++count;
       if (count == 1) {
@@ -311,10 +310,9 @@ TEST_F(CompilerTest, compileOperator) {
 
   Wge::Bytecode::Compiler compiler;
   auto program = compiler.compile(rule_ptrs, nullptr);
-  auto& instructions = program->instructions();
 
   size_t count = 0;
-  for (auto& instruction : instructions) {
+  for (auto& instruction : program->instructions()) {
     if (instruction.op_code_ == Bytecode::OpCode::OPERATE) {
       ++count;
       EXPECT_EQ(instruction.op1_.ex_reg_, Compiler::op_res_reg_);
@@ -354,10 +352,9 @@ TEST_F(CompilerTest, compileAction) {
 
   Wge::Bytecode::Compiler compiler;
   auto program = compiler.compile(rules, &default_action);
-  auto& instructions = program->instructions();
 
   size_t count = 0;
-  for (auto& instruction : instructions) {
+  for (auto& instruction : program->instructions()) {
     if (instruction.op_code_ == Bytecode::OpCode::ACTION) {
       ++count;
       EXPECT_EQ(instruction.op1_.ex_reg_, Compiler::op_res_reg_);
@@ -394,10 +391,9 @@ TEST_F(CompilerTest, compileUncAction) {
 
   Wge::Bytecode::Compiler compiler;
   auto program = compiler.compile(rules, &default_action);
-  auto& instructions = program->instructions();
 
   size_t count = 0;
-  for (auto& instruction : instructions) {
+  for (auto& instruction : program->instructions()) {
     if (instruction.op_code_ == Bytecode::OpCode::UNC_ACTION) {
       ++count;
       const Action::ActionBase* action =
@@ -406,6 +402,39 @@ TEST_F(CompilerTest, compileUncAction) {
     }
   }
   EXPECT_EQ(count, actions.size());
+}
+
+TEST_F(CompilerTest, compileChainRule) {
+  // Create a rule with chained rules
+  Rule rule("", 0);
+  rule.appendVariable(std::make_unique<Variable::Args>("", false, false, ""));
+  rule.setOperator(std::make_unique<Operator::Lt>("", false, ""));
+  std::vector<const Rule*> rules = {&rule};
+
+  // Append chain rules
+  constexpr size_t chain_rule_count = 20;
+  Rule* parent_rule = &rule;
+  for (size_t i = 0; i < chain_rule_count; ++i) {
+    Rule* chain_rule = (*parent_rule->appendChainRule(0)).get();
+    chain_rule->appendVariable(std::make_unique<Variable::Args>("", false, false, ""));
+    chain_rule->setOperator(std::make_unique<Operator::Lt>("", false, ""));
+    parent_rule = chain_rule;
+  }
+
+  Wge::Bytecode::Compiler compiler;
+  auto program = compiler.compile(rules, nullptr);
+
+  size_t operator_count = 0;
+  size_t jz_count = 0;
+  for (auto& instruction : program->instructions()) {
+    if (instruction.op_code_ == Bytecode::OpCode::OPERATE) {
+      ++operator_count;
+    } else if (instruction.op_code_ == Bytecode::OpCode::JZ) {
+      ++jz_count;
+    }
+  }
+  EXPECT_EQ(operator_count, chain_rule_count + 1);
+  EXPECT_EQ(jz_count, chain_rule_count);
 }
 } // namespace Bytecode
 } // namespace Wge

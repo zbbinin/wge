@@ -33,12 +33,22 @@ class Program {
 public:
   Program() {
     // Preallocate space for instructions
-    instructions_.reserve(1024);
+    instructions_.reserve(4096);
   }
 
 public:
-  // Add instruction to the program
+  /**
+   * Add instruction to the program
+   * @param instruction The instruction to add
+   */
   void emit(const Instruction& instruction);
+
+  /**
+   * Relocate jump address. Such as updating the target address of JMP, JZ, JNZ instructions
+   * @param index The index of the instruction to update
+   * @param new_address The new address to set
+   */
+  void relocate(size_t index, GeneralRegisterValue new_address);
 
   /**
    * Get the list of instructions in the program

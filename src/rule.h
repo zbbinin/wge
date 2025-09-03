@@ -226,6 +226,26 @@ public:
     }
     return result;
   }
+
+  /**
+   * Get the rule of the chain by index.
+   * @param index the relative index of the chain that starts from this rule. Note that the index is
+   * not same as the index of the chain that starts form the top rule.
+   * @return std::nullopt if the he index is out of range, otherwise the const iterator to the chain rule.
+   */
+  std::optional<std::list<std::unique_ptr<Rule>>::const_iterator> chainRule(size_t index) const {
+    std::optional<std::list<std::unique_ptr<Rule>>::const_iterator> result;
+    const Rule* parent = this;
+    for (size_t i = 0; i <= index; ++i) {
+      if (!parent->chain_.empty()) {
+        result = parent->chain_.begin();
+        parent = parent->chain_.front().get();
+      } else {
+        break;
+      }
+    }
+    return result;
+  }
   int skip() const { return skip_; }
   void skip(int value) { skip_ = value; }
   const std::string& skipAfter() const { return skip_after_; }

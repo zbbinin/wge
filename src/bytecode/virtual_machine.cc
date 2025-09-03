@@ -590,12 +590,15 @@ void VirtualMachine::execOperate(const Instruction& instruction) {
                                                      &&VerifyCC,
                                                      &&VerifyCPF,
                                                      &&VerifySSN,
-                                                     &&Within};
+                                                     &&Within,
+                                                     &&END};
 #define CASE(operator)                                                                             \
   operator                                                                                         \
       : dispatchOperator(reinterpret_cast < const Operator::operator*>(instruction.op4_.cptr_),    \
                          transaction_, curr_rule, curr_var, input, output);                        \
-  return;
+  goto*                                                                                            \
+      operate_dispatch_table[sizeof(operate_dispatch_table) / sizeof(operate_dispatch_table[0]) -  \
+                             1];
 
   const Rule* curr_rule =
       reinterpret_cast<const Rule*>(general_registers_[Compiler::curr_rule_reg_]);
@@ -605,6 +608,9 @@ void VirtualMachine::execOperate(const Instruction& instruction) {
   const auto& input = extra_registers_[instruction.op2_.ex_reg_];
   auto& output = extra_registers_[instruction.op1_.ex_reg_];
   output.clear();
+
+  // Reset RFLAGS
+  rflags_ = 0;
 
   DISPATCH(operate_dispatch_table[instruction.op3_.index_]);
   CASE(BeginsWith);
@@ -643,6 +649,11 @@ void VirtualMachine::execOperate(const Instruction& instruction) {
   CASE(VerifySSN);
   CASE(Within);
 #undef CASE
+
+END:
+  // If the operator was matched, set rflags_
+  const auto& op_results = extra_registers_[Compiler::op_res_reg_];
+  rflags_ = op_results.size() != 0;
 }
 
 template <class ActionType>
