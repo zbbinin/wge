@@ -1,5 +1,6 @@
 #include "compiler.h"
 
+#include "action_compiler.h"
 #include "operator_compiler.h"
 #include "transform_compiler.h"
 #include "variable_compiler.h"
@@ -32,18 +33,17 @@ void Compiler::compileRule(const Rule* rule, const Rule* default_action, Program
 
     // Compile variable
     VariableCompiler::compile(var.get(), program);
-    const ExtraRegister load_var_result_reg = ExtraRegister::R16;
 
     // Compile transformations
     ExtraRegister transform_dst_reg = ExtraRegister::R17;
-    ExtraRegister transform_src_reg = load_var_result_reg;
+    ExtraRegister transform_src_reg = load_var_reg_;
     if (!rule->isIgnoreDefaultTransform() && default_action) {
       // Get the default transformation
       auto& transforms = default_action->transforms();
       for (auto& transform : transforms) {
         TransformCompiler::compile(transform_dst_reg, transform_src_reg, transform.get(), program);
-        if (transform_src_reg == load_var_result_reg) {
-          transform_src_reg = ExtraRegister::R17;
+        if (transform_src_reg == load_var_reg_) {
+          transform_src_reg = transform_dst_reg;
           transform_dst_reg = ExtraRegister::R18;
         } else {
           std::swap(transform_dst_reg, transform_src_reg);
@@ -53,8 +53,8 @@ void Compiler::compileRule(const Rule* rule, const Rule* default_action, Program
     auto& transforms = rule->transforms();
     for (auto& transform : transforms) {
       TransformCompiler::compile(transform_dst_reg, transform_src_reg, transform.get(), program);
-      if (transform_src_reg == load_var_result_reg) {
-        transform_src_reg = ExtraRegister::R17;
+      if (transform_src_reg == load_var_reg_) {
+        transform_src_reg = transform_dst_reg;
         transform_dst_reg = ExtraRegister::R18;
       } else {
         std::swap(transform_dst_reg, transform_src_reg);
@@ -64,19 +64,25 @@ void Compiler::compileRule(const Rule* rule, const Rule* default_action, Program
     // Compile operator
     auto& op = rule->getOperator();
     if (op) {
-      const ExtraRegister op_res_reg = ExtraRegister::R19;
-      const ExtraRegister op_src_reg = transform_dst_reg;
-      OperatorCompiler::compile(op_res_reg, op_src_reg, op.get(), program);
+      const ExtraRegister op_src_reg = transform_src_reg;
+      OperatorCompiler::compile(op_res_reg_, op_src_reg, op.get(), program);
+
+      // Set the transformed values register for action use
+      program.emit({OpCode::MOV, {.g_reg_ = op_src_reg_}, {.ex_reg_ = op_src_reg}});
+
+      // Compile each action in the rule
+      auto& actions = rule->actions();
+      for (const auto& action : actions) {
+        ActionCompiler::compile(op_res_reg_, action.get(), program);
+      }
+    } else {
+      // Compile each uncondition action in the rule
+      auto& actions = rule->actions();
+      for (const auto& action : actions) {
+        ActionCompiler::compile(action.get(), program);
+      }
     }
   }
-
-  // Compile each action in the rule
-  auto& actions = rule->actions();
-  for (const auto& action : actions) {
-    compileAction(action.get(), program);
-  }
 }
-
-void Compiler::compileAction(const Action::ActionBase* action, Program& program) {}
 } // namespace Bytecode
 } // namespace Wge

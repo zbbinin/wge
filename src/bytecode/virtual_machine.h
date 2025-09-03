@@ -84,6 +84,8 @@ private:
   inline void execLoadVar(const Instruction& instruction);
   inline void execTransform(const Instruction& instruction);
   inline void execOperate(const Instruction& instruction);
+  inline void execAction(const Instruction& instruction);
+  inline void execUncAction(const Instruction& instruction);
 
 private:
   // Registers

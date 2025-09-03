@@ -20,26 +20,31 @@
  */
 #pragma once
 
-#include <string>
+#include <unordered_map>
 
-#include "../transaction.h"
+#include <stdint.h>
 
-#define DECLARE_ACTION_NAME(n)                                                                     \
-public:                                                                                            \
-  const char* name() const override { return name_; }                                              \
-                                                                                                   \
-public:                                                                                           \
-  static constexpr char name_[] = #n;
+#include "register.h"
 
 namespace Wge {
 namespace Action {
-class ActionBase {
-public:
-  virtual ~ActionBase() = default;
+class ActionBase;
+}
+} // namespace Wge
+
+namespace Wge {
+namespace Bytecode {
+class Program;
+class ActionCompiler {
+  friend class CompilerTest;
+  friend class VirtualMachineTest;
 
 public:
-  virtual void evaluate(Transaction& t) const = 0;
-  virtual const char* name() const = 0;
+  static void compile(ExtraRegister src_reg, const Action::ActionBase* action, Program& program);
+  static void compile(const Action::ActionBase* action, Program& program);
+
+private:
+  static const std::unordered_map<const char*, int64_t> action_index_map_;
 };
-} // namespace Action
+} // namespace Bytecode
 } // namespace Wge

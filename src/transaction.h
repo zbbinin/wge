@@ -56,8 +56,13 @@ namespace Transformation {
 class TransformBase;
 } // namespace Transformation
 
+namespace Bytecode {
+class VirtualMachineTest;
+}
+
 class Transaction final {
   friend class Engine;
+  friend class Bytecode::VirtualMachineTest;
 
 protected:
   Transaction(const Engine& engin, size_t literal_key_size);

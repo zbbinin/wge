@@ -22,6 +22,7 @@
 
 #include "compiler.h"
 
+#include "../action/actions_include.h"
 #include "../operator/operator_include.h"
 #include "../rule.h"
 #include "../transformation/transform_include.h"
@@ -52,8 +53,8 @@ namespace Wge {
 namespace Bytecode {
 void VirtualMachine::execute(const Program& program) {
   // Dispatch table for bytecode instructions. We use computed gotos for efficiency
-  static constexpr void* dispatch_table[] = {&&MOV, &&JMP,      &&JZ,        &&JNZ,
-                                             &&NOP, &&LOAD_VAR, &&TRANSFORM, &&OPERATE};
+  static constexpr void* dispatch_table[] = {
+      &&MOV, &&JMP, &&JZ, &&JNZ, &&NOP, &&LOAD_VAR, &&TRANSFORM, &&OPERATE, &&ACTION, &&UNC_ACTION};
 
   // Get instruction iterator
   auto& instructions = program.instructions();
@@ -86,6 +87,12 @@ TRANSFORM:
   DISPATCH_NEXT();
 OPERATE:
   execOperate(*iter);
+  DISPATCH_NEXT();
+ACTION:
+  execAction(*iter);
+  DISPATCH_NEXT();
+UNC_ACTION:
+  execUncAction(*iter);
   DISPATCH_NEXT();
 }
 
@@ -533,7 +540,7 @@ void dispatchOperator(const OperatorType* op, Transaction& t, const Rule* curr_r
         // the captured value may be modified later.
         output.append(std::string(tx_0.data(), tx_0.size()));
       } else {
-        output.append(std::string());
+        output.append(1);
       }
     } else {
       t.clearTempCapture();
@@ -635,6 +642,92 @@ void VirtualMachine::execOperate(const Instruction& instruction) {
   CASE(VerifyCPF);
   CASE(VerifySSN);
   CASE(Within);
+#undef CASE
+}
+
+template <class ActionType>
+void dispatchAction(const ActionType* action, Transaction& t, const Rule* curr_rule,
+                    const std::unique_ptr<Wge::Variable::VariableBase>* curr_var,
+                    Common::EvaluateResults& operate_results,
+                    Common::EvaluateResults& original_value,
+                    Common::EvaluateResults& transformed_value) {
+  assert(operate_results.size() == original_value.size());
+  assert(original_value.size() == transformed_value.size());
+
+  size_t operate_results_size = operate_results.size();
+  for (size_t i = 0; i < operate_results_size; ++i) {
+    auto& element = operate_results.get(i);
+    std::visit(
+        [&](auto&& arg) {
+          // There has capture string
+          if constexpr (std::is_same_v<std::decay_t<decltype(arg)>, std::string_view>) {
+            // TODO(zhouyu 2025-09-02): fix the transformation list
+            std::list<const Transformation::TransformBase*> transform_list;
+
+            t.pushMatchedVariable((*curr_var).get(), curr_rule->chainIndex(),
+                                  original_value.move(i), transformed_value.move(i),
+                                  operate_results.move(i), std::move(transform_list));
+          }
+        },
+        element.variant_);
+    action->ActionType::evaluate(t);
+  }
+}
+
+inline void VirtualMachine::execAction(const Instruction& instruction) {
+  // Dispatch table for bytecode instructions. We use computed gotos for efficiency
+  static constexpr void* action_dispatch_table[] = {&&Ctl,    &&InitCol, &&SetEnv, &&SetRsc,
+                                                    &&SetSid, &&SetUid,  &&SetVar};
+#define CASE(action)                                                                               \
+  action:                                                                                          \
+  dispatchAction(reinterpret_cast<const Action::action*>(instruction.op3_.cptr_), transaction_,    \
+                 curr_rule, curr_var, operate_results, original_value, transformed_value);         \
+  return;
+
+  const Rule* curr_rule =
+      reinterpret_cast<const Rule*>(general_registers_[Compiler::curr_rule_reg_]);
+  const std::unique_ptr<Variable::VariableBase>* curr_var =
+      reinterpret_cast<const std::unique_ptr<Variable::VariableBase>*>(
+          general_registers_[Compiler::curr_variable_reg_]);
+  auto& operate_results = extra_registers_[instruction.op1_.ex_reg_];
+  auto& original_value = extra_registers_[Compiler::load_var_reg_];
+  auto& transformed_value =
+      extra_registers_[static_cast<ExtraRegister>(general_registers_[Compiler::op_src_reg_])];
+
+  DISPATCH(action_dispatch_table[instruction.op2_.index_]);
+  CASE(Ctl);
+  CASE(InitCol);
+  CASE(SetEnv);
+  CASE(SetRsc);
+  CASE(SetSid);
+  CASE(SetUid);
+  CASE(SetVar);
+#undef CASE
+}
+
+template <class ActionType> void dispatchUncAction(const ActionType* action, Transaction& t) {
+  action->ActionType::evaluate(t);
+}
+
+inline void VirtualMachine::execUncAction(const Instruction& instruction) {
+  // Dispatch table for bytecode instructions. We use computed gotos for efficiency
+  static constexpr void* action_dispatch_table[] = {&&Ctl,    &&InitCol, &&SetEnv, &&SetRsc,
+                                                    &&SetSid, &&SetUid,  &&SetVar};
+
+#define CASE(action)                                                                               \
+  action:                                                                                          \
+  dispatchUncAction(reinterpret_cast<const Action::action*>(instruction.op2_.cptr_),               \
+                    transaction_);                                                                 \
+  return;
+
+  DISPATCH(action_dispatch_table[instruction.op1_.index_]);
+  CASE(Ctl);
+  CASE(InitCol);
+  CASE(SetEnv);
+  CASE(SetRsc);
+  CASE(SetSid);
+  CASE(SetUid);
+  CASE(SetVar);
 #undef CASE
 }
 

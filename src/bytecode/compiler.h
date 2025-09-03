@@ -56,12 +56,19 @@ public:
                                    const Rule* default_action);
 
 public:
+  // The current rule register
   static constexpr GeneralRegister curr_rule_reg_{GeneralRegister::RCX};
+  // The current variable register
   static constexpr GeneralRegister curr_variable_reg_{GeneralRegister::RDX};
+  // The result register of LOAD_VAR instruction (variable value)
+  static constexpr ExtraRegister load_var_reg_{ExtraRegister::R16};
+  // The result register of OPERATE instruction (capture string)
+  static constexpr ExtraRegister op_res_reg_{ExtraRegister::R19};
+  // Register index that points to the storage transformed value for OPERATE instruction
+  static constexpr GeneralRegister op_src_reg_{GeneralRegister::RBX};
 
 private:
   void compileRule(const Rule* rule, const Rule* default_action, Program& program);
-  void compileAction(const Action::ActionBase* action, Program& program);
 };
 } // namespace Bytecode
 } // namespace Wge

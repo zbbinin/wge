@@ -86,6 +86,23 @@ enum class OpCode {
   // Example:
   // OPERATE R19, R16, 1, 123456
   OPERATE,
+
+  // Perform an action
+  // Syntax: ACTION <src_reg>, <action_index>, <action_instance_pointer>
+  // @param op1 [ex_reg]: Source register(the result of the previous OPERATE)
+  // @param op2 [index]: Action index
+  // @param op3 [cptr]: Constant pointer to action instance
+  // Example:
+  // ACTION R19, 1, 123456
+  ACTION,
+
+  // Perform an uncondition action
+  // Syntax: UNC_ACTION <action_index>, <action_instance_pointer>
+  // @param op1 [index]: Action index
+  // @param op2 [cptr]: Constant pointer to action instance
+  // Example:
+  // UNC_ACTION 1, 123456
+  UNC_ACTION,
 };
 } // namespace Bytecode
 } // namespace Wge

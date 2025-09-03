@@ -20,7 +20,9 @@
  */
 #include <gtest/gtest.h>
 
+#include "action/actions_include.h"
 #include "bytecode/action_compiler.h"
+#include "bytecode/compiler.h"
 #include "bytecode/operator_compiler.h"
 #include "bytecode/transform_compiler.h"
 #include "bytecode/variable_compiler.h"
@@ -40,6 +42,7 @@ public:
     engine_.init();
     t_ = engine_.makeTransaction();
     vm_ = std::make_unique<VirtualMachine>(*t_);
+    tx_variables_ = &(t_->tx_variables_);
   }
 
 public:
@@ -52,6 +55,9 @@ public:
       TransformCompiler::transform_index_map_};
   const std::unordered_map<const char*, int64_t>& operator_index_map_{
       OperatorCompiler::operator_index_map_};
+  const std::unordered_map<const char*, int64_t>& action_index_map_{
+      ActionCompiler::action_index_map_};
+  std::vector<Common::EvaluateResults::Element>* tx_variables_{nullptr};
 }; // namespace Bytecode
 
 TEST_F(VirtualMachineTest, execMov) {
@@ -147,7 +153,7 @@ TEST_F(VirtualMachineTest, execLoadVar) {
   // Mock the request processing to extract query parameters
   t_->processUri("GET /?a=value1&b=value2&c=value3 HTTP/1.1");
 
-  // Create a dummy program with a load variable instruction
+  // Create a dummy program with LOAD_VAR instruction
   Program program;
   Instruction instruction = {OpCode::LOAD_VAR,
                              {.ex_reg_ = ExtraRegister::R16},
@@ -169,7 +175,7 @@ TEST_F(VirtualMachineTest, execLoadVar) {
 TEST_F(VirtualMachineTest, execTransform) {
   Transformation::LowerCase lower_cast;
 
-  // Create a dummy program with a transform instruction
+  // Create a dummy program with TRANSFORM instruction
   Program program;
   Instruction instruction = {OpCode::TRANSFORM,
                              {.ex_reg_ = ExtraRegister::R17},
@@ -198,7 +204,7 @@ TEST_F(VirtualMachineTest, execTransform) {
 TEST_F(VirtualMachineTest, execOperate) {
   Operator::Rx rx(std::string("hello"), false, "");
 
-  // Create a dummy program with a operate instruction
+  // Create a dummy program with OPERATE instruction
   Program program;
   Instruction instruction = {OpCode::OPERATE,
                              {.ex_reg_ = ExtraRegister::R17},
@@ -222,5 +228,93 @@ TEST_F(VirtualMachineTest, execOperate) {
   EXPECT_EQ(std::get<std::string_view>(res.get(0).variant_), "hello");
   EXPECT_EQ(std::get<std::string_view>(res.get(1).variant_), "hello");
 }
+
+TEST_F(VirtualMachineTest, execAction) {
+  // Create a SetVar instance
+  Action::SetVar set_var("foo", 0, 1, Action::SetVar::EvaluateType::Increase);
+
+  // Create a dummy program with ACTION instruction
+  Program program;
+  Instruction instruction = {OpCode::ACTION,
+                             {.ex_reg_ = Compiler::op_res_reg_},
+                             {.imm_ = action_index_map_.at(Action::SetVar::name_)},
+                             {.cptr_ = &set_var}};
+  program.emit(instruction);
+
+  // Mock the transaction variables
+  tx_variables_->resize(1);
+
+  // Mock the current rule and current variable
+  Wge::Rule rule("", 0);
+  std::unique_ptr<Wge::Variable::Args> var_args =
+      std::make_unique<Wge::Variable::Args>("", false, false, "");
+  vm_->generalRegisters()[Compiler::curr_rule_reg_] = reinterpret_cast<int64_t>(&rule);
+  vm_->generalRegisters()[Compiler::curr_variable_reg_] = reinterpret_cast<int64_t>(&var_args);
+
+  // Mock the original value(results of LOAD_VAR)
+  auto& original_value = vm_->extraRegisters()[Compiler::load_var_reg_];
+  original_value.append(std::string("HELLOWORLD"));
+  original_value.append(std::string("--HELLOWORLD--"));
+  original_value.append(std::string("--HELLO--"));
+
+  // Mock the transformed value(the input of OPERATE)
+  auto& transform_value = vm_->extraRegisters()[ExtraRegister::R17];
+  transform_value.append(std::string("helloworld"));
+  transform_value.append(std::string("--helloworld--"));
+  transform_value.append(std::string("--hello--"));
+  vm_->generalRegisters()[Compiler::op_src_reg_] =
+      static_cast<GeneralRegisterValue>(ExtraRegister::R17);
+
+  // Mock the results of OPERATE(capture string)
+  auto& src = vm_->extraRegisters()[Compiler::op_res_reg_];
+  src.clear();
+  src.append(std::string("hello"));
+  src.append(std::string("hello"));
+  src.append(std::string("hello"));
+
+  vm_->execute(program);
+
+  // Check if the set_var was applied correctly
+  EXPECT_EQ(std::get<int64_t>(static_cast<const Transaction&>(*t_).getVariable(0)), 3);
+
+  // Check if the MATCHED_VARS were updated correctly
+  auto& matched_vars = t_->getMatchedVariables(-1);
+  EXPECT_EQ(matched_vars.size(), 3);
+  EXPECT_EQ(matched_vars[0].variable_, var_args.get());
+  EXPECT_EQ(matched_vars[1].variable_, var_args.get());
+  EXPECT_EQ(matched_vars[2].variable_, var_args.get());
+  EXPECT_EQ(std::get<std::string_view>(matched_vars[0].original_value_.variant_), "HELLOWORLD");
+  EXPECT_EQ(std::get<std::string_view>(matched_vars[1].original_value_.variant_), "--HELLOWORLD--");
+  EXPECT_EQ(std::get<std::string_view>(matched_vars[2].original_value_.variant_), "--HELLO--");
+  EXPECT_EQ(std::get<std::string_view>(matched_vars[0].transformed_value_.variant_), "helloworld");
+  EXPECT_EQ(std::get<std::string_view>(matched_vars[1].transformed_value_.variant_),
+            "--helloworld--");
+  EXPECT_EQ(std::get<std::string_view>(matched_vars[2].transformed_value_.variant_), "--hello--");
+  EXPECT_EQ(std::get<std::string_view>(matched_vars[0].captured_value_.variant_), "hello");
+  EXPECT_EQ(std::get<std::string_view>(matched_vars[1].captured_value_.variant_), "hello");
+  EXPECT_EQ(std::get<std::string_view>(matched_vars[2].captured_value_.variant_), "hello");
+}
+
+TEST_F(VirtualMachineTest, execUncAction) {
+  // Create a SetVar instance
+  Action::SetVar set_var("foo", 0, 3, Action::SetVar::EvaluateType::CreateAndInit);
+
+  // Create a dummy program with ACTION instruction
+  Program program;
+  Instruction instruction = {OpCode::UNC_ACTION,
+                             {.imm_ = action_index_map_.at(Action::SetVar::name_)},
+                             {.cptr_ = &set_var}};
+  program.emit(instruction);
+
+  // Mock the transaction variables
+  tx_variables_->resize(1);
+  t_->setVariable(0, Common::Variant(0));
+
+  vm_->execute(program);
+
+  // Check if the set_var was applied correctly
+  EXPECT_EQ(std::get<int64_t>(static_cast<const Transaction&>(*t_).getVariable(0)), 3);
+}
+
 } // namespace Bytecode
 } // namespace Wge

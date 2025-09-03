@@ -4,6 +4,7 @@
 #include <functional>
 #include <unordered_map>
 
+#include "../action/action_base.h"
 #include "../operator/operator_base.h"
 #include "../transformation/transform_base.h"
 #include "../variable/variable_base.h"
@@ -65,14 +66,30 @@ std::string Instruction::toString() const {
                                 ExtraRegister2String.at(instruction.op2_.ex_reg_),
                                 instruction.op3_.index_, transform_name);
            }},
-          {OpCode::OPERATE, [](const Instruction& instruction) {
+          {OpCode::OPERATE,
+           [](const Instruction& instruction) {
              std::string operator_name =
                  reinterpret_cast<const Operator::OperatorBase*>(instruction.op4_.ptr_)->name();
              return std::format("OPERATE {}, {}, {}, {}",
                                 ExtraRegister2String.at(instruction.op1_.ex_reg_),
                                 ExtraRegister2String.at(instruction.op2_.ex_reg_),
                                 instruction.op3_.index_, operator_name);
-           }}};
+           }},
+          {OpCode::ACTION,
+           [](const Instruction& instruction) {
+             std::string action_name =
+                 reinterpret_cast<const Action::ActionBase*>(instruction.op3_.ptr_)->name();
+             return std::format("ACTION {}, {}, {}",
+                                ExtraRegister2String.at(instruction.op1_.ex_reg_),
+                                instruction.op2_.index_, action_name);
+           }},
+          {OpCode::UNC_ACTION,
+           [](const Instruction& instruction) {
+             std::string action_name =
+                 reinterpret_cast<const Action::ActionBase*>(instruction.op2_.ptr_)->name();
+             return std::format("UNC_ACTION {}, {}", instruction.op2_.index_, action_name);
+           }},
+      };
 
   std::string result;
   auto iter = to_string_map.find(op_code_);
