@@ -26,6 +26,7 @@
 #include "bytecode/transform_compiler.h"
 #include "bytecode/variable_compiler.h"
 #include "engine.h"
+#include "operator/operator_include.h"
 #include "rule.h"
 #include "variable/variables_include.h"
 
@@ -41,12 +42,13 @@ public:
       OperatorCompiler::operator_index_map_};
   const std::unordered_map<const char*, int64_t>& action_index_map_{
       ActionCompiler::action_index_map_};
+
+public:
+  Engine engine_;
 };
 
 TEST_F(CompilerTest, compileVariable) {
-  // Just for init main thread id
-  Engine engine;
-
+  // Create a rule with all variables
   Rule rule("", 0);
   std::vector<const Rule*> rules = {&rule};
 
@@ -165,13 +167,82 @@ TEST_F(CompilerTest, compileVariable) {
   for (auto& instruction : instructions) {
     if (instruction.op_code_ == Bytecode::OpCode::LOAD_VAR) {
       ++load_var_count;
-      EXPECT_EQ(instruction.op1_.ex_reg_, Bytecode::ExtraRegister::R16);
+      EXPECT_EQ(instruction.op1_.ex_reg_, Compiler::load_var_reg_);
       const Variable::VariableBase* var =
           reinterpret_cast<const Variable::VariableBase*>(instruction.op3_.cptr_);
       EXPECT_EQ(instruction.op2_.index_, variable_index_map_.at(var->mainName().data()));
     }
   }
   EXPECT_EQ(load_var_count, variable_count);
+}
+
+TEST_F(CompilerTest, compileOperator) {
+  std::vector<std::shared_ptr<Rule>> rules;
+
+#define CREATE_RULE(op)                                                                            \
+  rules.emplace_back(std::make_shared<Rule>("", 0));                                               \
+  rules.back()->setOperator(std::make_unique<Operator::op>("", false, ""));                        \
+  rules.back()->appendVariable(std::make_unique<Variable::Args>("", false, false, ""));
+
+  CREATE_RULE(BeginsWith);
+  CREATE_RULE(ContainsWord);
+  CREATE_RULE(Contains);
+  CREATE_RULE(DetectSqli);
+  CREATE_RULE(DetectXSS);
+  CREATE_RULE(EndsWith);
+  CREATE_RULE(Eq);
+  CREATE_RULE(FuzzyHash);
+  CREATE_RULE(Ge);
+  CREATE_RULE(GeoLookup);
+  CREATE_RULE(Gt);
+  CREATE_RULE(InspectFile);
+  CREATE_RULE(IpMatchFromFile);
+  CREATE_RULE(IpMatch);
+  CREATE_RULE(Le);
+  CREATE_RULE(Lt);
+  CREATE_RULE(NoMatch);
+  CREATE_RULE(PmFromFile);
+  CREATE_RULE(Pm);
+  CREATE_RULE(Rbl);
+  CREATE_RULE(Rsub);
+  CREATE_RULE(RxGlobal);
+  CREATE_RULE(Rx);
+  CREATE_RULE(Streq);
+  CREATE_RULE(Strmatch);
+  CREATE_RULE(UnconditionalMatch);
+  CREATE_RULE(ValidateByteRange);
+  CREATE_RULE(ValidateDTD);
+  CREATE_RULE(ValidateSchema);
+  CREATE_RULE(ValidateUrlEncoding);
+  CREATE_RULE(ValidateUtf8Encoding);
+  CREATE_RULE(VerifyCC);
+  CREATE_RULE(VerifyCPF);
+  CREATE_RULE(VerifySSN);
+  CREATE_RULE(Within);
+
+  std::vector<const Rule*> rule_ptrs;
+  rule_ptrs.reserve(rules.size());
+  for (const auto& rule : rules) {
+    rule_ptrs.emplace_back(rule.get());
+  }
+
+  Wge::Bytecode::Compiler compiler;
+  auto program = compiler.compile(rule_ptrs, nullptr);
+  auto& instructions = program->instructions();
+
+  constexpr size_t operator_count = 35;
+  size_t count = 0;
+  for (auto& instruction : instructions) {
+    if (instruction.op_code_ == Bytecode::OpCode::OPERATE) {
+      ++count;
+      EXPECT_EQ(instruction.op1_.ex_reg_, Compiler::op_res_reg_);
+      EXPECT_EQ(instruction.op2_.ex_reg_, Compiler::load_var_reg_);
+      const Operator::OperatorBase* var =
+          reinterpret_cast<const Operator::OperatorBase*>(instruction.op4_.cptr_);
+      EXPECT_EQ(instruction.op3_.index_, operator_index_map_.at(var->name()));
+    }
+  }
+  EXPECT_EQ(operator_count, count);
 }
 } // namespace Bytecode
 } // namespace Wge
