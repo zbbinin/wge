@@ -35,7 +35,7 @@ void Compiler::compileRule(const Rule* rule, const Rule* default_action, Program
     VariableCompiler::compile(var.get(), program);
 
     // Compile transformations
-    ExtraRegister transform_dst_reg = ExtraRegister::R17;
+    ExtraRegister transform_dst_reg = transform_tmp_reg1_;
     ExtraRegister transform_src_reg = load_var_reg_;
     if (!rule->isIgnoreDefaultTransform() && default_action) {
       // Get the default transformation
@@ -44,7 +44,7 @@ void Compiler::compileRule(const Rule* rule, const Rule* default_action, Program
         TransformCompiler::compile(transform_dst_reg, transform_src_reg, transform.get(), program);
         if (transform_src_reg == load_var_reg_) {
           transform_src_reg = transform_dst_reg;
-          transform_dst_reg = ExtraRegister::R18;
+          transform_dst_reg = transform_tmp_reg2_;
         } else {
           std::swap(transform_dst_reg, transform_src_reg);
         }
@@ -55,7 +55,7 @@ void Compiler::compileRule(const Rule* rule, const Rule* default_action, Program
       TransformCompiler::compile(transform_dst_reg, transform_src_reg, transform.get(), program);
       if (transform_src_reg == load_var_reg_) {
         transform_src_reg = transform_dst_reg;
-        transform_dst_reg = ExtraRegister::R18;
+        transform_dst_reg = transform_tmp_reg2_;
       } else {
         std::swap(transform_dst_reg, transform_src_reg);
       }

@@ -28,6 +28,7 @@
 #include "engine.h"
 #include "operator/operator_include.h"
 #include "rule.h"
+#include "transformation/transform_include.h"
 #include "variable/variables_include.h"
 
 namespace Wge {
@@ -160,7 +161,7 @@ TEST_F(CompilerTest, compileVariable) {
   auto program = compiler.compile(rules, nullptr);
   auto& instructions = program->instructions();
 
-  constexpr size_t variable_count = 101;
+  const size_t variable_count = rule.variables().size();
   EXPECT_EQ(instructions.size(), variable_count * 2 + 1);
 
   size_t load_var_count = 0;
@@ -174,6 +175,86 @@ TEST_F(CompilerTest, compileVariable) {
     }
   }
   EXPECT_EQ(load_var_count, variable_count);
+}
+
+TEST_F(CompilerTest, compileTransform) {
+  // Create a rule with all transformations
+  Rule rule("", 0);
+  rule.appendVariable(std::make_unique<Variable::Args>("", false, false, ""));
+  std::vector<const Rule*> rules = {&rule};
+  auto& transforms = rule.transforms();
+
+  Rule default_action("", 0);
+  default_action.transforms().emplace_back(std::make_unique<Transformation::Base64DecodeExt>());
+  default_action.transforms().emplace_back(std::make_unique<Transformation::Base64Decode>());
+  default_action.transforms().emplace_back(std::make_unique<Transformation::Base64Encode>());
+  default_action.transforms().emplace_back(std::make_unique<Transformation::CmdLine>());
+
+  // transforms.emplace_back(std::make_unique<Transformation::Base64DecodeExt>());
+  // transforms.emplace_back(std::make_unique<Transformation::Base64Decode>());
+  // transforms.emplace_back(std::make_unique<Transformation::Base64Encode>());
+  // transforms.emplace_back(std::make_unique<Transformation::CmdLine>());
+  transforms.emplace_back(std::make_unique<Transformation::CompressWhiteSpace>());
+  transforms.emplace_back(std::make_unique<Transformation::CssDecode>());
+  transforms.emplace_back(std::make_unique<Transformation::EscapeSeqDecode>());
+  transforms.emplace_back(std::make_unique<Transformation::HexDecode>());
+  transforms.emplace_back(std::make_unique<Transformation::HexEncode>());
+  transforms.emplace_back(std::make_unique<Transformation::HtmlEntityDecode>());
+  transforms.emplace_back(std::make_unique<Transformation::JsDecode>());
+  transforms.emplace_back(std::make_unique<Transformation::Length>());
+  transforms.emplace_back(std::make_unique<Transformation::LowerCase>());
+  transforms.emplace_back(std::make_unique<Transformation::Md5>());
+  transforms.emplace_back(std::make_unique<Transformation::NormalisePathWin>());
+  transforms.emplace_back(std::make_unique<Transformation::NormalisePath>());
+  transforms.emplace_back(std::make_unique<Transformation::NormalizePathWin>());
+  transforms.emplace_back(std::make_unique<Transformation::NormalizePath>());
+  transforms.emplace_back(std::make_unique<Transformation::ParityEven7Bit>());
+  transforms.emplace_back(std::make_unique<Transformation::ParityOdd7Bit>());
+  transforms.emplace_back(std::make_unique<Transformation::ParityZero7Bit>());
+  transforms.emplace_back(std::make_unique<Transformation::RemoveCommentsChar>());
+  transforms.emplace_back(std::make_unique<Transformation::RemoveComments>());
+  transforms.emplace_back(std::make_unique<Transformation::RemoveNulls>());
+  transforms.emplace_back(std::make_unique<Transformation::RemoveWhitespace>());
+  transforms.emplace_back(std::make_unique<Transformation::ReplaceComments>());
+  transforms.emplace_back(std::make_unique<Transformation::ReplaceNulls>());
+  transforms.emplace_back(std::make_unique<Transformation::Sha1>());
+  transforms.emplace_back(std::make_unique<Transformation::SqlHexDecode>());
+  transforms.emplace_back(std::make_unique<Transformation::TrimLeft>());
+  transforms.emplace_back(std::make_unique<Transformation::TrimRight>());
+  transforms.emplace_back(std::make_unique<Transformation::Trim>());
+  transforms.emplace_back(std::make_unique<Transformation::UpperCase>());
+  transforms.emplace_back(std::make_unique<Transformation::UrlDecodeUni>());
+  transforms.emplace_back(std::make_unique<Transformation::UrlDecode>());
+  transforms.emplace_back(std::make_unique<Transformation::UrlEncode>());
+  transforms.emplace_back(std::make_unique<Transformation::Utf8ToUnicode>());
+
+  Wge::Bytecode::Compiler compiler;
+  auto program = compiler.compile(rules, &default_action);
+  auto& instructions = program->instructions();
+
+  size_t count = 0;
+  for (auto& instruction : instructions) {
+    if (instruction.op_code_ == Bytecode::OpCode::TRANSFORM) {
+      ++count;
+      if (count == 1) {
+        EXPECT_EQ(instruction.op1_.ex_reg_, Compiler::transform_tmp_reg1_);
+        EXPECT_EQ(instruction.op2_.ex_reg_, Compiler::load_var_reg_);
+      } else {
+        if (count % 2 == 0) {
+          EXPECT_EQ(instruction.op1_.ex_reg_, Compiler::transform_tmp_reg2_);
+          EXPECT_EQ(instruction.op2_.ex_reg_, Compiler::transform_tmp_reg1_);
+        } else {
+          EXPECT_EQ(instruction.op1_.ex_reg_, Compiler::transform_tmp_reg1_);
+          EXPECT_EQ(instruction.op2_.ex_reg_, Compiler::transform_tmp_reg2_);
+        }
+      }
+
+      const Transformation::TransformBase* transform =
+          reinterpret_cast<const Transformation::TransformBase*>(instruction.op4_.cptr_);
+      EXPECT_EQ(instruction.op3_.index_, transform_index_map_.at(transform->name()));
+    }
+  }
+  EXPECT_EQ(count, transforms.size() + default_action.transforms().size());
 }
 
 TEST_F(CompilerTest, compileOperator) {
@@ -230,7 +311,6 @@ TEST_F(CompilerTest, compileOperator) {
   auto program = compiler.compile(rule_ptrs, nullptr);
   auto& instructions = program->instructions();
 
-  constexpr size_t operator_count = 35;
   size_t count = 0;
   for (auto& instruction : instructions) {
     if (instruction.op_code_ == Bytecode::OpCode::OPERATE) {
@@ -242,6 +322,8 @@ TEST_F(CompilerTest, compileOperator) {
       EXPECT_EQ(instruction.op3_.index_, operator_index_map_.at(var->name()));
     }
   }
+
+  const size_t operator_count = rules.size();
   EXPECT_EQ(operator_count, count);
 }
 } // namespace Bytecode
