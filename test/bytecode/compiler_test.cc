@@ -20,6 +20,7 @@
  */
 #include <gtest/gtest.h>
 
+#include "action/actions_include.h"
 #include "bytecode/action_compiler.h"
 #include "bytecode/compiler.h"
 #include "bytecode/operator_compiler.h"
@@ -300,6 +301,7 @@ TEST_F(CompilerTest, compileOperator) {
   CREATE_RULE(VerifyCPF);
   CREATE_RULE(VerifySSN);
   CREATE_RULE(Within);
+#undef CREATE_RULE
 
   std::vector<const Rule*> rule_ptrs;
   rule_ptrs.reserve(rules.size());
@@ -325,6 +327,85 @@ TEST_F(CompilerTest, compileOperator) {
 
   const size_t operator_count = rules.size();
   EXPECT_EQ(operator_count, count);
+}
+
+TEST_F(CompilerTest, compileAction) {
+  // Create a rule with all actions
+  Rule rule("", 0);
+  rule.appendVariable(std::make_unique<Variable::Args>("", false, false, ""));
+  std::vector<const Rule*> rules = {&rule};
+  auto& actions = rule.actions();
+
+  rule.setOperator(std::make_unique<Operator::Lt>("", false, ""));
+
+  Rule default_action("", 0);
+  default_action.actions().emplace_back(std::make_unique<Action::SetUid>(""));
+  default_action.actions().emplace_back(std::make_unique<Action::SetSid>(""));
+
+  actions.emplace_back(std::make_unique<Action::Ctl>(Action::Ctl::CtlType::RuleRemoveById, 1));
+  actions.emplace_back(
+      std::make_unique<Action::InitCol>(PersistentStorage::Storage::Type::GLOBAL, "", ""));
+  actions.emplace_back(std::make_unique<Action::SetEnv>("", ""));
+  actions.emplace_back(std::make_unique<Action::SetRsc>(""));
+  actions.emplace_back(std::make_unique<Action::SetSid>(""));
+  actions.emplace_back(std::make_unique<Action::SetUid>(""));
+  actions.emplace_back(
+      std::make_unique<Action::SetVar>("", 0, 0, Action::SetVar::EvaluateType::CreateAndInit));
+
+  Wge::Bytecode::Compiler compiler;
+  auto program = compiler.compile(rules, &default_action);
+  auto& instructions = program->instructions();
+
+  size_t count = 0;
+  for (auto& instruction : instructions) {
+    if (instruction.op_code_ == Bytecode::OpCode::ACTION) {
+      ++count;
+      EXPECT_EQ(instruction.op1_.ex_reg_, Compiler::op_res_reg_);
+      const Action::ActionBase* action =
+          reinterpret_cast<const Action::ActionBase*>(instruction.op3_.cptr_);
+      EXPECT_EQ(instruction.op2_.index_, action_index_map_.at(action->name()));
+    }
+  }
+  EXPECT_EQ(count, actions.size() + default_action.actions().size());
+}
+
+TEST_F(CompilerTest, compileUncAction) {
+  // Create a rule with all actions
+  Rule rule("", 0);
+  rule.appendVariable(std::make_unique<Variable::Args>("", false, false, ""));
+  std::vector<const Rule*> rules = {&rule};
+  auto& actions = rule.actions();
+
+  // rule.setOperator(std::make_unique<Operator::Lt>("", false, ""));
+
+  Rule default_action("", 0);
+  default_action.actions().emplace_back(std::make_unique<Action::SetUid>(""));
+  default_action.actions().emplace_back(std::make_unique<Action::SetSid>(""));
+
+  actions.emplace_back(std::make_unique<Action::Ctl>(Action::Ctl::CtlType::RuleRemoveById, 1));
+  actions.emplace_back(
+      std::make_unique<Action::InitCol>(PersistentStorage::Storage::Type::GLOBAL, "", ""));
+  actions.emplace_back(std::make_unique<Action::SetEnv>("", ""));
+  actions.emplace_back(std::make_unique<Action::SetRsc>(""));
+  actions.emplace_back(std::make_unique<Action::SetSid>(""));
+  actions.emplace_back(std::make_unique<Action::SetUid>(""));
+  actions.emplace_back(
+      std::make_unique<Action::SetVar>("", 0, 0, Action::SetVar::EvaluateType::CreateAndInit));
+
+  Wge::Bytecode::Compiler compiler;
+  auto program = compiler.compile(rules, &default_action);
+  auto& instructions = program->instructions();
+
+  size_t count = 0;
+  for (auto& instruction : instructions) {
+    if (instruction.op_code_ == Bytecode::OpCode::UNC_ACTION) {
+      ++count;
+      const Action::ActionBase* action =
+          reinterpret_cast<const Action::ActionBase*>(instruction.op2_.cptr_);
+      EXPECT_EQ(instruction.op1_.index_, action_index_map_.at(action->name()));
+    }
+  }
+  EXPECT_EQ(count, actions.size());
 }
 } // namespace Bytecode
 } // namespace Wge

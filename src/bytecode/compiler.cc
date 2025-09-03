@@ -70,6 +70,14 @@ void Compiler::compileRule(const Rule* rule, const Rule* default_action, Program
       // Set the transformed values register for action use
       program.emit({OpCode::MOV, {.g_reg_ = op_src_reg_}, {.ex_reg_ = op_src_reg}});
 
+      // Compile each default action
+      if (default_action) {
+        auto& actions = default_action->actions();
+        for (const auto& action : actions) {
+          ActionCompiler::compile(op_res_reg_, action.get(), program);
+        }
+      }
+
       // Compile each action in the rule
       auto& actions = rule->actions();
       for (const auto& action : actions) {
