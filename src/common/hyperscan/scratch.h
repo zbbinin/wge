@@ -20,6 +20,8 @@
  */
 #pragma once
 
+#include <mutex>
+
 #include <hs/hs.h>
 
 namespace Wge {
@@ -53,7 +55,10 @@ public:
    * function for each database.
    * @param block_db: block mode database
    */
-  void addBlock(const hs_database_t* block_db) { ::hs_alloc_scratch(block_db, &block_scratch_); }
+  void addBlock(const hs_database_t* block_db) {
+    std::lock_guard<std::mutex> locker(block_scratch_mutex_);
+    ::hs_alloc_scratch(block_db, &block_scratch_);
+  }
 
   /**
    * Add scratch space for the given databases.
@@ -62,6 +67,7 @@ public:
    * @param stream_db: stream mode database
    */
   void addStream(const hs_database_t* stream_db) {
+    std::lock_guard<std::mutex> locker(stream_scratch_mutex_);
     ::hs_alloc_scratch(stream_db, &stream_scratch_);
   }
 
@@ -69,11 +75,17 @@ public:
    * Free the scratch space.
    */
   void free() {
-    if (block_scratch_) {
-      ::hs_free_scratch(block_scratch_);
+    {
+      std::lock_guard<std::mutex> locker(block_scratch_mutex_);
+      if (block_scratch_) {
+        ::hs_free_scratch(block_scratch_);
+      }
     }
-    if (stream_scratch_) {
-      ::hs_free_scratch(stream_scratch_);
+    {
+      std::lock_guard<std::mutex> locker(stream_scratch_mutex_);
+      if (stream_scratch_) {
+        ::hs_free_scratch(stream_scratch_);
+      }
     }
   }
 
@@ -101,6 +113,10 @@ public:
   void* match_cb_user_data_;
   PcreRemoveDuplicateCallbak pcre_remove_duplicate_cb_{nullptr};
   void* pcre_remove_duplicate_cb_user_data_;
+
+private:
+  std::mutex block_scratch_mutex_;
+  std::mutex stream_scratch_mutex_;
 };
 } // namespace Hyperscan
 } // namespace Common
