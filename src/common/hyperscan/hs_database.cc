@@ -119,6 +119,13 @@ HsDataBase::HsDataBase(std::ifstream& ifs, bool literal, bool case_less, bool so
   }
 }
 
+HsDataBase::HsDataBase(ExpressionList&& expression_list, bool support_stream,
+                       const char* serialize_dir)
+    : db_(false) {
+  db_.expressions_ = std::move(expression_list);
+  loadOrCompile(serialize_dir, support_stream);
+}
+
 void HsDataBase::compile(bool support_stream) {
   assert(db_.expressions_.size());
 

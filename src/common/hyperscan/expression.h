@@ -48,6 +48,33 @@ public:
    */
   ExpressionList(bool literal) : literal_(literal) {}
 
+  ExpressionList(ExpressionList&& other) noexcept {
+    literal_ = other.literal_;
+    expr_pointers_ = std::move(other.expr_pointers_);
+    expr_lens_ = std::move(other.expr_lens_);
+    exprs_ = std::move(other.exprs_);
+    flags_ = std::move(other.flags_);
+    ids_ = std::move(other.ids_);
+    real_ids_ = std::move(other.real_ids_);
+    logic_id_map_ = std::move(other.logic_id_map_);
+    pcre_pattern_list_ = std::move(other.pcre_pattern_list_);
+  }
+
+public:
+  void operator=(ExpressionList&& other) noexcept {
+    if (this != &other) {
+      literal_ = other.literal_;
+      expr_pointers_ = std::move(other.expr_pointers_);
+      expr_lens_ = std::move(other.expr_lens_);
+      exprs_ = std::move(other.exprs_);
+      flags_ = std::move(other.flags_);
+      ids_ = std::move(other.ids_);
+      real_ids_ = std::move(other.real_ids_);
+      logic_id_map_ = std::move(other.logic_id_map_);
+      pcre_pattern_list_ = std::move(other.pcre_pattern_list_);
+    }
+  }
+
 public:
   /**
    * Load patterns from the specified file.

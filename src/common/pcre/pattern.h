@@ -52,6 +52,17 @@ private:
 
 class PatternList {
 public:
+  PatternList() = default;
+  PatternList(PatternList&& other) noexcept { pattern_map_ = std::move(other.pattern_map_); }
+
+public:
+  void operator=(PatternList&& other) noexcept {
+    if (this != &other) {
+      pattern_map_ = std::move(other.pattern_map_);
+    }
+  }
+
+public:
   void add(const std::string& pattern, bool case_less, bool capture, uint64_t id);
   const Pattern* get(uint64_t id) const;
   void clear() { pattern_map_.clear(); }

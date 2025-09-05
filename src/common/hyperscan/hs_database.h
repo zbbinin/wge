@@ -105,6 +105,17 @@ public:
   HsDataBase(std::ifstream& ifs, bool literal, bool case_less, bool som_leftmost, bool prefilter,
              bool support_stream, const char* serialize_dir = nullptr);
 
+  /**
+   * Load patterns from an expression list.
+   * @param expression_list the expression list
+   * @param support_stream whether support stream mode
+   * @param serialize_dir the directory to serialize the database, if not nullptr, the database will
+   * be try to load from the directory and if not found, it will be compiled and saved to the
+   * directory.
+   */
+  HsDataBase(ExpressionList&& expression_list, bool support_stream,
+             const char* serialize_dir = nullptr);
+
 public:
   const hs_database_t* blockNative() const { return db_.block_db_; }
   const hs_database_t* streamNative() const { return db_.stream_db_; }

@@ -75,13 +75,15 @@ public:
       }
       variable_sub_name_ = element.variable_sub_name_;
     }
-    void operator=(Element&& element) {
-      variant_ = std::move(element.variant_);
-      if (IS_STRING_VIEW_VARIANT(variant_) && !element.string_buffer_.empty()) {
-        string_buffer_ = std::move(element.string_buffer_);
-        variant_ = string_buffer_;
+    void operator=(Element&& element) noexcept {
+      if (this != &element) {
+        variant_ = std::move(element.variant_);
+        if (IS_STRING_VIEW_VARIANT(variant_) && !element.string_buffer_.empty()) {
+          string_buffer_ = std::move(element.string_buffer_);
+          variant_ = string_buffer_;
+        }
+        variable_sub_name_ = element.variable_sub_name_;
       }
-      variable_sub_name_ = element.variable_sub_name_;
     }
     void clear() {
       string_buffer_.clear();
