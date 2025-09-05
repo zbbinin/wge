@@ -33,7 +33,7 @@ class Program {
 public:
   Program() {
     // Preallocate space for instructions
-    instructions_.reserve(4096);
+    instructions_.reserve(64);
   }
 
 public:

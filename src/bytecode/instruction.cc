@@ -93,9 +93,13 @@ std::string Instruction::toString() const {
           {OpCode::EXPAND_MACRO,
            [](const Instruction& instruction) {
              std::string msg_macro_name =
-                 reinterpret_cast<const Macro::MacroBase*>(instruction.op2_.cptr_)->name();
+                 instruction.op2_.cptr_
+                     ? reinterpret_cast<const Macro::MacroBase*>(instruction.op2_.cptr_)->name()
+                     : "nullptr";
              std::string log_macro_name =
-                 reinterpret_cast<const Macro::MacroBase*>(instruction.op4_.cptr_)->name();
+                 instruction.op4_.cptr_
+                     ? reinterpret_cast<const Macro::MacroBase*>(instruction.op4_.cptr_)->name()
+                     : "nullptr";
              return std::format("EXPAND_MACRO {}, {}, {}, {}", instruction.op1_.index_,
                                 msg_macro_name, instruction.op3_.index_, log_macro_name);
            }},

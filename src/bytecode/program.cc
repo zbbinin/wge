@@ -6,7 +6,7 @@ namespace Wge {
 namespace Bytecode {
 void Program::emit(const Instruction& instruction) {
   instructions_.emplace_back(instruction);
-  WGE_LOG_TRACE("emit instruction: {}", instruction.toString());
+  WGE_LOG_TRACE("emit[{}]: {}", instructions_.size() - 1, instruction.toString());
 }
 
 void Program::relocate(size_t index, GeneralRegisterValue new_address) {
@@ -20,6 +20,7 @@ void Program::relocate(size_t index, GeneralRegisterValue new_address) {
     }
 
     instruction.op1_.address_ = new_address;
+    WGE_LOG_TRACE("relocate: {}, {}", index, new_address);
   }
 }
 } // namespace Bytecode

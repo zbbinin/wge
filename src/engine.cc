@@ -22,14 +22,15 @@
 
 #include "action/ctl.h"
 #include "antlr4/parser.h"
+#include "bytecode/compiler/rule_compiler.h"
 #include "common/assert.h"
 #include "common/log.h"
 
 std::thread::id main_thread_id;
 
 namespace Wge {
-Engine::Engine(spdlog::level::level_enum level, const std::string& log_file)
-    : parser_(std::make_shared<Antlr4::Parser>()) {
+Engine::Engine(spdlog::level::level_enum level, const std::string& log_file, bool enable_bytecode)
+    : enable_bytecode_(enable_bytecode), parser_(std::make_shared<Antlr4::Parser>()) {
   // We assume that it can only be constructed in the main thread
   main_thread_id = std::this_thread::get_id();
 
@@ -61,6 +62,9 @@ void Engine::init() {
   initDefaultActions();
   initRules();
   initMakers();
+  if (enable_bytecode_) {
+    compileRules();
+  }
 
   is_init_ = true;
 }
@@ -73,6 +77,11 @@ const Rule* Engine::defaultActions(int phase) const {
 const std::vector<const Rule*>& Engine::rules(int phase) const {
   assert(phase >= 1 && phase <= PHASE_TOTAL);
   return rules_[phase - 1];
+}
+
+const std::vector<std::unique_ptr<Bytecode::Program>>& Engine::programs(int phase) const {
+  assert(phase >= 1 && phase <= PHASE_TOTAL);
+  return programs_[phase - 1];
 }
 
 TransactionPtr Engine::makeTransaction() const {
@@ -219,6 +228,20 @@ void Engine::initMakers() {
       }
     }
     markers_.emplace(marker.name(), marker);
+  }
+}
+
+void Engine::compileRules() {
+  for (auto& phase_rules : rules_) {
+    if (phase_rules.empty()) {
+      continue;
+    }
+    int phase = phase_rules[0]->phase();
+    const Rule* default_action = default_actions_[phase - 1];
+    for (const Rule* rule : phase_rules) {
+      auto program = Bytecode::Compiler::RuleCompiler::compile(rule, default_action);
+      programs_[phase - 1].emplace_back(std::move(program));
+    }
   }
 }
 

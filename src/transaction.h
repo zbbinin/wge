@@ -31,6 +31,7 @@
 
 #include <boost/unordered/unordered_flat_map.hpp>
 
+#include "bytecode/virtual_machine.h"
 #include "common/evaluate_result.h"
 #include "common/ragel/json.h"
 #include "common/ragel/multi_part.h"
@@ -58,10 +59,10 @@ class TransformBase;
 
 namespace Bytecode {
 class VirtualMachineTest;
-}
+} // namespace Bytecode
 
 class Transaction final {
-  friend class Engine;
+  friend Engine;
   friend class Bytecode::VirtualMachineTest;
 
 protected:
@@ -628,6 +629,8 @@ private:
   void initUniqueId();
 
   inline bool process(int phase);
+  inline bool processWithObjectGraph(int phase);
+  inline bool processWithBytecode(int phase);
 
   inline std::optional<size_t> getLocalVariableIndex(const std::string& key, bool force_create);
 
@@ -705,6 +708,10 @@ private:
   Common::Ragel::Xml body_xml_;
   Common::Ragel::Json body_json_;
   std::string req_body_error_msg_;
+
+  // bytecode
+private:
+  std::unique_ptr<Bytecode::VirtualMachine> vm_;
 };
 
 using TransactionPtr = std::unique_ptr<Transaction>;

@@ -668,7 +668,6 @@ void dispatchAction(const ActionType* action, Transaction& t, const Rule* curr_r
                     Common::EvaluateResults& operate_results,
                     Common::EvaluateResults& original_value,
                     Common::EvaluateResults& transformed_value) {
-  assert(operate_results.size() == original_value.size());
   assert(original_value.size() == transformed_value.size());
 
   size_t operate_results_size = operate_results.size();

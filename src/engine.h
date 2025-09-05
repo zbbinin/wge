@@ -26,6 +26,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "bytecode/program.h"
 #include "common/log.h"
 #include "marker.h"
 #include "persistent_storage/storage.h"
@@ -51,8 +52,11 @@ public:
    * @param level the debug log level. if the WGE_LOG_ACTIVE_LEVEL compile-time macro is not
    * defined, the debug log will be disabled. and the log level will be ignored.
    * @param log_file the log file path. If it is empty, the log will be output to the console
+   * @param enable_bytecode if true, enable the bytecode engine to evaluate the rules. otherwise,
+   * disable it.
    */
-  Engine(spdlog::level::level_enum level = spdlog::level::info, const std::string& log_file = "");
+  Engine(spdlog::level::level_enum level = spdlog::level::info, const std::string& log_file = "",
+         bool enable_bytecode = true);
 
 public:
   /**
@@ -90,6 +94,13 @@ public:
    */
   const std::vector<const Rule*>& rules(int phase) const;
 
+  /**
+   * Get bytecode programs
+   * @param phase specify the phase of the programs, the valid range is 1-5.
+   * @return vector of bytecode programs
+   */
+  const std::vector<std::unique_ptr<Bytecode::Program>>& programs(int phase) const;
+
 public:
   /**
    * Make a transaction to evaluate rules.
@@ -97,6 +108,12 @@ public:
    * @note must call init before call this method
    */
   TransactionPtr makeTransaction() const;
+
+  /**
+   * Check if the bytecode engine is enabled
+   * @return true if the bytecode engine is enabled, and false otherwise
+   */
+  bool enableBytecode() const { return enable_bytecode_; }
 
   /**
    * Get the engine configuration
@@ -158,8 +175,12 @@ private:
   void initDefaultActions();
   void initRules();
   void initMakers();
+  void compileRules();
 
 private:
+  // Is the bytecode engine enabled
+  bool enable_bytecode_;
+
   // Is the engine initialized
   bool is_init_{false};
 
@@ -175,6 +196,9 @@ private:
   // to evaluate the rules. Because each phase has a separate rule set, for performance reasons, we
   // store the each phase's rule pointers in an array.
   std::array<std::vector<const Rule*>, PHASE_TOTAL> rules_;
+
+  // Bytecode programs for each rule
+  std::array<std::vector<std::unique_ptr<Bytecode::Program>>, PHASE_TOTAL> programs_;
 
   std::unordered_map<std::string, Marker&> markers_;
   mutable PersistentStorage::Storage storage_;

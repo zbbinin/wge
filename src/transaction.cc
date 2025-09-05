@@ -52,6 +52,9 @@ Transaction::Transaction(const Engine& engin, size_t literal_key_size)
   matched_variables_.reserve(4);
   transform_cache_.reserve(100);
   assert(tx_variables_.capacity() == literal_key_size + variable_key_with_macro_size);
+  if (engin.enableBytecode()) {
+    vm_ = std::make_unique<Bytecode::VirtualMachine>(*this);
+  }
 }
 
 void Transaction::processConnection(std::string_view downstream_ip, short downstream_port,
@@ -568,7 +571,7 @@ void Transaction::initUniqueId() {
   unique_id_ = std::format("{}.{}", timestamp, random);
 }
 
-inline bool Transaction::process(int phase) {
+bool Transaction::process(int phase) {
   if (engine_.config().rule_engine_option_ == EngineConfig::Option::Off)
     [[unlikely]] { return true; }
 
@@ -578,6 +581,14 @@ inline bool Transaction::process(int phase) {
   if (allow_phases_.test(phase))
     [[unlikely]] { return true; }
 
+  if (vm_) {
+    return processWithBytecode(phase);
+  } else {
+    return processWithObjectGraph(phase);
+  }
+}
+
+bool Transaction::processWithObjectGraph(int phase) {
   // Get the rules in the given phase
   auto& rules = engine_.rules(phase);
   const Wge::Rule* default_action = engine_.defaultActions(phase);
@@ -667,8 +678,100 @@ inline bool Transaction::process(int phase) {
   return true;
 }
 
-inline std::optional<size_t> Transaction::getLocalVariableIndex(const std::string& key,
-                                                                bool force_create) {
+bool Transaction::processWithBytecode(int phase) {
+  // Get the rules in the given phase
+  auto& rules = engine_.rules(phase);
+  const Wge::Rule* default_action = engine_.defaultActions(phase);
+
+  // Get the bytecode programs
+  auto& programs = engine_.programs(phase);
+  assert(rules.size() == programs.size());
+
+  // Traverse the rules and evaluate them
+  auto begin = rules.begin();
+  auto& rule_remove_flag = rule_remove_flags_[phase - 1];
+  for (auto iter = begin; iter != rules.end();) {
+    current_rule_ = *iter;
+    const size_t program_index = std::distance(begin, iter);
+
+    // Skip the rules that have been removed
+    assert(current_rule_->index() != -1);
+    if (!rule_remove_flag.empty() && rule_remove_flag[current_rule_->index()])
+      [[unlikely]] {
+        ++iter;
+        continue;
+      }
+
+    // Clean the current captured and matched, there are:
+    // TX.[0-99], MATCHED_VAR_NAME, MATCHED_VAR, MATCHED_VARS_NAMES, MATCHED_VARS
+    captured_.clear();
+    matched_variables_.clear();
+
+    // Execute the bytecode program
+    vm_->execute(*programs[program_index]);
+    bool is_matched = vm_->rflags() != 0;
+
+    if (!is_matched ||
+        current_rule_->getOperator() == nullptr // It's a rule that defined by SecAction
+    )
+      [[likely]] {
+        ++iter;
+        continue;
+      }
+
+    // Log the matched rule
+    if (log_callback_)
+      [[likely]] {
+        if (default_action) {
+          if (current_rule_->log().value_or(default_action->log().value_or(true))) {
+            log_callback_(*current_rule_);
+          }
+        } else {
+          if (current_rule_->log().value_or(true)) {
+            log_callback_(*current_rule_);
+          }
+        }
+      }
+
+    // Do the disruptive action
+    if (engine_.config().rule_engine_option_ != EngineConfig::Option::DetectionOnly) {
+      std::optional<bool> disruptive = doDisruptive(*current_rule_, default_action);
+      if (disruptive.has_value()) {
+        if (!disruptive.value()) {
+          // Modify the response status code
+          response_line_info_.status_code_ = "403";
+        }
+        return disruptive.value();
+      }
+    }
+
+    // Skip the rules if current rule that has a skip action or skipAfter action is matched
+    int skip = current_rule_->skip();
+    if (skip > 0)
+      [[unlikely]] {
+        iter += skip;
+        continue;
+      }
+    const std::string& skip_after = current_rule_->skipAfter();
+    if (!skip_after.empty())
+      [[unlikely]] {
+        auto next_rule_iter = engine_.marker(skip_after, current_rule_->phase());
+        if (next_rule_iter.has_value())
+          [[likely]] {
+            iter = next_rule_iter.value();
+            continue;
+          }
+      }
+
+    // If skip and skipAfter are not set, then continue to the next rule
+    ++iter;
+  }
+
+  return true;
+}
+
+std::optional<size_t> Transaction::getLocalVariableIndex(const std::string& key,
+                                                         bool force_create) {
   // The key is case insensitive
   std::string less_case_key;
   less_case_key.reserve(key.size());
@@ -719,7 +822,7 @@ void Transaction::initCookies() {
   }
 }
 
-inline std::optional<bool> Transaction::doDisruptive(const Rule& rule, const Rule* default_action) {
+std::optional<bool> Transaction::doDisruptive(const Rule& rule, const Rule* default_action) {
   switch (rule.disruptive()) {
   case Rule::Disruptive::ALLOW: {
     // If used on its own, allow will affect the entire transaction, stopping processing of the
