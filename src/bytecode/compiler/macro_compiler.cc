@@ -20,15 +20,15 @@
  */
 #include "macro_compiler.h"
 
-#include "program.h"
-
-#include "../macro/macro_include.h"
+#include "../../macro/macro_include.h"
+#include "../program.h"
 
 #define MACRO_INDEX(name)                                                                          \
   { Macro::name::name_, __COUNTER__ }
 
 namespace Wge {
 namespace Bytecode {
+namespace Compiler {
 const std::unordered_map<const char*, int64_t> MacroCompiler::macro_index_map_ = {
     MACRO_INDEX(MultiMacro),
     MACRO_INDEX(VariableMacro),
@@ -65,6 +65,8 @@ void MacroCompiler::compile(const Macro::MacroBase* msg_macro,
                 {.index_ = log_data_macro_index},
                 {.cptr_ = log_data_macro}});
 }
+
+} // namespace Compiler
 } // namespace Bytecode
 } // namespace Wge
 

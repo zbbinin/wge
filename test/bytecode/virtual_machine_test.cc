@@ -21,11 +21,11 @@
 #include <gtest/gtest.h>
 
 #include "action/actions_include.h"
-#include "bytecode/action_compiler.h"
-#include "bytecode/compiler.h"
-#include "bytecode/operator_compiler.h"
-#include "bytecode/transform_compiler.h"
-#include "bytecode/variable_compiler.h"
+#include "bytecode/compiler/action_compiler.h"
+#include "bytecode/compiler/operator_compiler.h"
+#include "bytecode/compiler/rule_compiler.h"
+#include "bytecode/compiler/transform_compiler.h"
+#include "bytecode/compiler/variable_compiler.h"
 #include "bytecode/virtual_machine.h"
 #include "engine.h"
 #include "operator/operator_include.h"
@@ -50,13 +50,13 @@ public:
   std::unique_ptr<VirtualMachine> vm_;
   TransactionPtr t_;
   const std::unordered_map<const char*, int64_t>& variable_index_map_{
-      VariableCompiler::variable_index_map_};
+      Compiler::VariableCompiler::variable_index_map_};
   const std::unordered_map<const char*, int64_t>& transform_index_map_{
-      TransformCompiler::transform_index_map_};
+      Compiler::TransformCompiler::transform_index_map_};
   const std::unordered_map<const char*, int64_t>& operator_index_map_{
-      OperatorCompiler::operator_index_map_};
+      Compiler::OperatorCompiler::operator_index_map_};
   const std::unordered_map<const char*, int64_t>& action_index_map_{
-      ActionCompiler::action_index_map_};
+      Compiler::ActionCompiler::action_index_map_};
   std::vector<Common::EvaluateResults::Element>* tx_variables_{nullptr};
 }; // namespace Bytecode
 
@@ -236,7 +236,7 @@ TEST_F(VirtualMachineTest, execAction) {
   // Create a dummy program with ACTION instruction
   Program program;
   Instruction instruction = {OpCode::ACTION,
-                             {.ex_reg_ = Compiler::op_res_reg_},
+                             {.ex_reg_ = Compiler::RuleCompiler::op_res_reg_},
                              {.imm_ = action_index_map_.at(Action::SetVar::name_)},
                              {.cptr_ = &set_var}};
   program.emit(instruction);
@@ -248,11 +248,13 @@ TEST_F(VirtualMachineTest, execAction) {
   Wge::Rule rule("", 0);
   std::unique_ptr<Wge::Variable::Args> var_args =
       std::make_unique<Wge::Variable::Args>("", false, false, "");
-  vm_->generalRegisters()[Compiler::curr_rule_reg_] = reinterpret_cast<int64_t>(&rule);
-  vm_->generalRegisters()[Compiler::curr_variable_reg_] = reinterpret_cast<int64_t>(&var_args);
+  vm_->generalRegisters()[Compiler::RuleCompiler::curr_rule_reg_] =
+      reinterpret_cast<int64_t>(&rule);
+  vm_->generalRegisters()[Compiler::RuleCompiler::curr_variable_reg_] =
+      reinterpret_cast<int64_t>(&var_args);
 
   // Mock the original value(results of LOAD_VAR)
-  auto& original_value = vm_->extraRegisters()[Compiler::load_var_reg_];
+  auto& original_value = vm_->extraRegisters()[Compiler::RuleCompiler::load_var_reg_];
   original_value.append(std::string("HELLOWORLD"));
   original_value.append(std::string("--HELLOWORLD--"));
   original_value.append(std::string("--HELLO--"));
@@ -262,11 +264,11 @@ TEST_F(VirtualMachineTest, execAction) {
   transform_value.append(std::string("helloworld"));
   transform_value.append(std::string("--helloworld--"));
   transform_value.append(std::string("--hello--"));
-  vm_->generalRegisters()[Compiler::op_src_reg_] =
+  vm_->generalRegisters()[Compiler::RuleCompiler::op_src_reg_] =
       static_cast<GeneralRegisterValue>(ExtraRegister::R17);
 
   // Mock the results of OPERATE(capture string)
-  auto& src = vm_->extraRegisters()[Compiler::op_res_reg_];
+  auto& src = vm_->extraRegisters()[Compiler::RuleCompiler::op_res_reg_];
   src.clear();
   src.append(std::string("hello"));
   src.append(std::string("hello"));

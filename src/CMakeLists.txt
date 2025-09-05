@@ -19,6 +19,7 @@ add_library(wge
   $<TARGET_OBJECTS:action>
   $<TARGET_OBJECTS:antlr4>
   $<TARGET_OBJECTS:bytecode>
+  $<TARGET_OBJECTS:compiler>
   $<TARGET_OBJECTS:common>
   $<TARGET_OBJECTS:common_ragel>
   $<TARGET_OBJECTS:macro>

@@ -21,12 +21,12 @@
 #include <gtest/gtest.h>
 
 #include "action/actions_include.h"
-#include "bytecode/action_compiler.h"
-#include "bytecode/compiler.h"
-#include "bytecode/macro_compiler.h"
-#include "bytecode/operator_compiler.h"
-#include "bytecode/transform_compiler.h"
-#include "bytecode/variable_compiler.h"
+#include "bytecode/compiler/action_compiler.h"
+#include "bytecode/compiler/macro_compiler.h"
+#include "bytecode/compiler/operator_compiler.h"
+#include "bytecode/compiler/rule_compiler.h"
+#include "bytecode/compiler/transform_compiler.h"
+#include "bytecode/compiler/variable_compiler.h"
 #include "engine.h"
 #include "macro/macro_include.h"
 #include "operator/operator_include.h"
@@ -39,14 +39,15 @@ namespace Bytecode {
 class CompilerTest : public testing::Test {
 public:
   const std::unordered_map<const char*, int64_t>& variable_index_map_{
-      VariableCompiler::variable_index_map_};
+      Compiler::VariableCompiler::variable_index_map_};
   const std::unordered_map<const char*, int64_t>& transform_index_map_{
-      TransformCompiler::transform_index_map_};
+      Compiler::TransformCompiler::transform_index_map_};
   const std::unordered_map<const char*, int64_t>& operator_index_map_{
-      OperatorCompiler::operator_index_map_};
+      Compiler::OperatorCompiler::operator_index_map_};
   const std::unordered_map<const char*, int64_t>& action_index_map_{
-      ActionCompiler::action_index_map_};
-  const std::unordered_map<const char*, int64_t>& macro_index_map_{MacroCompiler::macro_index_map_};
+      Compiler::ActionCompiler::action_index_map_};
+  const std::unordered_map<const char*, int64_t>& macro_index_map_{
+      Compiler::MacroCompiler::macro_index_map_};
 
 public:
   Engine engine_;
@@ -161,7 +162,7 @@ TEST_F(CompilerTest, compileVariable) {
   rule.appendVariable(std::make_unique<Variable::WebAppId>("", false, false, ""));
   rule.appendVariable(std::make_unique<Variable::Xml>("", false, false, ""));
 
-  Wge::Bytecode::Compiler compiler;
+  Wge::Bytecode::Compiler::RuleCompiler compiler;
   auto program = compiler.compile(rules, nullptr);
   auto& instructions = program->instructions();
 
@@ -169,7 +170,7 @@ TEST_F(CompilerTest, compileVariable) {
   for (auto& instruction : instructions) {
     if (instruction.op_code_ == Bytecode::OpCode::LOAD_VAR) {
       ++load_var_count;
-      EXPECT_EQ(instruction.op1_.ex_reg_, Compiler::load_var_reg_);
+      EXPECT_EQ(instruction.op1_.ex_reg_, Compiler::RuleCompiler::load_var_reg_);
       const Variable::VariableBase* var =
           reinterpret_cast<const Variable::VariableBase*>(instruction.op3_.cptr_);
       EXPECT_EQ(instruction.op2_.index_, variable_index_map_.at(var->mainName().data()));
@@ -229,7 +230,7 @@ TEST_F(CompilerTest, compileTransform) {
   transforms.emplace_back(std::make_unique<Transformation::UrlEncode>());
   transforms.emplace_back(std::make_unique<Transformation::Utf8ToUnicode>());
 
-  Wge::Bytecode::Compiler compiler;
+  Wge::Bytecode::Compiler::RuleCompiler compiler;
   auto program = compiler.compile(rules, &default_action);
 
   size_t count = 0;
@@ -237,15 +238,15 @@ TEST_F(CompilerTest, compileTransform) {
     if (instruction.op_code_ == Bytecode::OpCode::TRANSFORM) {
       ++count;
       if (count == 1) {
-        EXPECT_EQ(instruction.op1_.ex_reg_, Compiler::transform_tmp_reg1_);
-        EXPECT_EQ(instruction.op2_.ex_reg_, Compiler::load_var_reg_);
+        EXPECT_EQ(instruction.op1_.ex_reg_, Compiler::RuleCompiler::transform_tmp_reg1_);
+        EXPECT_EQ(instruction.op2_.ex_reg_, Compiler::RuleCompiler::load_var_reg_);
       } else {
         if (count % 2 == 0) {
-          EXPECT_EQ(instruction.op1_.ex_reg_, Compiler::transform_tmp_reg2_);
-          EXPECT_EQ(instruction.op2_.ex_reg_, Compiler::transform_tmp_reg1_);
+          EXPECT_EQ(instruction.op1_.ex_reg_, Compiler::RuleCompiler::transform_tmp_reg2_);
+          EXPECT_EQ(instruction.op2_.ex_reg_, Compiler::RuleCompiler::transform_tmp_reg1_);
         } else {
-          EXPECT_EQ(instruction.op1_.ex_reg_, Compiler::transform_tmp_reg1_);
-          EXPECT_EQ(instruction.op2_.ex_reg_, Compiler::transform_tmp_reg2_);
+          EXPECT_EQ(instruction.op1_.ex_reg_, Compiler::RuleCompiler::transform_tmp_reg1_);
+          EXPECT_EQ(instruction.op2_.ex_reg_, Compiler::RuleCompiler::transform_tmp_reg2_);
         }
       }
 
@@ -308,15 +309,15 @@ TEST_F(CompilerTest, compileOperator) {
     rule_ptrs.emplace_back(rule.get());
   }
 
-  Wge::Bytecode::Compiler compiler;
+  Wge::Bytecode::Compiler::RuleCompiler compiler;
   auto program = compiler.compile(rule_ptrs, nullptr);
 
   size_t count = 0;
   for (auto& instruction : program->instructions()) {
     if (instruction.op_code_ == Bytecode::OpCode::OPERATE) {
       ++count;
-      EXPECT_EQ(instruction.op1_.ex_reg_, Compiler::op_res_reg_);
-      EXPECT_EQ(instruction.op2_.ex_reg_, Compiler::load_var_reg_);
+      EXPECT_EQ(instruction.op1_.ex_reg_, Compiler::RuleCompiler::op_res_reg_);
+      EXPECT_EQ(instruction.op2_.ex_reg_, Compiler::RuleCompiler::load_var_reg_);
       const Operator::OperatorBase* var =
           reinterpret_cast<const Operator::OperatorBase*>(instruction.op4_.cptr_);
       EXPECT_EQ(instruction.op3_.index_, operator_index_map_.at(var->name()));
@@ -350,14 +351,14 @@ TEST_F(CompilerTest, compileAction) {
   actions.emplace_back(
       std::make_unique<Action::SetVar>("", 0, 0, Action::SetVar::EvaluateType::CreateAndInit));
 
-  Wge::Bytecode::Compiler compiler;
+  Wge::Bytecode::Compiler::RuleCompiler compiler;
   auto program = compiler.compile(rules, &default_action);
 
   size_t count = 0;
   for (auto& instruction : program->instructions()) {
     if (instruction.op_code_ == Bytecode::OpCode::ACTION) {
       ++count;
-      EXPECT_EQ(instruction.op1_.ex_reg_, Compiler::op_res_reg_);
+      EXPECT_EQ(instruction.op1_.ex_reg_, Compiler::RuleCompiler::op_res_reg_);
       const Action::ActionBase* action =
           reinterpret_cast<const Action::ActionBase*>(instruction.op3_.cptr_);
       EXPECT_EQ(instruction.op2_.index_, action_index_map_.at(action->name()));
@@ -389,7 +390,7 @@ TEST_F(CompilerTest, compileUncAction) {
   actions.emplace_back(
       std::make_unique<Action::SetVar>("", 0, 0, Action::SetVar::EvaluateType::CreateAndInit));
 
-  Wge::Bytecode::Compiler compiler;
+  Wge::Bytecode::Compiler::RuleCompiler compiler;
   auto program = compiler.compile(rules, &default_action);
 
   size_t count = 0;
@@ -421,7 +422,7 @@ TEST_F(CompilerTest, compileChainRule) {
     parent_rule = chain_rule;
   }
 
-  Wge::Bytecode::Compiler compiler;
+  Wge::Bytecode::Compiler::RuleCompiler compiler;
   auto program = compiler.compile(rules, nullptr);
 
   size_t operator_count = 0;
@@ -446,7 +447,7 @@ TEST_F(CompilerTest, compileExpandMacro) {
       std::string(), std::make_shared<Variable::Args>("", false, false, "")));
   std::vector<const Rule*> rules = {&rule};
 
-  Wge::Bytecode::Compiler compiler;
+  Wge::Bytecode::Compiler::RuleCompiler compiler;
   auto program = compiler.compile(rules, nullptr);
 
   size_t expand_macro_count = 0;

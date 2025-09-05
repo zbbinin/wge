@@ -3,6 +3,7 @@ file(GLOB local_source
   *.cc
 )
 
+add_subdirectory(compiler)
 add_library(bytecode ${local_source})
 
 find_package(spdlog CONFIG REQUIRED)

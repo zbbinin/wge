@@ -24,7 +24,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "program.h"
+#include "../program.h"
 
 namespace Wge {
 class Rule;
@@ -44,7 +44,9 @@ class ActionBase;
 
 namespace Wge {
 namespace Bytecode {
-class Compiler {
+namespace Compiler {
+
+class RuleCompiler {
 public:
   /**
    * Compile multiple rules into a program
@@ -74,5 +76,7 @@ public:
 private:
   void compileRule(const Rule* rule, const Rule* default_action, Program& program);
 };
+
+} // namespace Compiler
 } // namespace Bytecode
 } // namespace Wge

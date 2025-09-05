@@ -28,7 +28,7 @@
 public:                                                                                            \
   const char* name() const override { return name_; }                                              \
                                                                                                    \
-public:                                                                                           \
+public:                                                                                            \
   static constexpr char name_[] = #n;
 
 namespace Wge {

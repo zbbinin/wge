@@ -20,7 +20,7 @@
  */
 #include "virtual_machine.h"
 
-#include "compiler.h"
+#include "compiler/rule_compiler.h"
 
 #include "../action/actions_include.h"
 #include "../macro/macro_include.h"
@@ -472,7 +472,7 @@ void VirtualMachine::execTransform(const Instruction& instruction) {
 
   const std::unique_ptr<Variable::VariableBase>* curr_var =
       reinterpret_cast<const std::unique_ptr<Variable::VariableBase>*>(
-          general_registers_[Compiler::curr_variable_reg_]);
+          general_registers_[Compiler::RuleCompiler::curr_variable_reg_]);
   const auto& input = extra_registers_[instruction.op2_.ex_reg_];
   auto& output = extra_registers_[instruction.op1_.ex_reg_];
   output.clear();
@@ -607,10 +607,10 @@ void VirtualMachine::execOperate(const Instruction& instruction) {
                              1];
 
   const Rule* curr_rule =
-      reinterpret_cast<const Rule*>(general_registers_[Compiler::curr_rule_reg_]);
+      reinterpret_cast<const Rule*>(general_registers_[Compiler::RuleCompiler::curr_rule_reg_]);
   const std::unique_ptr<Variable::VariableBase>* curr_var =
       reinterpret_cast<const std::unique_ptr<Variable::VariableBase>*>(
-          general_registers_[Compiler::curr_variable_reg_]);
+          general_registers_[Compiler::RuleCompiler::curr_variable_reg_]);
   const auto& input = extra_registers_[instruction.op2_.ex_reg_];
   auto& output = extra_registers_[instruction.op1_.ex_reg_];
   output.clear();
@@ -658,7 +658,7 @@ void VirtualMachine::execOperate(const Instruction& instruction) {
 
 END:
   // If the operator was matched, set rflags_
-  const auto& op_results = extra_registers_[Compiler::op_res_reg_];
+  const auto& op_results = extra_registers_[Compiler::RuleCompiler::op_res_reg_];
   rflags_ = op_results.size() != 0;
 }
 
@@ -702,14 +702,14 @@ void VirtualMachine::execAction(const Instruction& instruction) {
   return;
 
   const Rule* curr_rule =
-      reinterpret_cast<const Rule*>(general_registers_[Compiler::curr_rule_reg_]);
+      reinterpret_cast<const Rule*>(general_registers_[Compiler::RuleCompiler::curr_rule_reg_]);
   const std::unique_ptr<Variable::VariableBase>* curr_var =
       reinterpret_cast<const std::unique_ptr<Variable::VariableBase>*>(
-          general_registers_[Compiler::curr_variable_reg_]);
+          general_registers_[Compiler::RuleCompiler::curr_variable_reg_]);
   auto& operate_results = extra_registers_[instruction.op1_.ex_reg_];
-  auto& original_value = extra_registers_[Compiler::load_var_reg_];
-  auto& transformed_value =
-      extra_registers_[static_cast<ExtraRegister>(general_registers_[Compiler::op_src_reg_])];
+  auto& original_value = extra_registers_[Compiler::RuleCompiler::load_var_reg_];
+  auto& transformed_value = extra_registers_[static_cast<ExtraRegister>(
+      general_registers_[Compiler::RuleCompiler::op_src_reg_])];
 
   DISPATCH(action_dispatch_table[instruction.op2_.index_]);
   CASE(Ctl);

@@ -1,4 +1,4 @@
-#include "compiler.h"
+#include "rule_compiler.h"
 
 #include "action_compiler.h"
 #include "macro_compiler.h"
@@ -6,13 +6,13 @@
 #include "transform_compiler.h"
 #include "variable_compiler.h"
 
-#include "../rule.h"
+#include "../../rule.h"
 
 namespace Wge {
 namespace Bytecode {
-
-std::unique_ptr<Program> Compiler::compile(const std::vector<const Rule*>& rules,
-                                           const Rule* default_action) {
+namespace Compiler {
+std::unique_ptr<Program> RuleCompiler::compile(const std::vector<const Rule*>& rules,
+                                               const Rule* default_action) {
   auto program = std::make_unique<Program>();
 
   // Compile each rule into program
@@ -23,7 +23,7 @@ std::unique_ptr<Program> Compiler::compile(const std::vector<const Rule*>& rules
   return program;
 }
 
-void Compiler::compileRule(const Rule* rule, const Rule* default_action, Program& program) {
+void RuleCompiler::compileRule(const Rule* rule, const Rule* default_action, Program& program) {
   // Set current rule
   program.emit({OpCode::MOV, {.g_reg_ = curr_rule_reg_}, {.cptr_ = rule}});
 
@@ -33,7 +33,7 @@ void Compiler::compileRule(const Rule* rule, const Rule* default_action, Program
     program.emit({OpCode::MOV, {.g_reg_ = curr_variable_reg_}, {.cptr_ = &var}});
 
     // Compile variable
-    VariableCompiler::compile(var.get(), program);
+    Compiler::VariableCompiler::compile(var.get(), program);
 
     // Compile transformations
     ExtraRegister transform_dst_reg = transform_tmp_reg1_;
@@ -42,7 +42,8 @@ void Compiler::compileRule(const Rule* rule, const Rule* default_action, Program
       // Get the default transformation
       auto& transforms = default_action->transforms();
       for (auto& transform : transforms) {
-        TransformCompiler::compile(transform_dst_reg, transform_src_reg, transform.get(), program);
+        Compiler::TransformCompiler::compile(transform_dst_reg, transform_src_reg, transform.get(),
+                                             program);
         if (transform_src_reg == load_var_reg_) {
           transform_src_reg = transform_dst_reg;
           transform_dst_reg = transform_tmp_reg2_;
@@ -53,7 +54,8 @@ void Compiler::compileRule(const Rule* rule, const Rule* default_action, Program
     }
     auto& transforms = rule->transforms();
     for (auto& transform : transforms) {
-      TransformCompiler::compile(transform_dst_reg, transform_src_reg, transform.get(), program);
+      Compiler::TransformCompiler::compile(transform_dst_reg, transform_src_reg, transform.get(),
+                                           program);
       if (transform_src_reg == load_var_reg_) {
         transform_src_reg = transform_dst_reg;
         transform_dst_reg = transform_tmp_reg2_;
@@ -66,7 +68,7 @@ void Compiler::compileRule(const Rule* rule, const Rule* default_action, Program
     auto& op = rule->getOperator();
     if (op) {
       const ExtraRegister op_src_reg = transform_src_reg;
-      OperatorCompiler::compile(op_res_reg_, op_src_reg, op.get(), program);
+      Compiler::OperatorCompiler::compile(op_res_reg_, op_src_reg, op.get(), program);
 
       // Set the transformed values register for action use
       program.emit({OpCode::MOV, {.g_reg_ = op_src_reg_}, {.ex_reg_ = op_src_reg}});
@@ -75,20 +77,20 @@ void Compiler::compileRule(const Rule* rule, const Rule* default_action, Program
       if (default_action) {
         auto& actions = default_action->actions();
         for (const auto& action : actions) {
-          ActionCompiler::compile(op_res_reg_, action.get(), program);
+          Compiler::ActionCompiler::compile(op_res_reg_, action.get(), program);
         }
       }
 
       // Compile each action in the rule
       auto& actions = rule->actions();
       for (const auto& action : actions) {
-        ActionCompiler::compile(op_res_reg_, action.get(), program);
+        Compiler::ActionCompiler::compile(op_res_reg_, action.get(), program);
       }
     } else {
       // Compile each uncondition action in the rule
       auto& actions = rule->actions();
       for (const auto& action : actions) {
-        ActionCompiler::compile(action.get(), program);
+        Compiler::ActionCompiler::compile(action.get(), program);
       }
     }
   }
@@ -111,11 +113,13 @@ void Compiler::compileRule(const Rule* rule, const Rule* default_action, Program
   }
 
   // Compile expand macro
-  MacroCompiler::compile(rule->msgMacro().get(), rule->logDataMacro().get(), program);
+  Compiler::MacroCompiler::compile(rule->msgMacro().get(), rule->logDataMacro().get(), program);
 
   // Relocate jump address
   const size_t curr_index = program.instructions().size();
   program.relocate(jz_index, curr_index);
 }
+
+} // namespace Compiler
 } // namespace Bytecode
 } // namespace Wge

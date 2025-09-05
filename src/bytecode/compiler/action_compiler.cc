@@ -20,15 +20,15 @@
  */
 #include "action_compiler.h"
 
-#include "program.h"
-
-#include "../action/actions_include.h"
+#include "../../action/actions_include.h"
+#include "../program.h"
 
 #define ACTION_INDEX(name)                                                                         \
   { Action::name::name_, __COUNTER__ }
 
 namespace Wge {
 namespace Bytecode {
+namespace Compiler {
 const std::unordered_map<const char*, int64_t> ActionCompiler::action_index_map_ = {
     ACTION_INDEX(Ctl),    ACTION_INDEX(InitCol), ACTION_INDEX(SetEnv), ACTION_INDEX(SetRsc),
     ACTION_INDEX(SetSid), ACTION_INDEX(SetUid),  ACTION_INDEX(SetVar),
@@ -55,6 +55,8 @@ void ActionCompiler::compile(const Action::ActionBase* action, Program& program)
                   {.cptr_ = reinterpret_cast<const void*>(action_ptr)}});
   }
 }
+
+} // namespace Compiler
 } // namespace Bytecode
 } // namespace Wge
 

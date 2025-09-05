@@ -20,15 +20,15 @@
  */
 #include "operator_compiler.h"
 
-#include "program.h"
-
-#include "../operator/operator_include.h"
+#include "../../operator/operator_include.h"
+#include "../program.h"
 
 #define OPERATOR_INDEX(name)                                                                       \
   { Operator::name::name_, __COUNTER__ }
 
 namespace Wge {
 namespace Bytecode {
+namespace Compiler {
 const std::unordered_map<const char*, int64_t> OperatorCompiler::operator_index_map_ = {
     OPERATOR_INDEX(BeginsWith),
     OPERATOR_INDEX(ContainsWord),
@@ -80,6 +80,8 @@ void OperatorCompiler::compile(ExtraRegister res_reg, ExtraRegister src_reg,
                   {.cptr_ = op}});
   }
 }
+
+} // namespace Compiler
 } // namespace Bytecode
 } // namespace Wge
 

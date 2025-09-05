@@ -20,15 +20,15 @@
  */
 #include "variable_compiler.h"
 
-#include "program.h"
-
-#include "../variable/variables_include.h"
+#include "../../variable/variables_include.h"
+#include "../program.h"
 
 #define VAR_INDEX(name)                                                                            \
   { Variable::name::main_name_.data(), __COUNTER__ }
 
 namespace Wge {
 namespace Bytecode {
+namespace Compiler {
 const std::unordered_map<const char*, int64_t> VariableCompiler::variable_index_map_ = {
     VAR_INDEX(ArgsCombinedSize),
     VAR_INDEX(ArgsGetNames),
@@ -142,6 +142,7 @@ void VariableCompiler::compile(const Variable::VariableBase* variable, Program& 
                   {.cptr_ = variable}});
   }
 }
+} // namespace Compiler
 } // namespace Bytecode
 } // namespace Wge
 

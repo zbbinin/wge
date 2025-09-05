@@ -20,15 +20,15 @@
  */
 #include "transform_compiler.h"
 
-#include "program.h"
-
-#include "../transformation/transform_include.h"
+#include "../../transformation/transform_include.h"
+#include "../program.h"
 
 #define TRANSFORM_INDEX(name)                                                                      \
   { Transformation::name::name_, __COUNTER__ }
 
 namespace Wge {
 namespace Bytecode {
+namespace Compiler {
 const std::unordered_map<const char*, int64_t> TransformCompiler::transform_index_map_ = {
     TRANSFORM_INDEX(Base64DecodeExt),    TRANSFORM_INDEX(Base64Decode),
     TRANSFORM_INDEX(Base64Encode),       TRANSFORM_INDEX(CmdLine),
@@ -63,6 +63,8 @@ void TransformCompiler::compile(ExtraRegister dst_reg, ExtraRegister src_reg,
                   {.cptr_ = transform}});
   }
 }
+
+} // namespace Compiler
 } // namespace Bytecode
 } // namespace Wge
 

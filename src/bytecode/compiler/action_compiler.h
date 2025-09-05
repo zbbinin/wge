@@ -24,27 +24,33 @@
 
 #include <stdint.h>
 
-#include "register.h"
+#include "../register.h"
 
 namespace Wge {
-namespace Transformation {
-class TransformBase;
+namespace Action {
+class ActionBase;
 }
 } // namespace Wge
 
 namespace Wge {
 namespace Bytecode {
+class CompilerTest;
+class VirtualMachineTest;
 class Program;
-class TransformCompiler {
-  friend class CompilerTest;
-  friend class VirtualMachineTest;
+namespace Compiler {
+
+class ActionCompiler {
+  friend class Wge::Bytecode::CompilerTest;
+  friend class Wge::Bytecode::VirtualMachineTest;
 
 public:
-  static void compile(ExtraRegister dst_reg, ExtraRegister src_reg,
-                      const Transformation::TransformBase* transform, Program& program);
+  static void compile(ExtraRegister src_reg, const Action::ActionBase* action, Program& program);
+  static void compile(const Action::ActionBase* action, Program& program);
 
 private:
-  static const std::unordered_map<const char*, int64_t> transform_index_map_;
+  static const std::unordered_map<const char*, int64_t> action_index_map_;
 };
+
+} // namespace Compiler
 } // namespace Bytecode
 } // namespace Wge

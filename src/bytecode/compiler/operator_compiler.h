@@ -24,24 +24,33 @@
 
 #include <stdint.h>
 
+#include "../register.h"
+
 namespace Wge {
-namespace Variable {
-class VariableBase;
+namespace Operator {
+class OperatorBase;
 }
 } // namespace Wge
 
 namespace Wge {
 namespace Bytecode {
+class CompilerTest;
+class VirtualMachineTest;
 class Program;
-class VariableCompiler {
-  friend class CompilerTest;
-  friend class VirtualMachineTest;
+namespace Compiler {
+
+class OperatorCompiler {
+  friend class Wge::Bytecode::CompilerTest;
+  friend class Wge::Bytecode::VirtualMachineTest;
 
 public:
-  static void compile(const Variable::VariableBase* variable, Program& program);
+  static void compile(ExtraRegister res_reg, ExtraRegister src_reg,
+                      const Operator::OperatorBase* op, Program& program);
 
 private:
-  static const std::unordered_map<const char*, int64_t> variable_index_map_;
+  static const std::unordered_map<const char*, int64_t> operator_index_map_;
 };
+
+} // namespace Compiler
 } // namespace Bytecode
 } // namespace Wge

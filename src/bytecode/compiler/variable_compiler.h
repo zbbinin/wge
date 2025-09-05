@@ -24,27 +24,30 @@
 
 #include <stdint.h>
 
-#include "register.h"
-
 namespace Wge {
-namespace Action {
-class ActionBase;
+namespace Variable {
+class VariableBase;
 }
 } // namespace Wge
 
 namespace Wge {
 namespace Bytecode {
+class CompilerTest;
+class VirtualMachineTest;
 class Program;
-class ActionCompiler {
-  friend class CompilerTest;
-  friend class VirtualMachineTest;
+namespace Compiler {
+
+class VariableCompiler {
+  friend class Wge::Bytecode::CompilerTest;
+  friend class Wge::Bytecode::VirtualMachineTest;
 
 public:
-  static void compile(ExtraRegister src_reg, const Action::ActionBase* action, Program& program);
-  static void compile(const Action::ActionBase* action, Program& program);
+  static void compile(const Variable::VariableBase* variable, Program& program);
 
 private:
-  static const std::unordered_map<const char*, int64_t> action_index_map_;
+  static const std::unordered_map<const char*, int64_t> variable_index_map_;
 };
+
+} // namespace Compiler
 } // namespace Bytecode
 } // namespace Wge
