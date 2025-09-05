@@ -24,6 +24,7 @@ namespace Wge {
 namespace Operator {
 std::unordered_map<std::string, std::shared_ptr<Common::Hyperscan::HsDataBase>>
     PmFromFile::database_cache_;
+std::mutex PmFromFile::database_cache_mutex_;
 
 void PmFromFile::init(const std::string& serialize_dir) {
   // Make the file path absolute.
@@ -31,18 +32,15 @@ void PmFromFile::init(const std::string& serialize_dir) {
 
   // Load the hyperscan database and create a scanner.
   // We cache the hyperscan database to avoid loading(complie) the same database multiple times.
+  std::unique_lock<std::mutex> locker(database_cache_mutex_);
   auto iter = database_cache_.find(file_path);
   if (iter == database_cache_.end()) {
-    std::ifstream ifs(file_path);
-    if (!ifs.is_open()) {
-      WGE_LOG_ERROR("Failed to open hyperscan database file: {}", file_path);
-      return;
-    }
-
+    locker.unlock();
     const char* serialize_dir_cstr = serialize_dir.empty() ? nullptr : serialize_dir.c_str();
-    auto hs_db = std::make_shared<Common::Hyperscan::HsDataBase>(ifs, true, true, true, false,
-                                                                 false, serialize_dir_cstr);
+    auto hs_db = std::make_shared<Common::Hyperscan::HsDataBase>(std::move(expression_list_),
+                                                                 serialize_dir_cstr);
     scanner_ = std::make_unique<Common::Hyperscan::Scanner>(hs_db);
+    locker.lock();
     database_cache_.emplace(file_path, hs_db);
   } else {
     scanner_ = std::make_unique<Common::Hyperscan::Scanner>(iter->second);

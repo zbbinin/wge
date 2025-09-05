@@ -21,6 +21,7 @@
 #pragma once
 
 #include <fstream>
+#include <mutex>
 #include <string_view>
 #include <unordered_map>
 #include <vector>
@@ -60,11 +61,23 @@ class PmFromFile : public OperatorBase {
 
 public:
   PmFromFile(std::string&& literal_value, bool is_not, std::string_view curr_rule_file_path)
-      : OperatorBase(std::move(literal_value), is_not), curr_rule_file_path_(curr_rule_file_path) {}
+      : OperatorBase(std::move(literal_value), is_not), curr_rule_file_path_(curr_rule_file_path),
+        expression_list_(true) {
+    // Make the file path absolute.
+    std::string file_path = Common::File::makeFilePath(curr_rule_file_path, literal_value_);
+
+    // Load the expression list
+    std::ifstream ifs(file_path);
+    if (ifs.is_open()) {
+      expression_list_.load(ifs, true, true, true, false, false);
+    } else {
+      WGE_LOG_ERROR("Failed to open hyperscan database file: {}", file_path);
+    }
+  }
 
   PmFromFile(const std::shared_ptr<Macro::MacroBase> macro, bool is_not,
              std::string_view curr_rule_file_path)
-      : OperatorBase(macro, is_not) {
+      : OperatorBase(macro, is_not), expression_list_(true) {
     // Not supported macro expansion
     UNREACHABLE();
   }
@@ -116,8 +129,10 @@ private:
   // Cache the hyperscan database
   static std::unordered_map<std::string, std::shared_ptr<Common::Hyperscan::HsDataBase>>
       database_cache_;
+  static std::mutex database_cache_mutex_;
 
   std::string_view curr_rule_file_path_;
+  Common::Hyperscan::ExpressionList expression_list_;
 };
 } // namespace Operator
 } // namespace Wge
