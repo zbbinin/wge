@@ -40,11 +40,7 @@ void ActionCompiler::compile(ExtraRegister src_reg, const Action::ActionBase* ac
   assert(iter != action_index_map_.end());
   if (iter != action_index_map_.end()) {
     int64_t index = iter->second;
-    int64_t action_ptr = reinterpret_cast<int64_t>(action);
-    program.emit({OpCode::ACTION,
-                  {.ex_reg_ = src_reg},
-                  {.index_ = index},
-                  {.cptr_ = reinterpret_cast<const void*>(action_ptr)}});
+    program.emit({OpCode::ACTION, {.ex_reg_ = src_reg}, {.index_ = index}, {.cptr_ = action}});
   }
 }
 

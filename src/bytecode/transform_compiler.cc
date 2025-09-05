@@ -56,12 +56,11 @@ void TransformCompiler::compile(ExtraRegister dst_reg, ExtraRegister src_reg,
   assert(iter != transform_index_map_.end());
   if (iter != transform_index_map_.end()) {
     int64_t index = iter->second;
-    int64_t transform_ptr = reinterpret_cast<int64_t>(transform);
     program.emit({OpCode::TRANSFORM,
                   {.ex_reg_ = dst_reg},
                   {.ex_reg_ = src_reg},
                   {.index_ = index},
-                  {.cptr_ = reinterpret_cast<const void*>(transform_ptr)}});
+                  {.cptr_ = transform}});
   }
 }
 } // namespace Bytecode

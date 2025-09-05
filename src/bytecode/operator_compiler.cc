@@ -73,12 +73,11 @@ void OperatorCompiler::compile(ExtraRegister res_reg, ExtraRegister src_reg,
   assert(iter != operator_index_map_.end());
   if (iter != operator_index_map_.end()) {
     int64_t index = iter->second;
-    int64_t operator_ptr = reinterpret_cast<int64_t>(op);
     program.emit({OpCode::OPERATE,
                   {.ex_reg_ = res_reg},
                   {.ex_reg_ = src_reg},
                   {.index_ = index},
-                  {.cptr_ = reinterpret_cast<const void*>(operator_ptr)}});
+                  {.cptr_ = op}});
   }
 }
 } // namespace Bytecode
