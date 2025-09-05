@@ -11,15 +11,9 @@
 namespace Wge {
 namespace Bytecode {
 namespace Compiler {
-std::unique_ptr<Program> RuleCompiler::compile(const std::vector<const Rule*>& rules,
-                                               const Rule* default_action) {
+std::unique_ptr<Program> RuleCompiler::compile(const Rule* rule, const Rule* default_action) {
   auto program = std::make_unique<Program>();
-
-  // Compile each rule into program
-  for (const Rule* rule : rules) {
-    compileRule(rule, default_action, *program);
-  }
-
+  compileRule(rule, default_action, *program);
   return program;
 }
 

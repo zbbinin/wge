@@ -49,13 +49,12 @@ namespace Compiler {
 class RuleCompiler {
 public:
   /**
-   * Compile multiple rules into a program
+   * Compile rule into a program
    * @param rules The rules to compile
    * @param default_action The default action for the program
    * @return Compiled bytecode program
    */
-  std::unique_ptr<Program> compile(const std::vector<const Rule*>& rules,
-                                   const Rule* default_action);
+  static std::unique_ptr<Program> compile(const Rule* rule, const Rule* default_action);
 
 public:
   // The current rule register
@@ -74,7 +73,7 @@ public:
   static constexpr ExtraRegister transform_tmp_reg2_{ExtraRegister::R18};
 
 private:
-  void compileRule(const Rule* rule, const Rule* default_action, Program& program);
+  static void compileRule(const Rule* rule, const Rule* default_action, Program& program);
 };
 
 } // namespace Compiler

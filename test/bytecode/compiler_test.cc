@@ -56,7 +56,6 @@ public:
 TEST_F(CompilerTest, compileVariable) {
   // Create a rule with all variables
   Rule rule("", 0);
-  std::vector<const Rule*> rules = {&rule};
 
   rule.appendVariable(std::make_unique<Variable::ArgsCombinedSize>("", false, false, ""));
   rule.appendVariable(std::make_unique<Variable::ArgsGetNames>("", false, false, ""));
@@ -162,8 +161,7 @@ TEST_F(CompilerTest, compileVariable) {
   rule.appendVariable(std::make_unique<Variable::WebAppId>("", false, false, ""));
   rule.appendVariable(std::make_unique<Variable::Xml>("", false, false, ""));
 
-  Wge::Bytecode::Compiler::RuleCompiler compiler;
-  auto program = compiler.compile(rules, nullptr);
+  auto program = Wge::Bytecode::Compiler::RuleCompiler::compile(&rule, nullptr);
   auto& instructions = program->instructions();
 
   size_t load_var_count = 0;
@@ -183,7 +181,6 @@ TEST_F(CompilerTest, compileTransform) {
   // Create a rule with all transformations
   Rule rule("", 0);
   rule.appendVariable(std::make_unique<Variable::Args>("", false, false, ""));
-  std::vector<const Rule*> rules = {&rule};
   auto& transforms = rule.transforms();
 
   Rule default_action("", 0);
@@ -230,8 +227,7 @@ TEST_F(CompilerTest, compileTransform) {
   transforms.emplace_back(std::make_unique<Transformation::UrlEncode>());
   transforms.emplace_back(std::make_unique<Transformation::Utf8ToUnicode>());
 
-  Wge::Bytecode::Compiler::RuleCompiler compiler;
-  auto program = compiler.compile(rules, &default_action);
+  auto program = Wge::Bytecode::Compiler::RuleCompiler::compile(&rule, &default_action);
 
   size_t count = 0;
   for (auto& instruction : program->instructions()) {
@@ -259,10 +255,10 @@ TEST_F(CompilerTest, compileTransform) {
 }
 
 TEST_F(CompilerTest, compileOperator) {
-  std::vector<std::shared_ptr<Rule>> rules;
+  std::vector<std::unique_ptr<Rule>> rules;
 
 #define CREATE_RULE(op)                                                                            \
-  rules.emplace_back(std::make_shared<Rule>("", 0));                                               \
+  rules.emplace_back(std::make_unique<Rule>("", 0));                                               \
   rules.back()->setOperator(std::make_unique<Operator::op>("", false, ""));                        \
   rules.back()->appendVariable(std::make_unique<Variable::Args>("", false, false, ""));
 
@@ -303,24 +299,22 @@ TEST_F(CompilerTest, compileOperator) {
   CREATE_RULE(Within);
 #undef CREATE_RULE
 
-  std::vector<const Rule*> rule_ptrs;
-  rule_ptrs.reserve(rules.size());
-  for (const auto& rule : rules) {
-    rule_ptrs.emplace_back(rule.get());
+  std::vector<std::unique_ptr<Program>> programs;
+  for (auto& rule : rules) {
+    programs.emplace_back(Wge::Bytecode::Compiler::RuleCompiler::compile(rule.get(), nullptr));
   }
 
-  Wge::Bytecode::Compiler::RuleCompiler compiler;
-  auto program = compiler.compile(rule_ptrs, nullptr);
-
   size_t count = 0;
-  for (auto& instruction : program->instructions()) {
-    if (instruction.op_code_ == Bytecode::OpCode::OPERATE) {
-      ++count;
-      EXPECT_EQ(instruction.op1_.ex_reg_, Compiler::RuleCompiler::op_res_reg_);
-      EXPECT_EQ(instruction.op2_.ex_reg_, Compiler::RuleCompiler::load_var_reg_);
-      const Operator::OperatorBase* var =
-          reinterpret_cast<const Operator::OperatorBase*>(instruction.op4_.cptr_);
-      EXPECT_EQ(instruction.op3_.index_, operator_index_map_.at(var->name()));
+  for (auto& program : programs) {
+    for (auto& instruction : program->instructions()) {
+      if (instruction.op_code_ == Bytecode::OpCode::OPERATE) {
+        ++count;
+        EXPECT_EQ(instruction.op1_.ex_reg_, Compiler::RuleCompiler::op_res_reg_);
+        EXPECT_EQ(instruction.op2_.ex_reg_, Compiler::RuleCompiler::load_var_reg_);
+        const Operator::OperatorBase* var =
+            reinterpret_cast<const Operator::OperatorBase*>(instruction.op4_.cptr_);
+        EXPECT_EQ(instruction.op3_.index_, operator_index_map_.at(var->name()));
+      }
     }
   }
 
@@ -332,7 +326,6 @@ TEST_F(CompilerTest, compileAction) {
   // Create a rule with all actions
   Rule rule("", 0);
   rule.appendVariable(std::make_unique<Variable::Args>("", false, false, ""));
-  std::vector<const Rule*> rules = {&rule};
   auto& actions = rule.actions();
 
   rule.setOperator(std::make_unique<Operator::Lt>("", false, ""));
@@ -351,8 +344,7 @@ TEST_F(CompilerTest, compileAction) {
   actions.emplace_back(
       std::make_unique<Action::SetVar>("", 0, 0, Action::SetVar::EvaluateType::CreateAndInit));
 
-  Wge::Bytecode::Compiler::RuleCompiler compiler;
-  auto program = compiler.compile(rules, &default_action);
+  auto program = Wge::Bytecode::Compiler::RuleCompiler::compile(&rule, &default_action);
 
   size_t count = 0;
   for (auto& instruction : program->instructions()) {
@@ -371,7 +363,6 @@ TEST_F(CompilerTest, compileUncAction) {
   // Create a rule with all actions
   Rule rule("", 0);
   rule.appendVariable(std::make_unique<Variable::Args>("", false, false, ""));
-  std::vector<const Rule*> rules = {&rule};
   auto& actions = rule.actions();
 
   // rule.setOperator(std::make_unique<Operator::Lt>("", false, ""));
@@ -390,8 +381,7 @@ TEST_F(CompilerTest, compileUncAction) {
   actions.emplace_back(
       std::make_unique<Action::SetVar>("", 0, 0, Action::SetVar::EvaluateType::CreateAndInit));
 
-  Wge::Bytecode::Compiler::RuleCompiler compiler;
-  auto program = compiler.compile(rules, &default_action);
+  auto program = Wge::Bytecode::Compiler::RuleCompiler::compile(&rule, &default_action);
 
   size_t count = 0;
   for (auto& instruction : program->instructions()) {
@@ -410,7 +400,6 @@ TEST_F(CompilerTest, compileChainRule) {
   Rule rule("", 0);
   rule.appendVariable(std::make_unique<Variable::Args>("", false, false, ""));
   rule.setOperator(std::make_unique<Operator::Lt>("", false, ""));
-  std::vector<const Rule*> rules = {&rule};
 
   // Append chain rules
   constexpr size_t chain_rule_count = 20;
@@ -422,8 +411,7 @@ TEST_F(CompilerTest, compileChainRule) {
     parent_rule = chain_rule;
   }
 
-  Wge::Bytecode::Compiler::RuleCompiler compiler;
-  auto program = compiler.compile(rules, nullptr);
+  auto program = Wge::Bytecode::Compiler::RuleCompiler::compile(&rule, nullptr);
 
   size_t operator_count = 0;
   size_t jz_count = 0;
@@ -445,10 +433,8 @@ TEST_F(CompilerTest, compileExpandMacro) {
                                                std::vector<std::shared_ptr<Macro::MacroBase>>()));
   rule.logData(std::make_unique<Macro::VariableMacro>(
       std::string(), std::make_shared<Variable::Args>("", false, false, "")));
-  std::vector<const Rule*> rules = {&rule};
 
-  Wge::Bytecode::Compiler::RuleCompiler compiler;
-  auto program = compiler.compile(rules, nullptr);
+  auto program = Wge::Bytecode::Compiler::RuleCompiler::compile(&rule, nullptr);
 
   size_t expand_macro_count = 0;
   for (auto& instruction : program->instructions()) {
