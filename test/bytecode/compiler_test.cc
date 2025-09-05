@@ -23,10 +23,12 @@
 #include "action/actions_include.h"
 #include "bytecode/action_compiler.h"
 #include "bytecode/compiler.h"
+#include "bytecode/macro_compiler.h"
 #include "bytecode/operator_compiler.h"
 #include "bytecode/transform_compiler.h"
 #include "bytecode/variable_compiler.h"
 #include "engine.h"
+#include "macro/macro_include.h"
 #include "operator/operator_include.h"
 #include "rule.h"
 #include "transformation/transform_include.h"
@@ -44,6 +46,7 @@ public:
       OperatorCompiler::operator_index_map_};
   const std::unordered_map<const char*, int64_t>& action_index_map_{
       ActionCompiler::action_index_map_};
+  const std::unordered_map<const char*, int64_t>& macro_index_map_{MacroCompiler::macro_index_map_};
 
 public:
   Engine engine_;
@@ -162,9 +165,6 @@ TEST_F(CompilerTest, compileVariable) {
   auto program = compiler.compile(rules, nullptr);
   auto& instructions = program->instructions();
 
-  const size_t variable_count = rule.variables().size();
-  EXPECT_EQ(instructions.size(), variable_count * 2 + 1);
-
   size_t load_var_count = 0;
   for (auto& instruction : instructions) {
     if (instruction.op_code_ == Bytecode::OpCode::LOAD_VAR) {
@@ -175,7 +175,7 @@ TEST_F(CompilerTest, compileVariable) {
       EXPECT_EQ(instruction.op2_.index_, variable_index_map_.at(var->mainName().data()));
     }
   }
-  EXPECT_EQ(load_var_count, variable_count);
+  EXPECT_EQ(load_var_count, rule.variables().size());
 }
 
 TEST_F(CompilerTest, compileTransform) {
@@ -434,7 +434,34 @@ TEST_F(CompilerTest, compileChainRule) {
     }
   }
   EXPECT_EQ(operator_count, chain_rule_count + 1);
-  EXPECT_EQ(jz_count, chain_rule_count);
+  EXPECT_EQ(jz_count, chain_rule_count + 1);
+}
+
+TEST_F(CompilerTest, compileExpandMacro) {
+  Rule rule("", 0);
+  rule.setOperator(std::make_unique<Operator::Lt>("", false, ""));
+  rule.msg(std::make_unique<Macro::MultiMacro>(std::string(),
+                                               std::vector<std::shared_ptr<Macro::MacroBase>>()));
+  rule.logData(std::make_unique<Macro::VariableMacro>(
+      std::string(), std::make_shared<Variable::Args>("", false, false, "")));
+  std::vector<const Rule*> rules = {&rule};
+
+  Wge::Bytecode::Compiler compiler;
+  auto program = compiler.compile(rules, nullptr);
+
+  size_t expand_macro_count = 0;
+  for (auto& instruction : program->instructions()) {
+    if (instruction.op_code_ == Bytecode::OpCode::EXPAND_MACRO) {
+      ++expand_macro_count;
+      const Macro::MacroBase* msg_macro =
+          reinterpret_cast<const Macro::MacroBase*>(instruction.op2_.cptr_);
+      EXPECT_EQ(instruction.op1_.index_, macro_index_map_.at(msg_macro->name()));
+      const Macro::MacroBase* log_data_macro =
+          reinterpret_cast<const Macro::MacroBase*>(instruction.op4_.cptr_);
+      EXPECT_EQ(instruction.op3_.index_, macro_index_map_.at(log_data_macro->name()));
+    }
+  }
+  EXPECT_EQ(expand_macro_count, 1);
 }
 } // namespace Bytecode
 } // namespace Wge

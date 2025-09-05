@@ -5,6 +5,7 @@
 #include <unordered_map>
 
 #include "../action/action_base.h"
+#include "../macro/macro_base.h"
 #include "../operator/operator_base.h"
 #include "../transformation/transform_base.h"
 #include "../variable/variable_base.h"
@@ -49,7 +50,7 @@ std::string Instruction::toString() const {
           {OpCode::LOAD_VAR,
            [](const Instruction& instruction) {
              std::string var_name =
-                 reinterpret_cast<const Variable::VariableBase*>(instruction.op3_.ptr_)
+                 reinterpret_cast<const Variable::VariableBase*>(instruction.op3_.cptr_)
                      ->fullName()
                      .tostring();
              return std::format("LOAD_VAR {}, {}, {}",
@@ -59,7 +60,7 @@ std::string Instruction::toString() const {
           {OpCode::TRANSFORM,
            [](const Instruction& instruction) {
              std::string transform_name =
-                 reinterpret_cast<const Transformation::TransformBase*>(instruction.op4_.ptr_)
+                 reinterpret_cast<const Transformation::TransformBase*>(instruction.op4_.cptr_)
                      ->name();
              return std::format("TRANSFORM {}, {}, {}, {}",
                                 ExtraRegister2String.at(instruction.op1_.ex_reg_),
@@ -69,7 +70,7 @@ std::string Instruction::toString() const {
           {OpCode::OPERATE,
            [](const Instruction& instruction) {
              std::string operator_name =
-                 reinterpret_cast<const Operator::OperatorBase*>(instruction.op4_.ptr_)->name();
+                 reinterpret_cast<const Operator::OperatorBase*>(instruction.op4_.cptr_)->name();
              return std::format("OPERATE {}, {}, {}, {}",
                                 ExtraRegister2String.at(instruction.op1_.ex_reg_),
                                 ExtraRegister2String.at(instruction.op2_.ex_reg_),
@@ -78,7 +79,7 @@ std::string Instruction::toString() const {
           {OpCode::ACTION,
            [](const Instruction& instruction) {
              std::string action_name =
-                 reinterpret_cast<const Action::ActionBase*>(instruction.op3_.ptr_)->name();
+                 reinterpret_cast<const Action::ActionBase*>(instruction.op3_.cptr_)->name();
              return std::format("ACTION {}, {}, {}",
                                 ExtraRegister2String.at(instruction.op1_.ex_reg_),
                                 instruction.op2_.index_, action_name);
@@ -86,8 +87,17 @@ std::string Instruction::toString() const {
           {OpCode::UNC_ACTION,
            [](const Instruction& instruction) {
              std::string action_name =
-                 reinterpret_cast<const Action::ActionBase*>(instruction.op2_.ptr_)->name();
+                 reinterpret_cast<const Action::ActionBase*>(instruction.op2_.cptr_)->name();
              return std::format("UNC_ACTION {}, {}", instruction.op2_.index_, action_name);
+           }},
+          {OpCode::EXPAND_MACRO,
+           [](const Instruction& instruction) {
+             std::string msg_macro_name =
+                 reinterpret_cast<const Macro::MacroBase*>(instruction.op2_.cptr_)->name();
+             std::string log_macro_name =
+                 reinterpret_cast<const Macro::MacroBase*>(instruction.op4_.cptr_)->name();
+             return std::format("EXPAND_MACRO {}, {}, {}, {}", instruction.op1_.index_,
+                                msg_macro_name, instruction.op3_.index_, log_macro_name);
            }},
       };
 

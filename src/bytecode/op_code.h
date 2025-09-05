@@ -104,6 +104,17 @@ enum class OpCode {
   // Example:
   // UNC_ACTION 1, 123456
   UNC_ACTION,
+
+  // Expand msg macro and log macro
+  // Syntax: EXPAND_MACRO <msg_macro_index> <msg_macro_instance_pointer> <log_macro_index>
+  // <log_macro_instance_pointer>
+  // @param op1 [index]: Msg macro index
+  // @param op2 [cptr]: Constant pointer to msg macro instance
+  // @param op3 [index]: Log macro index
+  // @param op4 [cptr]: Constant pointer to log macro instance
+  // Example:
+  // EXPAND_MACRO 0 123456 1 654321
+  EXPAND_MACRO,
 };
 } // namespace Bytecode
 } // namespace Wge

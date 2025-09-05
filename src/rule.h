@@ -131,6 +131,7 @@ public:
   const std::string& msg() const { return msg_; }
   void msg(std::string&& value) { msg_ = std::move(value); }
   void msg(std::shared_ptr<Macro::MacroBase> macro) { msg_macro_ = macro; }
+  std::shared_ptr<Macro::MacroBase> msgMacro() const { return msg_macro_; }
   const std::unordered_set<std::string>& tags() const { return tags_; }
   std::unordered_set<std::string>& tags() { return tags_; }
   const std::string& ver() const { return ver_; }
@@ -151,6 +152,7 @@ public:
   const std::string& logdata() const { return log_data_; }
   void logData(std::string&& value) { log_data_ = std::move(value); }
   void logData(std::shared_ptr<Macro::MacroBase> macro) { log_data_macro_ = macro; }
+  std::shared_ptr<Macro::MacroBase> logDataMacro() const { return log_data_macro_; }
   std::optional<bool> capture() const { return capture_; }
   void capture(bool value);
   std::optional<bool> multiMatch() const { return multi_match_; }
@@ -231,7 +233,8 @@ public:
    * Get the rule of the chain by index.
    * @param index the relative index of the chain that starts from this rule. Note that the index is
    * not same as the index of the chain that starts form the top rule.
-   * @return std::nullopt if the he index is out of range, otherwise the const iterator to the chain rule.
+   * @return std::nullopt if the he index is out of range, otherwise the const iterator to the chain
+   * rule.
    */
   std::optional<std::list<std::unique_ptr<Rule>>::const_iterator> chainRule(size_t index) const {
     std::optional<std::list<std::unique_ptr<Rule>>::const_iterator> result;

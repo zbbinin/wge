@@ -20,43 +20,29 @@
  */
 #pragma once
 
-#include "macro_base.h"
-#include "memory"
+#include <unordered_map>
 
-#include "../common/log.h"
-#include "../variable/variable_base.h"
+#include <stdint.h>
 
 namespace Wge {
 namespace Macro {
-class VariableMacro final : public MacroBase {
-  DECLARE_MACRO_NAME(VariableMacro);
+class MacroBase;
+}
+} // namespace Wge
+
+namespace Wge {
+namespace Bytecode {
+class Program;
+class MacroCompiler {
+  friend class CompilerTest;
+  friend class VirtualMachineTest;
 
 public:
-  VariableMacro(std::string&& literal_value, const std::shared_ptr<Variable::VariableBase> variable)
-      : MacroBase(std::move(literal_value)), variable_(variable) {}
-
-public:
-  void evaluate(Transaction& t, Common::EvaluateResults& result) const override {
-    variable_->evaluate(t, result);
-    WGE_LOG_TRACE("macro %{{{}}} expanded: {}", makeVariableName(),
-                  VISTIT_VARIANT_AS_STRING(result.front().variant_));
-  }
-
-public:
-  const std::shared_ptr<Variable::VariableBase> getVariable() const { return variable_; }
+  static void compile(const Macro::MacroBase* msg_macro, const Macro::MacroBase* log_data_macro,
+                      Program& program);
 
 private:
-  std::string makeVariableName() const {
-    std::string name;
-    name = variable_->mainName();
-    if (!variable_->subName().empty()) {
-      name += "." + variable_->subName();
-    }
-    return name;
-  }
-
-private:
-  const std::shared_ptr<Variable::VariableBase> variable_;
+  static const std::unordered_map<const char*, int64_t> macro_index_map_;
 };
-} // namespace Macro
+} // namespace Bytecode
 } // namespace Wge

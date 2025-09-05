@@ -23,6 +23,7 @@
 #include "compiler.h"
 
 #include "../action/actions_include.h"
+#include "../macro/macro_include.h"
 #include "../operator/operator_include.h"
 #include "../rule.h"
 #include "../transformation/transform_include.h"
@@ -53,8 +54,9 @@ namespace Wge {
 namespace Bytecode {
 void VirtualMachine::execute(const Program& program) {
   // Dispatch table for bytecode instructions. We use computed gotos for efficiency
-  static constexpr void* dispatch_table[] = {
-      &&MOV, &&JMP, &&JZ, &&JNZ, &&NOP, &&LOAD_VAR, &&TRANSFORM, &&OPERATE, &&ACTION, &&UNC_ACTION};
+  static constexpr void* dispatch_table[] = {&&MOV,    &&JMP,        &&JZ,          &&JNZ,
+                                             &&NOP,    &&LOAD_VAR,   &&TRANSFORM,   &&OPERATE,
+                                             &&ACTION, &&UNC_ACTION, &&EXPAND_MACRO};
 
   // Get instruction iterator
   auto& instructions = program.instructions();
@@ -93,6 +95,10 @@ ACTION:
   DISPATCH_NEXT();
 UNC_ACTION:
   execUncAction(*iter);
+  DISPATCH_NEXT();
+EXPAND_MACRO:
+  execMsgExpandMacro(*iter);
+  execLogDataExpandMacro(*iter);
   DISPATCH_NEXT();
 }
 
@@ -685,7 +691,7 @@ void dispatchAction(const ActionType* action, Transaction& t, const Rule* curr_r
   }
 }
 
-inline void VirtualMachine::execAction(const Instruction& instruction) {
+void VirtualMachine::execAction(const Instruction& instruction) {
   // Dispatch table for bytecode instructions. We use computed gotos for efficiency
   static constexpr void* action_dispatch_table[] = {&&Ctl,    &&InitCol, &&SetEnv, &&SetRsc,
                                                     &&SetSid, &&SetUid,  &&SetVar};
@@ -720,7 +726,7 @@ template <class ActionType> void dispatchUncAction(const ActionType* action, Tra
   action->ActionType::evaluate(t);
 }
 
-inline void VirtualMachine::execUncAction(const Instruction& instruction) {
+void VirtualMachine::execUncAction(const Instruction& instruction) {
   // Dispatch table for bytecode instructions. We use computed gotos for efficiency
   static constexpr void* action_dispatch_table[] = {&&Ctl,    &&InitCol, &&SetEnv, &&SetRsc,
                                                     &&SetSid, &&SetUid,  &&SetVar};
@@ -739,6 +745,47 @@ inline void VirtualMachine::execUncAction(const Instruction& instruction) {
   CASE(SetSid);
   CASE(SetUid);
   CASE(SetVar);
+#undef CASE
+}
+
+template <class MacroType> void dispatchMsgMacro(const MacroType* macro, Transaction& t) {
+  Common::EvaluateResults results;
+  macro->MacroType::evaluate(t, results);
+  t.setMsgMacroExpanded(results.move(0));
+}
+
+template <class MacroType> void dispatchLogDataMacro(const MacroType* macro, Transaction& t) {
+  Common::EvaluateResults results;
+  macro->MacroType::evaluate(t, results);
+  t.setLogDataMacroExpanded(results.move(0));
+}
+
+void VirtualMachine::execMsgExpandMacro(const Instruction& instruction) {
+  // Dispatch table for bytecode instructions. We use computed gotos for efficiency
+  static constexpr void* macro_dispatch_table[] = {&&MultiMacro, &&VariableMacro};
+#define CASE(macro)                                                                                \
+  macro:                                                                                           \
+  dispatchMsgMacro(reinterpret_cast<const Macro::macro*>(instruction.op2_.cptr_), transaction_);   \
+  return;
+
+  DISPATCH(macro_dispatch_table[instruction.op1_.index_]);
+  CASE(MultiMacro);
+  CASE(VariableMacro);
+#undef CASE
+}
+
+void VirtualMachine::execLogDataExpandMacro(const Instruction& instruction) {
+  // Dispatch table for bytecode instructions. We use computed gotos for efficiency
+  static constexpr void* macro_dispatch_table[] = {&&MultiMacro, &&VariableMacro};
+#define CASE(macro)                                                                                \
+  macro:                                                                                           \
+  dispatchLogDataMacro(reinterpret_cast<const Macro::macro*>(instruction.op4_.cptr_),              \
+                       transaction_);                                                              \
+  return;
+
+  DISPATCH(macro_dispatch_table[instruction.op3_.index_]);
+  CASE(MultiMacro);
+  CASE(VariableMacro);
 #undef CASE
 }
 

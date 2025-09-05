@@ -34,6 +34,8 @@
 namespace Wge {
 namespace Macro {
 class MultiMacro final : public MacroBase {
+  DECLARE_MACRO_NAME(MultiMacro);
+
 public:
   MultiMacro(std::string&& literal_value, std::vector<std::shared_ptr<MacroBase>>&& macros)
       : MacroBase(std::move(literal_value)), macros_(std::move(macros)) {}

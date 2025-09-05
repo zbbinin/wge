@@ -24,6 +24,13 @@
 #include "../common/evaluate_result.h"
 #include "../common/variant.h"
 
+#define DECLARE_MACRO_NAME(n)                                                                      \
+public:                                                                                            \
+  const char* name() const override { return name_; }                                              \
+                                                                                                   \
+public:                                                                                            \
+  static constexpr char name_[] = #n;
+
 namespace Wge {
 class Transaction;
 namespace Macro {
@@ -54,6 +61,8 @@ public:
    * @param result the result of the evaluation.
    */
   virtual void evaluate(Transaction& t, Common::EvaluateResults& result) const = 0;
+
+  virtual const char* name() const = 0;
 
 protected:
   std::string literal_value_;
