@@ -18,6 +18,16 @@ std::unique_ptr<Program> RuleCompiler::compile(const Rule* rule, const Rule* def
 }
 
 void RuleCompiler::compileRule(const Rule* rule, const Rule* default_action, Program& program) {
+  auto& op = rule->getOperator();
+  if (op == nullptr) {
+    // Compile each uncondition action in the rule
+    auto& actions = rule->actions();
+    for (const auto& action : actions) {
+      Compiler::ActionCompiler::compile(action.get(), program);
+    }
+    return;
+  }
+
   // Set current rule
   program.emit({OpCode::MOV, {.g_reg_ = curr_rule_reg_}, {.cptr_ = rule}});
 
@@ -59,33 +69,24 @@ void RuleCompiler::compileRule(const Rule* rule, const Rule* default_action, Pro
     }
 
     // Compile operator
-    auto& op = rule->getOperator();
-    if (op) {
-      const ExtraRegister op_src_reg = transform_src_reg;
-      Compiler::OperatorCompiler::compile(op_res_reg_, op_src_reg, op.get(), program);
+    const ExtraRegister op_src_reg = transform_src_reg;
+    Compiler::OperatorCompiler::compile(op_res_reg_, op_src_reg, op.get(), program);
 
-      // Set the transformed values register for action use
-      program.emit({OpCode::MOV, {.g_reg_ = op_src_reg_}, {.ex_reg_ = op_src_reg}});
+    // Set the transformed values register for action use
+    program.emit({OpCode::MOV, {.g_reg_ = op_src_reg_}, {.ex_reg_ = op_src_reg}});
 
-      // Compile each default action
-      if (default_action) {
-        auto& actions = default_action->actions();
-        for (const auto& action : actions) {
-          Compiler::ActionCompiler::compile(op_res_reg_, action.get(), program);
-        }
-      }
-
-      // Compile each action in the rule
-      auto& actions = rule->actions();
+    // Compile each default action
+    if (default_action) {
+      auto& actions = default_action->actions();
       for (const auto& action : actions) {
         Compiler::ActionCompiler::compile(op_res_reg_, action.get(), program);
       }
-    } else {
-      // Compile each uncondition action in the rule
-      auto& actions = rule->actions();
-      for (const auto& action : actions) {
-        Compiler::ActionCompiler::compile(action.get(), program);
-      }
+    }
+
+    // Compile each action in the rule
+    auto& actions = rule->actions();
+    for (const auto& action : actions) {
+      Compiler::ActionCompiler::compile(op_res_reg_, action.get(), program);
     }
   }
 
