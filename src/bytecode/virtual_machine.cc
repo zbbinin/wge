@@ -32,24 +32,6 @@
 // Dispatch instruction with index
 #define DISPATCH(index) goto* index
 
-// Dispatch the next instruction
-#define DISPATCH_NEXT()                                                                            \
-  do {                                                                                             \
-    ++iter;                                                                                        \
-    if (iter == instructions.end()) {                                                              \
-      return;                                                                                      \
-    }                                                                                              \
-    goto* dispatch_table[static_cast<size_t>(iter->op_code_)];                                     \
-  } while (0)
-
-#define DISPATCH_NEXT_NO_ITER()                                                                    \
-  do {                                                                                             \
-    if (iter == instructions.end()) {                                                              \
-      return;                                                                                      \
-    }                                                                                              \
-    goto* dispatch_table[static_cast<size_t>(iter->op_code_)];                                     \
-  } while (0)
-
 namespace Wge {
 namespace Bytecode {
 void VirtualMachine::execute(const Program& program) {
@@ -57,49 +39,37 @@ void VirtualMachine::execute(const Program& program) {
   static constexpr void* dispatch_table[] = {&&MOV,    &&JMP,        &&JZ,          &&JNZ,
                                              &&NOP,    &&LOAD_VAR,   &&TRANSFORM,   &&OPERATE,
                                              &&ACTION, &&UNC_ACTION, &&EXPAND_MACRO};
+#define CASE(ins, proc, forward)                                                                   \
+  ins:                                                                                             \
+  WGE_LOG_TRACE("exec[{}]: {}", std::distance(begin, iter), iter->toString());                     \
+  proc;                                                                                            \
+  forward;                                                                                         \
+  if (iter == instructions.end()) {                                                                \
+    return;                                                                                        \
+  }                                                                                                \
+  goto* dispatch_table[static_cast<size_t>(iter->op_code_)];
 
   // Get instruction iterator
   auto& instructions = program.instructions();
-  auto iter = instructions.begin();
+  auto begin = instructions.begin();
+  auto iter = begin;
   if (iter == instructions.end())
     [[unlikely]] { return; }
 
-  // Dispatch first instruction
-  goto* dispatch_table[static_cast<size_t>(iter->op_code_)];
-
-MOV:
-  execMov(*iter);
-  DISPATCH_NEXT();
-JMP:
-  execJmp(*iter, instructions, iter);
-  DISPATCH_NEXT_NO_ITER();
-JZ:
-  execJz(*iter, instructions, iter);
-  DISPATCH_NEXT_NO_ITER();
-JNZ:
-  execJnz(*iter, instructions, iter);
-  DISPATCH_NEXT_NO_ITER();
-NOP:
-  DISPATCH_NEXT();
-LOAD_VAR:
-  execLoadVar(*iter);
-  DISPATCH_NEXT();
-TRANSFORM:
-  execTransform(*iter);
-  DISPATCH_NEXT();
-OPERATE:
-  execOperate(*iter);
-  DISPATCH_NEXT();
-ACTION:
-  execAction(*iter);
-  DISPATCH_NEXT();
-UNC_ACTION:
-  execUncAction(*iter);
-  DISPATCH_NEXT();
-EXPAND_MACRO:
-  execMsgExpandMacro(*iter);
-  execLogDataExpandMacro(*iter);
-  DISPATCH_NEXT();
+  // Dispatch instructions
+  DISPATCH(dispatch_table[static_cast<size_t>(iter->op_code_)]);
+  CASE(MOV, execMov(*iter), ++iter);
+  CASE(JMP, execJmp(*iter, instructions, iter), {});
+  CASE(JZ, execJz(*iter, instructions, iter), {});
+  CASE(JNZ, execJnz(*iter, instructions, iter), {});
+  CASE(NOP, {}, ++iter);
+  CASE(LOAD_VAR, execLoadVar(*iter), ++iter);
+  CASE(TRANSFORM, execTransform(*iter), ++iter);
+  CASE(OPERATE, execOperate(*iter), ++iter);
+  CASE(ACTION, execAction(*iter), ++iter);
+  CASE(UNC_ACTION, execUncAction(*iter), ++iter);
+  CASE(EXPAND_MACRO, execExpandMacro(*iter), ++iter);
+#undef CASE
 }
 
 void VirtualMachine::execMov(const Instruction& instruction) {
@@ -281,6 +251,7 @@ void VirtualMachine::execLoadVar(const Instruction& instruction) {
   return;
 
   auto& output = extra_registers_[instruction.op1_.ex_reg_];
+  output.clear();
 
   DISPATCH(load_var_dispatch_table[instruction.op2_.index_]);
   CASE(ArgsCombinedSize);
@@ -747,6 +718,11 @@ void VirtualMachine::execUncAction(const Instruction& instruction) {
 #undef CASE
 }
 
+void VirtualMachine::execExpandMacro(const Instruction& instruction) {
+  execMsgExpandMacro(instruction);
+  execLogDataExpandMacro(instruction);
+}
+
 template <class MacroType> void dispatchMsgMacro(const MacroType* macro, Transaction& t) {
   Common::EvaluateResults results;
   macro->MacroType::evaluate(t, results);
@@ -792,4 +768,3 @@ void VirtualMachine::execLogDataExpandMacro(const Instruction& instruction) {
 } // namespace Wge
 
 #undef DISPATCH
-#undef DISPATCH_NEXT
