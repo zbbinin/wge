@@ -170,7 +170,7 @@ TEST_F(CompilerTest, compileVariable) {
   for (auto& instruction : instructions) {
     if (instruction.op_code_ == Bytecode::OpCode::LOAD_VAR) {
       ++load_var_count;
-      EXPECT_EQ(instruction.op1_.ex_reg_, Compiler::RuleCompiler::load_var_reg_);
+      EXPECT_EQ(instruction.op1_.x_reg_, Compiler::RuleCompiler::load_var_reg_);
       const Variable::VariableBase* var =
           reinterpret_cast<const Variable::VariableBase*>(instruction.op3_.cptr_);
       EXPECT_EQ(instruction.op2_.index_, variable_index_map_.at(var->mainName().data()));
@@ -237,15 +237,15 @@ TEST_F(CompilerTest, compileTransform) {
     if (instruction.op_code_ == Bytecode::OpCode::TRANSFORM) {
       ++count;
       if (count == 1) {
-        EXPECT_EQ(instruction.op1_.ex_reg_, Compiler::RuleCompiler::transform_tmp_reg1_);
-        EXPECT_EQ(instruction.op2_.ex_reg_, Compiler::RuleCompiler::load_var_reg_);
+        EXPECT_EQ(instruction.op1_.x_reg_, Compiler::RuleCompiler::transform_tmp_reg1_);
+        EXPECT_EQ(instruction.op2_.x_reg_, Compiler::RuleCompiler::load_var_reg_);
       } else {
         if (count % 2 == 0) {
-          EXPECT_EQ(instruction.op1_.ex_reg_, Compiler::RuleCompiler::transform_tmp_reg2_);
-          EXPECT_EQ(instruction.op2_.ex_reg_, Compiler::RuleCompiler::transform_tmp_reg1_);
+          EXPECT_EQ(instruction.op1_.x_reg_, Compiler::RuleCompiler::transform_tmp_reg2_);
+          EXPECT_EQ(instruction.op2_.x_reg_, Compiler::RuleCompiler::transform_tmp_reg1_);
         } else {
-          EXPECT_EQ(instruction.op1_.ex_reg_, Compiler::RuleCompiler::transform_tmp_reg1_);
-          EXPECT_EQ(instruction.op2_.ex_reg_, Compiler::RuleCompiler::transform_tmp_reg2_);
+          EXPECT_EQ(instruction.op1_.x_reg_, Compiler::RuleCompiler::transform_tmp_reg1_);
+          EXPECT_EQ(instruction.op2_.x_reg_, Compiler::RuleCompiler::transform_tmp_reg2_);
         }
       }
 
@@ -312,8 +312,8 @@ TEST_F(CompilerTest, compileOperator) {
     for (auto& instruction : program->instructions()) {
       if (instruction.op_code_ == Bytecode::OpCode::OPERATE) {
         ++count;
-        EXPECT_EQ(instruction.op1_.ex_reg_, Compiler::RuleCompiler::op_res_reg_);
-        EXPECT_EQ(instruction.op2_.ex_reg_, Compiler::RuleCompiler::load_var_reg_);
+        EXPECT_EQ(instruction.op1_.x_reg_, Compiler::RuleCompiler::op_res_reg_);
+        EXPECT_EQ(instruction.op2_.x_reg_, Compiler::RuleCompiler::load_var_reg_);
         const Operator::OperatorBase* var =
             reinterpret_cast<const Operator::OperatorBase*>(instruction.op4_.cptr_);
         EXPECT_EQ(instruction.op3_.index_, operator_index_map_.at(var->name()));
@@ -354,7 +354,7 @@ TEST_F(CompilerTest, compileAction) {
   for (auto& instruction : program->instructions()) {
     if (instruction.op_code_ == Bytecode::OpCode::ACTION) {
       ++count;
-      EXPECT_EQ(instruction.op1_.ex_reg_, Compiler::RuleCompiler::op_res_reg_);
+      EXPECT_EQ(instruction.op1_.x_reg_, Compiler::RuleCompiler::op_res_reg_);
       action_infos = reinterpret_cast<const std::vector<Bytecode::Program::ActionInfo>*>(
           instruction.op2_.cptr_);
     }

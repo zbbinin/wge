@@ -62,15 +62,15 @@ public:
   // The current variable register
   static constexpr GeneralRegister curr_variable_reg_{GeneralRegister::RDX};
   // The result register of LOAD_VAR instruction (variable value)
-  static constexpr ExtraRegister load_var_reg_{ExtraRegister::R16};
+  static constexpr ExtendedRegister load_var_reg_{ExtendedRegister::R8};
   // The result register of OPERATE instruction (capture string)
-  static constexpr ExtraRegister op_res_reg_{ExtraRegister::R19};
+  static constexpr ExtendedRegister op_res_reg_{ExtendedRegister::R11};
   // Register index that points to the storage transformed value for OPERATE instruction
   // The value of the op_src_reg_ is in [transform_tmp_reg1_, transform_tmp_reg2_]
   static constexpr GeneralRegister op_src_reg_{GeneralRegister::RBX};
   // Temporary register for transformation
-  static constexpr ExtraRegister transform_tmp_reg1_{ExtraRegister::R17};
-  static constexpr ExtraRegister transform_tmp_reg2_{ExtraRegister::R18};
+  static constexpr ExtendedRegister transform_tmp_reg1_{ExtendedRegister::R9};
+  static constexpr ExtendedRegister transform_tmp_reg2_{ExtendedRegister::R10};
 
 private:
   static void compileRule(const Rule* rule, const Rule* default_action, Program& program);

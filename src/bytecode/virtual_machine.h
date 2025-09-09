@@ -59,12 +59,6 @@ public:
   ExtendedRegisterArray& extendedRegisters() { return extended_registers_; }
 
   /**
-   * Get the current state of the extra registers
-   * @return reference to the array of extra register values
-   */
-  ExtraRegisterArray& extraRegisters() { return extra_registers_; }
-
-  /**
    * Get the current state of the flags register
    * @return reference to the flags register value
    */
@@ -94,7 +88,6 @@ private:
   // Registers
   GeneralRegisterArray general_registers_{};
   ExtendedRegisterArray extended_registers_{};
-  ExtraRegisterArray extra_registers_{};
 
   // Simple flag register for conditions
   int64_t rflags_ = 0;

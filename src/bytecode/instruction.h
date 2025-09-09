@@ -34,10 +34,8 @@ struct Instruction {
   union Operand {
     GeneralRegister g_reg_;
     ExtendedRegister x_reg_;
-    ExtraRegister ex_reg_;
     int64_t imm_;
     int64_t index_;
-    int64_t offset_;
     int64_t address_;
     const void* cptr_;
     void* ptr_;

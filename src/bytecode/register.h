@@ -36,17 +36,13 @@ enum class GeneralRegister : uint64_t {
   RBX,     // Base register
   RCX,     // Counter register
   RDX,     // Data register
-  RSI,     // Source index register
-  RDI,     // Destination index register
-  RBP,     // Base pointer register
-  RSP,     // Stack pointer register
 
   MAX_GENERAL_REGISTER
 };
 using GeneralRegisterValue = int64_t;
 
 /**
- * Extended registers R8-R15 (Common::EvaluateResults::Element equivalents)
+ * Extra registers R8-R23 (Common::EvaluateResults equivalents)
  * x86-64 style register enumeration for the virtual machine
  * Using standard register names for better assembly-like syntax
  */
@@ -55,33 +51,10 @@ enum class ExtendedRegister : uint64_t {
   R9,
   R10,
   R11,
-  R12,
-  R13,
-  R14,
-  R15,
 
   MAX_EXTENDED_REGISTER
 };
-using ExtendedRegisterValue = Common::EvaluateResults::Element;
-
-/**
- * Extra registers R16-R23 (Common::EvaluateResults equivalents)
- * x86-64 style register enumeration for the virtual machine
- * Using standard register names for better assembly-like syntax
- */
-enum class ExtraRegister : uint64_t {
-  R16 = 0,
-  R17,
-  R18,
-  R19,
-  R20,
-  R21,
-  R22,
-  R23,
-
-  MAX_EXTRA_REGISTER
-};
-using ExtraRegisterValue = Common::EvaluateResults;
+using ExtendedRegisterValue = Common::EvaluateResults;
 
 template <class EnumType, class ValueType, std::size_t size>
 class RegisterArray : public std::array<ValueType, size> {
@@ -98,12 +71,8 @@ using GeneralRegisterArray =
     RegisterArray<GeneralRegister, GeneralRegisterValue,
                   static_cast<size_t>(GeneralRegister::MAX_GENERAL_REGISTER)>;
 
-using ExtendedRegisterArray =
-    RegisterArray<ExtendedRegister, ExtendedRegisterValue,
-                  static_cast<size_t>(ExtendedRegister::MAX_EXTENDED_REGISTER)>;
-
-using ExtraRegisterArray = RegisterArray<ExtraRegister, ExtraRegisterValue,
-                                         static_cast<size_t>(ExtraRegister::MAX_EXTRA_REGISTER)>;
+using ExtendedRegisterArray = RegisterArray<ExtendedRegister, ExtendedRegisterValue,
+                                         static_cast<size_t>(ExtendedRegister::MAX_EXTENDED_REGISTER)>;
 
 } // namespace Bytecode
 } // namespace Wge

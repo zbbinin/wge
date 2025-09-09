@@ -67,15 +67,15 @@ const std::unordered_map<const char*, int64_t> OperatorCompiler::operator_index_
     OPERATOR_INDEX(Within),
 };
 
-void OperatorCompiler::compile(ExtraRegister res_reg, ExtraRegister src_reg,
+void OperatorCompiler::compile(ExtendedRegister res_reg, ExtendedRegister src_reg,
                                const Operator::OperatorBase* op, Program& program) {
   auto iter = operator_index_map_.find(op->name());
   assert(iter != operator_index_map_.end());
   if (iter != operator_index_map_.end()) {
     int64_t index = iter->second;
     program.emit({OpCode::OPERATE,
-                  {.ex_reg_ = res_reg},
-                  {.ex_reg_ = src_reg},
+                  {.x_reg_ = res_reg},
+                  {.x_reg_ = src_reg},
                   {.index_ = index},
                   {.cptr_ = op}});
   }

@@ -156,7 +156,7 @@ TEST_F(VirtualMachineTest, execLoadVar) {
   // Create a dummy program with LOAD_VAR instruction
   Program program;
   Instruction instruction = {OpCode::LOAD_VAR,
-                             {.ex_reg_ = ExtraRegister::R16},
+                             {.x_reg_ = ExtendedRegister::R8},
                              {.index_ = variable_index_map_.at(Variable::Args::main_name_.data())},
                              {.cptr_ = &args}};
   program.emit(instruction);
@@ -165,7 +165,7 @@ TEST_F(VirtualMachineTest, execLoadVar) {
   vm_->execute(program);
 
   // Check if the variable was loaded correctly
-  auto& dst = vm_->extraRegisters()[ExtraRegister::R16];
+  auto& dst = vm_->extendedRegisters()[ExtendedRegister::R8];
   EXPECT_EQ(dst.size(), 3);
   EXPECT_EQ(std::get<std::string_view>(dst.get(0).variant_), "value1");
   EXPECT_EQ(std::get<std::string_view>(dst.get(1).variant_), "value2");
@@ -178,15 +178,15 @@ TEST_F(VirtualMachineTest, execTransform) {
   // Create a dummy program with TRANSFORM instruction
   Program program;
   Instruction instruction = {OpCode::TRANSFORM,
-                             {.ex_reg_ = ExtraRegister::R17},
-                             {.ex_reg_ = ExtraRegister::R16},
+                             {.x_reg_ = ExtendedRegister::R9},
+                             {.x_reg_ = ExtendedRegister::R8},
                              {.imm_ = transform_index_map_.at(lower_cast.name_)},
                              {.cptr_ = &lower_cast}};
   program.emit(instruction);
 
   // Initialize registers
-  auto& src = vm_->extraRegisters()[ExtraRegister::R16];
-  auto& dst = vm_->extraRegisters()[ExtraRegister::R17];
+  auto& src = vm_->extendedRegisters()[ExtendedRegister::R8];
+  auto& dst = vm_->extendedRegisters()[ExtendedRegister::R9];
   src.clear();
   dst.clear();
   src.append(std::string("VALUE1"), "sub1");
@@ -207,15 +207,15 @@ TEST_F(VirtualMachineTest, execOperate) {
   // Create a dummy program with OPERATE instruction
   Program program;
   Instruction instruction = {OpCode::OPERATE,
-                             {.ex_reg_ = ExtraRegister::R17},
-                             {.ex_reg_ = ExtraRegister::R16},
+                             {.x_reg_ = ExtendedRegister::R9},
+                             {.x_reg_ = ExtendedRegister::R8},
                              {.imm_ = operator_index_map_.at(rx.name_)},
                              {.cptr_ = &rx}};
   program.emit(instruction);
 
   // Initialize registers
-  auto& src = vm_->extraRegisters()[ExtraRegister::R16];
-  auto& res = vm_->extraRegisters()[ExtraRegister::R17];
+  auto& src = vm_->extendedRegisters()[ExtendedRegister::R8];
+  auto& res = vm_->extendedRegisters()[ExtendedRegister::R9];
   src.clear();
   res.clear();
   src.append(std::string("helloworld"), "sub1");
@@ -240,7 +240,7 @@ TEST_F(VirtualMachineTest, execAction) {
   Program program;
   Compiler::ActionCompiler::initProgramActionInfo(-1, nullptr, &actions, program);
   Instruction instruction = {OpCode::ACTION,
-                             {.ex_reg_ = Compiler::RuleCompiler::op_res_reg_},
+                             {.x_reg_ = Compiler::RuleCompiler::op_res_reg_},
                              {.cptr_ = program.actionInfos(-1)}};
   program.emit(instruction);
 
@@ -257,21 +257,21 @@ TEST_F(VirtualMachineTest, execAction) {
       reinterpret_cast<int64_t>(&var_args);
 
   // Mock the original value(results of LOAD_VAR)
-  auto& original_value = vm_->extraRegisters()[Compiler::RuleCompiler::load_var_reg_];
+  auto& original_value = vm_->extendedRegisters()[Compiler::RuleCompiler::load_var_reg_];
   original_value.append(std::string("HELLOWORLD"));
   original_value.append(std::string("--HELLOWORLD--"));
   original_value.append(std::string("--HELLO--"));
 
   // Mock the transformed value(the input of OPERATE)
-  auto& transform_value = vm_->extraRegisters()[ExtraRegister::R17];
+  auto& transform_value = vm_->extendedRegisters()[ExtendedRegister::R9];
   transform_value.append(std::string("helloworld"));
   transform_value.append(std::string("--helloworld--"));
   transform_value.append(std::string("--hello--"));
   vm_->generalRegisters()[Compiler::RuleCompiler::op_src_reg_] =
-      static_cast<GeneralRegisterValue>(ExtraRegister::R17);
+      static_cast<GeneralRegisterValue>(ExtendedRegister::R9);
 
   // Mock the results of OPERATE(capture string)
-  auto& src = vm_->extraRegisters()[Compiler::RuleCompiler::op_res_reg_];
+  auto& src = vm_->extendedRegisters()[Compiler::RuleCompiler::op_res_reg_];
   src.clear();
   src.append(std::string("hello"));
   src.append(std::string("hello"));

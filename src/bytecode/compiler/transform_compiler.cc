@@ -50,15 +50,15 @@ const std::unordered_map<const char*, int64_t> TransformCompiler::transform_inde
     TRANSFORM_INDEX(UrlDecode),          TRANSFORM_INDEX(UrlEncode),
     TRANSFORM_INDEX(Utf8ToUnicode)};
 
-void TransformCompiler::compile(ExtraRegister dst_reg, ExtraRegister src_reg,
+void TransformCompiler::compile(ExtendedRegister dst_reg, ExtendedRegister src_reg,
                                 const Transformation::TransformBase* transform, Program& program) {
   auto iter = transform_index_map_.find(transform->name());
   assert(iter != transform_index_map_.end());
   if (iter != transform_index_map_.end()) {
     int64_t index = iter->second;
     program.emit({OpCode::TRANSFORM,
-                  {.ex_reg_ = dst_reg},
-                  {.ex_reg_ = src_reg},
+                  {.x_reg_ = dst_reg},
+                  {.x_reg_ = src_reg},
                   {.index_ = index},
                   {.cptr_ = transform}});
   }

@@ -44,7 +44,7 @@ class OperatorCompiler {
   friend class Wge::Bytecode::VirtualMachineTest;
 
 public:
-  static void compile(ExtraRegister res_reg, ExtraRegister src_reg,
+  static void compile(ExtendedRegister res_reg, ExtendedRegister src_reg,
                       const Operator::OperatorBase* op, Program& program);
 
 private:

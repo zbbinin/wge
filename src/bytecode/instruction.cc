@@ -14,18 +14,15 @@ namespace Wge {
 namespace Bytecode {
 std::string Instruction::toString() const {
   static const std::unordered_map<GeneralRegister, std::string> GeneralRegister2String = {
-      {GeneralRegister::RAX, "RAX"}, {GeneralRegister::RBX, "RBX"}, {GeneralRegister::RCX, "RCX"},
-      {GeneralRegister::RDX, "RDX"}, {GeneralRegister::RSI, "RSI"}, {GeneralRegister::RDI, "RDI"},
-      {GeneralRegister::RBP, "RBP"}, {GeneralRegister::RSP, "RSP"}};
+      {GeneralRegister::RAX, "RAX"},
+      {GeneralRegister::RBX, "RBX"},
+      {GeneralRegister::RCX, "RCX"},
+      {GeneralRegister::RDX, "RDX"}};
   static const std::unordered_map<ExtendedRegister, std::string> ExtendedRegister2String = {
-      {ExtendedRegister::R8, "R8"},   {ExtendedRegister::R9, "R9"},
-      {ExtendedRegister::R10, "R10"}, {ExtendedRegister::R11, "R11"},
-      {ExtendedRegister::R12, "R12"}, {ExtendedRegister::R13, "R13"},
-      {ExtendedRegister::R14, "R14"}, {ExtendedRegister::R15, "R15"}};
-  static const std::unordered_map<ExtraRegister, std::string> ExtraRegister2String = {
-      {ExtraRegister::R16, "R16"}, {ExtraRegister::R17, "R17"}, {ExtraRegister::R18, "R18"},
-      {ExtraRegister::R19, "R19"}, {ExtraRegister::R20, "R20"}, {ExtraRegister::R21, "R21"},
-      {ExtraRegister::R22, "R22"}, {ExtraRegister::R23, "R23"}};
+      {ExtendedRegister::R8, "R8"},
+      {ExtendedRegister::R9, "R9"},
+      {ExtendedRegister::R10, "R10"},
+      {ExtendedRegister::R11, "R11"}};
 
   static const std::unordered_map<OpCode, std::function<std::string(const Instruction&)>>
       to_string_map = {
@@ -55,7 +52,7 @@ std::string Instruction::toString() const {
                      ->fullName()
                      .tostring();
              return std::format("LOAD_VAR {}, {}, {}({})",
-                                ExtraRegister2String.at(instruction.op1_.ex_reg_),
+                                ExtendedRegister2String.at(instruction.op1_.x_reg_),
                                 instruction.op2_.index_, instruction.op3_.cptr_, var_name);
            }},
           {OpCode::TRANSFORM,
@@ -64,8 +61,8 @@ std::string Instruction::toString() const {
                  reinterpret_cast<const Transformation::TransformBase*>(instruction.op4_.cptr_)
                      ->name();
              return std::format("TRANSFORM {}, {}, {}, {}({})",
-                                ExtraRegister2String.at(instruction.op1_.ex_reg_),
-                                ExtraRegister2String.at(instruction.op2_.ex_reg_),
+                                ExtendedRegister2String.at(instruction.op1_.x_reg_),
+                                ExtendedRegister2String.at(instruction.op2_.x_reg_),
                                 instruction.op3_.index_, instruction.op4_.cptr_, transform_name);
            }},
           {OpCode::OPERATE,
@@ -73,8 +70,8 @@ std::string Instruction::toString() const {
              std::string operator_name =
                  reinterpret_cast<const Operator::OperatorBase*>(instruction.op4_.cptr_)->name();
              return std::format("OPERATE {}, {}, {}, {}({})",
-                                ExtraRegister2String.at(instruction.op1_.ex_reg_),
-                                ExtraRegister2String.at(instruction.op2_.ex_reg_),
+                                ExtendedRegister2String.at(instruction.op1_.x_reg_),
+                                ExtendedRegister2String.at(instruction.op2_.x_reg_),
                                 instruction.op3_.index_, instruction.op4_.cptr_, operator_name);
            }},
           {OpCode::ACTION,
@@ -91,7 +88,7 @@ std::string Instruction::toString() const {
              }
 
              return std::format("ACTION {}, {}({})",
-                                ExtraRegister2String.at(instruction.op1_.ex_reg_),
+                                ExtendedRegister2String.at(instruction.op1_.x_reg_),
                                 instruction.op2_.cptr_, action_names);
            }},
           {OpCode::UNC_ACTION,

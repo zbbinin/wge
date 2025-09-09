@@ -44,7 +44,7 @@ class TransformCompiler {
   friend class Wge::Bytecode::VirtualMachineTest;
 
 public:
-  static void compile(ExtraRegister dst_reg, ExtraRegister src_reg,
+  static void compile(ExtendedRegister dst_reg, ExtendedRegister src_reg,
                       const Transformation::TransformBase* transform, Program& program);
 
 private:

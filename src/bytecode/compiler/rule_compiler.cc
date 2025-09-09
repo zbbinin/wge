@@ -49,8 +49,8 @@ void RuleCompiler::compileRule(const Rule* rule, const Rule* default_action_rule
     Compiler::VariableCompiler::compile(var.get(), program);
 
     // Compile transformations
-    ExtraRegister transform_dst_reg = transform_tmp_reg1_;
-    ExtraRegister transform_src_reg = load_var_reg_;
+    ExtendedRegister transform_dst_reg = transform_tmp_reg1_;
+    ExtendedRegister transform_src_reg = load_var_reg_;
     if (!rule->isIgnoreDefaultTransform() && default_action_rule) {
       // Get the default transformation
       auto& transforms = default_action_rule->transforms();
@@ -78,11 +78,11 @@ void RuleCompiler::compileRule(const Rule* rule, const Rule* default_action_rule
     }
 
     // Compile operator
-    const ExtraRegister op_src_reg = transform_src_reg;
+    const ExtendedRegister op_src_reg = transform_src_reg;
     Compiler::OperatorCompiler::compile(op_res_reg_, op_src_reg, op.get(), program);
 
     // Set the transformed values register for action use
-    program.emit({OpCode::MOV, {.g_reg_ = op_src_reg_}, {.ex_reg_ = op_src_reg}});
+    program.emit({OpCode::MOV, {.g_reg_ = op_src_reg_}, {.x_reg_ = op_src_reg}});
 
     // Compile actions
     if ((default_actions && !default_actions->empty()) || !rule->actions().empty()) {

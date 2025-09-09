@@ -61,7 +61,7 @@ enum class OpCode {
 
   // Load variable value into register
   // Syntax: LOAD_VAR <dst_reg>, <var_index>, <var_ptr>
-  // @param op1 [ex_reg]: Destination register
+  // @param op1 [x_reg]: Destination register
   // @param op2 [index]: Variable index in symbol table
   // @param op3 [cptr]: Constant pointer to variable instance
   // Example: LOAD_VAR RDI, 1, 0x123456
@@ -69,32 +69,32 @@ enum class OpCode {
 
   // Transform variable value.
   // Syntax: TRANSFORM <dst_reg>, <src_reg>, <transform_index>, <transform_instance_pointer>
-  // @param op1 [ex_reg]: Destination register
-  // @param op2 [ex_reg]: Source register
+  // @param op1 [x_reg]: Destination register
+  // @param op2 [x_reg]: Source register
   // @param op3 [index]: Transformation index
   // @param op4 [cptr]: Constant pointer to transformation instance
   // Example:
-  // TRANSFORM R17, R16, 1, 123456
+  // TRANSFORM R9, R8, 1, 123456
   TRANSFORM,
 
   // Match variable value with operator.
   // Syntax: OPERATE <res_reg>  <src_reg>, <operator_index>, <operator_instance_pointer>
-  // @param op1 [ex_reg]: Result register
-  // @param op2 [ex_reg]: Source register
+  // @param op1 [x_reg]: Result register
+  // @param op2 [x_reg]: Source register
   // @param op3 [index]: Operator index
   // @param op4 [cptr]: Constant pointer to operator instance
   // Example:
-  // OPERATE R19, R16, 1, 123456
+  // OPERATE R11, R8, 1, 123456
   // Note: The RFLAGS indicate whether the operation was matched
   OPERATE,
 
   // Perform an action
   // Syntax: ACTION <src_reg>, <action_infos_pointer>
-  // @param op1 [ex_reg]: Source register(the result of the previous OPERATE)
+  // @param op1 [x_reg]: Source register(the result of the previous OPERATE)
   // @param op2 [cptr]: An array of constant pointers specifying the action infos
   // (Program::ActionInfo)
   // Example:
-  // ACTION R19, 123456
+  // ACTION R11, 123456
   ACTION,
 
   // Perform an uncondition action

@@ -252,7 +252,7 @@ void VirtualMachine::execLoadVar(const Instruction& instruction) {
                    transaction_, output);                                                          \
   return;
 
-  auto& output = extra_registers_[instruction.op1_.ex_reg_];
+  auto& output = extended_registers_[instruction.op1_.x_reg_];
   output.clear();
 
   DISPATCH(load_var_dispatch_table[instruction.op2_.index_]);
@@ -451,8 +451,8 @@ void VirtualMachine::execTransform(const Instruction& instruction) {
   const std::unique_ptr<Variable::VariableBase>* curr_var =
       reinterpret_cast<const std::unique_ptr<Variable::VariableBase>*>(
           general_registers_[Compiler::RuleCompiler::curr_variable_reg_]);
-  const auto& input = extra_registers_[instruction.op2_.ex_reg_];
-  auto& output = extra_registers_[instruction.op1_.ex_reg_];
+  const auto& input = extended_registers_[instruction.op2_.x_reg_];
+  auto& output = extended_registers_[instruction.op1_.x_reg_];
   output.clear();
 
   DISPATCH(transform_dispatch_table[instruction.op3_.index_]);
@@ -593,8 +593,8 @@ void VirtualMachine::execOperate(const Instruction& instruction) {
   const std::unique_ptr<Variable::VariableBase>* curr_var =
       reinterpret_cast<const std::unique_ptr<Variable::VariableBase>*>(
           general_registers_[Compiler::RuleCompiler::curr_variable_reg_]);
-  const auto& input = extra_registers_[instruction.op2_.ex_reg_];
-  auto& output = extra_registers_[instruction.op1_.ex_reg_];
+  const auto& input = extended_registers_[instruction.op2_.x_reg_];
+  auto& output = extended_registers_[instruction.op1_.x_reg_];
   output.clear();
   bool rule_matched = false;
 
@@ -658,9 +658,9 @@ void VirtualMachine::execAction(const Instruction& instruction) {
   const std::unique_ptr<Variable::VariableBase>* curr_var =
       reinterpret_cast<const std::unique_ptr<Variable::VariableBase>*>(
           general_registers_[Compiler::RuleCompiler::curr_variable_reg_]);
-  auto& operate_results = extra_registers_[instruction.op1_.ex_reg_];
-  auto& original_value = extra_registers_[Compiler::RuleCompiler::load_var_reg_];
-  auto& transformed_value = extra_registers_[static_cast<ExtraRegister>(
+  auto& operate_results = extended_registers_[instruction.op1_.x_reg_];
+  auto& original_value = extended_registers_[Compiler::RuleCompiler::load_var_reg_];
+  auto& transformed_value = extended_registers_[static_cast<ExtendedRegister>(
       general_registers_[Compiler::RuleCompiler::op_src_reg_])];
   const std::vector<Program::ActionInfo>& action_infos =
       *reinterpret_cast<const std::vector<Program::ActionInfo>*>(instruction.op2_.cptr_);
