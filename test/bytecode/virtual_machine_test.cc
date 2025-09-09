@@ -224,21 +224,24 @@ TEST_F(VirtualMachineTest, execOperate) {
 
   vm_->execute(program);
 
-  EXPECT_EQ(res.size(), 2);
+  EXPECT_EQ(res.size(), src.size());
   EXPECT_EQ(std::get<std::string_view>(res.get(0).variant_), "hello");
   EXPECT_EQ(std::get<std::string_view>(res.get(1).variant_), "hello");
+  EXPECT_EQ(std::get<int64_t>(res.get(2).variant_), 0);
 }
 
 TEST_F(VirtualMachineTest, execAction) {
   // Create a SetVar instance
-  Action::SetVar set_var("foo", 0, 1, Action::SetVar::EvaluateType::Increase);
+  std::vector<std::unique_ptr<Action::ActionBase>> actions;
+  actions.emplace_back(
+      std::make_unique<Action::SetVar>("foo", 0, 1, Action::SetVar::EvaluateType::Increase));
 
   // Create a dummy program with ACTION instruction
   Program program;
+  Compiler::ActionCompiler::initProgramActionInfo(-1, nullptr, &actions, program);
   Instruction instruction = {OpCode::ACTION,
                              {.ex_reg_ = Compiler::RuleCompiler::op_res_reg_},
-                             {.imm_ = action_index_map_.at(Action::SetVar::name_)},
-                             {.cptr_ = &set_var}};
+                             {.cptr_ = program.actionInfos(-1)}};
   program.emit(instruction);
 
   // Mock the transaction variables
@@ -299,13 +302,14 @@ TEST_F(VirtualMachineTest, execAction) {
 
 TEST_F(VirtualMachineTest, execUncAction) {
   // Create a SetVar instance
-  Action::SetVar set_var("foo", 0, 3, Action::SetVar::EvaluateType::CreateAndInit);
+  std::vector<std::unique_ptr<Action::ActionBase>> actions;
+  actions.emplace_back(
+      std::make_unique<Action::SetVar>("foo", 0, 3, Action::SetVar::EvaluateType::CreateAndInit));
 
   // Create a dummy program with ACTION instruction
   Program program;
-  Instruction instruction = {OpCode::UNC_ACTION,
-                             {.imm_ = action_index_map_.at(Action::SetVar::name_)},
-                             {.cptr_ = &set_var}};
+  Compiler::ActionCompiler::initProgramActionInfo(-1, nullptr, &actions, program);
+  Instruction instruction = {OpCode::UNC_ACTION, {.cptr_ = program.actionInfos(-1)}};
   program.emit(instruction);
 
   // Mock the transaction variables

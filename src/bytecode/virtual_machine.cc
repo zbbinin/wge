@@ -21,6 +21,7 @@
 #include "virtual_machine.h"
 
 #include "compiler/rule_compiler.h"
+#include "program.h"
 
 #include "../action/actions_include.h"
 #include "../macro/macro_include.h"
@@ -517,10 +518,11 @@ void dispatchOperator(const OperatorType* op, Transaction& t, const Rule* curr_r
         // the captured value may be modified later.
         output.append(std::string(tx_0.data(), tx_0.size()));
       } else {
-        output.append(1);
+        output.append(std::string_view());
       }
     } else {
       t.clearTempCapture();
+      output.append(0);
     }
 
     WGE_LOG_TRACE("evaluate operator: {} {}@{} {} = {}", VISTIT_VARIANT_AS_STRING(var_value),
@@ -633,32 +635,8 @@ END:
   rflags_ = op_results.size() != 0;
 }
 
-template <class ActionType>
-void dispatchAction(const ActionType* action, Transaction& t, const Rule* curr_rule,
-                    const std::unique_ptr<Wge::Variable::VariableBase>* curr_var,
-                    Common::EvaluateResults& operate_results,
-                    Common::EvaluateResults& original_value,
-                    Common::EvaluateResults& transformed_value) {
-  assert(original_value.size() == transformed_value.size());
-
-  size_t operate_results_size = operate_results.size();
-  for (size_t i = 0; i < operate_results_size; ++i) {
-    auto& element = operate_results.get(i);
-    std::visit(
-        [&](auto&& arg) {
-          // There has capture string
-          if constexpr (std::is_same_v<std::decay_t<decltype(arg)>, std::string_view>) {
-            // TODO(zhouyu 2025-09-02): fix the transformation list
-            std::list<const Transformation::TransformBase*> transform_list;
-
-            t.pushMatchedVariable((*curr_var).get(), curr_rule->chainIndex(),
-                                  original_value.move(i), transformed_value.move(i),
-                                  operate_results.move(i), std::move(transform_list));
-          }
-        },
-        element.variant_);
-    action->ActionType::evaluate(t);
-  }
+template <class ActionType> void dispatchAction(const ActionType* action, Transaction& t) {
+  action->ActionType::evaluate(t);
 }
 
 void VirtualMachine::execAction(const Instruction& instruction) {
@@ -667,9 +645,8 @@ void VirtualMachine::execAction(const Instruction& instruction) {
                                                     &&SetSid, &&SetUid,  &&SetVar};
 #define CASE(action)                                                                               \
   action:                                                                                          \
-  dispatchAction(reinterpret_cast<const Action::action*>(instruction.op3_.cptr_), transaction_,    \
-                 curr_rule, curr_var, operate_results, original_value, transformed_value);         \
-  return;
+  dispatchAction(reinterpret_cast<const Action::action*>(action_info.action_), transaction_);      \
+  continue;
 
   const Rule* curr_rule =
       reinterpret_cast<const Rule*>(general_registers_[Compiler::RuleCompiler::curr_rule_reg_]);
@@ -680,20 +657,38 @@ void VirtualMachine::execAction(const Instruction& instruction) {
   auto& original_value = extra_registers_[Compiler::RuleCompiler::load_var_reg_];
   auto& transformed_value = extra_registers_[static_cast<ExtraRegister>(
       general_registers_[Compiler::RuleCompiler::op_src_reg_])];
+  const std::vector<Program::ActionInfo>& action_infos =
+      *reinterpret_cast<const std::vector<Program::ActionInfo>*>(instruction.op2_.cptr_);
 
-  DISPATCH(action_dispatch_table[instruction.op2_.index_]);
-  CASE(Ctl);
-  CASE(InitCol);
-  CASE(SetEnv);
-  CASE(SetRsc);
-  CASE(SetSid);
-  CASE(SetUid);
-  CASE(SetVar);
+  assert(operate_results.size() <= original_value.size());
+  assert(original_value.size() == transformed_value.size());
+
+  size_t operate_results_size = operate_results.size();
+  for (size_t i = 0; i < operate_results_size; ++i) {
+    // Not matched
+    if (IS_INT_VARIANT(operate_results.get(i).variant_)) {
+      continue;
+    }
+
+    // TODO(zhouyu 2025-09-02): fix the transformation list
+    std::list<const Transformation::TransformBase*> transform_list;
+
+    transaction_.pushMatchedVariable((*curr_var).get(), curr_rule->chainIndex(),
+                                     original_value.move(i), transformed_value.move(i),
+                                     operate_results.move(i), std::move(transform_list));
+
+    for (auto& action_info : action_infos) {
+      DISPATCH(action_dispatch_table[action_info.index_]);
+      CASE(Ctl);
+      CASE(InitCol);
+      CASE(SetEnv);
+      CASE(SetRsc);
+      CASE(SetSid);
+      CASE(SetUid);
+      CASE(SetVar);
+    }
+  }
 #undef CASE
-}
-
-template <class ActionType> void dispatchUncAction(const ActionType* action, Transaction& t) {
-  action->ActionType::evaluate(t);
 }
 
 void VirtualMachine::execUncAction(const Instruction& instruction) {
@@ -703,18 +698,21 @@ void VirtualMachine::execUncAction(const Instruction& instruction) {
 
 #define CASE(action)                                                                               \
   action:                                                                                          \
-  dispatchUncAction(reinterpret_cast<const Action::action*>(instruction.op2_.cptr_),               \
-                    transaction_);                                                                 \
-  return;
+  dispatchAction(reinterpret_cast<const Action::action*>(action_info.action_), transaction_);      \
+  continue;
 
-  DISPATCH(action_dispatch_table[instruction.op1_.index_]);
-  CASE(Ctl);
-  CASE(InitCol);
-  CASE(SetEnv);
-  CASE(SetRsc);
-  CASE(SetSid);
-  CASE(SetUid);
-  CASE(SetVar);
+  const std::vector<Program::ActionInfo>& action_infos =
+      *reinterpret_cast<const std::vector<Program::ActionInfo>*>(instruction.op1_.cptr_);
+  for (auto& action_info : action_infos) {
+    DISPATCH(action_dispatch_table[action_info.index_]);
+    CASE(Ctl);
+    CASE(InitCol);
+    CASE(SetEnv);
+    CASE(SetRsc);
+    CASE(SetSid);
+    CASE(SetUid);
+    CASE(SetVar);
+  }
 #undef CASE
 }
 

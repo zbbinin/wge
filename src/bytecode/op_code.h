@@ -89,20 +89,18 @@ enum class OpCode {
   OPERATE,
 
   // Perform an action
-  // Syntax: ACTION <src_reg>, <action_index>, <action_instance_pointer>
+  // Syntax: ACTION <src_reg>, <action_infos_pointer>
   // @param op1 [ex_reg]: Source register(the result of the previous OPERATE)
-  // @param op2 [index]: Action index
-  // @param op3 [cptr]: Constant pointer to action instance
+  // @param op2 [cptr]: An array of constant pointers specifying the action infos (Program::ActionInfo)
   // Example:
-  // ACTION R19, 1, 123456
+  // ACTION R19, 123456
   ACTION,
 
   // Perform an uncondition action
-  // Syntax: UNC_ACTION <action_index>, <action_instance_pointer>
-  // @param op1 [index]: Action index
-  // @param op2 [cptr]: Constant pointer to action instance
+  // Syntax: UNC_ACTION <action_infos_pointer>
+  // @param op1 [cptr]: An array of constant pointers specifying the action infos (Program::ActionInfo)
   // Example:
-  // UNC_ACTION 1, 123456
+  // UNC_ACTION 123456
   UNC_ACTION,
 
   // Expand msg macro and log macro

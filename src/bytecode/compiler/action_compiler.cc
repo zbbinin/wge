@@ -34,26 +34,27 @@ const std::unordered_map<const char*, int64_t> ActionCompiler::action_index_map_
     ACTION_INDEX(SetSid), ACTION_INDEX(SetUid),  ACTION_INDEX(SetVar),
 };
 
-void ActionCompiler::compile(ExtraRegister src_reg, const Action::ActionBase* action,
-                             Program& program) {
-  auto iter = action_index_map_.find(action->name());
-  assert(iter != action_index_map_.end());
-  if (iter != action_index_map_.end()) {
-    int64_t index = iter->second;
-    program.emit({OpCode::ACTION, {.ex_reg_ = src_reg}, {.index_ = index}, {.cptr_ = action}});
-  }
+void ActionCompiler::initProgramActionInfo(
+    int chain_index, const std::vector<std::unique_ptr<Action::ActionBase>>* default_actions,
+    const std::vector<std::unique_ptr<Action::ActionBase>>* actions, Program& program) {
+  program.initActionInfo(chain_index, default_actions, actions,
+                         [&](Action::ActionBase* action) -> int {
+                           auto iter = action_index_map_.find(action->name());
+                           assert(iter != action_index_map_.end());
+                           if (iter != action_index_map_.end()) {
+                             return iter->second;
+                           } else {
+                             return -1;
+                           }
+                         });
 }
 
-void ActionCompiler::compile(const Action::ActionBase* action, Program& program) {
-  auto iter = action_index_map_.find(action->name());
-  assert(iter != action_index_map_.end());
-  if (iter != action_index_map_.end()) {
-    int64_t index = iter->second;
-    int64_t action_ptr = reinterpret_cast<int64_t>(action);
-    program.emit({OpCode::UNC_ACTION,
-                  {.index_ = index},
-                  {.cptr_ = reinterpret_cast<const void*>(action_ptr)}});
-  }
+void ActionCompiler::compile(int chain_index, ExtraRegister src_reg, Program& program) {
+  program.emit({OpCode::ACTION, {.ex_reg_ = src_reg}, {.cptr_ = program.actionInfos(chain_index)}});
+}
+
+void ActionCompiler::compile(int chain_index, Program& program) {
+  program.emit({OpCode::UNC_ACTION, {.cptr_ = program.actionInfos(chain_index)}});
 }
 
 } // namespace Compiler

@@ -20,6 +20,7 @@
  */
 #pragma once
 
+#include <memory>
 #include <unordered_map>
 
 #include <stdint.h>
@@ -38,14 +39,16 @@ class CompilerTest;
 class VirtualMachineTest;
 class Program;
 namespace Compiler {
-
 class ActionCompiler {
   friend class Wge::Bytecode::CompilerTest;
   friend class Wge::Bytecode::VirtualMachineTest;
 
 public:
-  static void compile(ExtraRegister src_reg, const Action::ActionBase* action, Program& program);
-  static void compile(const Action::ActionBase* action, Program& program);
+  static void initProgramActionInfo(
+      int chain_index, const std::vector<std::unique_ptr<Action::ActionBase>>* default_actions,
+      const std::vector<std::unique_ptr<Action::ActionBase>>* actions, Program& program);
+  static void compile(int chain_index, ExtraRegister src_reg, Program& program);
+  static void compile(int chain_index, Program& program);
 
 private:
   static const std::unordered_map<const char*, int64_t> action_index_map_;

@@ -17,20 +17,24 @@ std::unique_ptr<Program> RuleCompiler::compile(const Rule* rule, const Rule* def
   return program;
 }
 
-void RuleCompiler::compileRule(const Rule* rule, const Rule* default_action, Program& program) {
+void RuleCompiler::compileRule(const Rule* rule, const Rule* default_action_rule,
+                               Program& program) {
+  // Initialize action infos
+  const auto default_actions = default_action_rule ? &default_action_rule->actions() : nullptr;
+  Compiler::ActionCompiler::initProgramActionInfo(rule->chainIndex(), default_actions,
+                                                  &rule->actions(), program);
+
   auto& op = rule->getOperator();
   if (op == nullptr) {
     // Compile each uncondition action in the rule
-    auto& actions = rule->actions();
-    for (const auto& action : actions) {
-      Compiler::ActionCompiler::compile(action.get(), program);
+    if (!rule->actions().empty()) {
+      Compiler::ActionCompiler::compile(rule->chainIndex(), program);
     }
     return;
   }
 
   // Set current rule
   program.emit({OpCode::MOV, {.g_reg_ = curr_rule_reg_}, {.cptr_ = rule}});
-
   auto& variables = rule->variables();
   for (const auto& var : variables) {
     // Set current variable
@@ -42,9 +46,9 @@ void RuleCompiler::compileRule(const Rule* rule, const Rule* default_action, Pro
     // Compile transformations
     ExtraRegister transform_dst_reg = transform_tmp_reg1_;
     ExtraRegister transform_src_reg = load_var_reg_;
-    if (!rule->isIgnoreDefaultTransform() && default_action) {
+    if (!rule->isIgnoreDefaultTransform() && default_action_rule) {
       // Get the default transformation
-      auto& transforms = default_action->transforms();
+      auto& transforms = default_action_rule->transforms();
       for (auto& transform : transforms) {
         Compiler::TransformCompiler::compile(transform_dst_reg, transform_src_reg, transform.get(),
                                              program);
@@ -75,18 +79,9 @@ void RuleCompiler::compileRule(const Rule* rule, const Rule* default_action, Pro
     // Set the transformed values register for action use
     program.emit({OpCode::MOV, {.g_reg_ = op_src_reg_}, {.ex_reg_ = op_src_reg}});
 
-    // Compile each default action
-    if (default_action) {
-      auto& actions = default_action->actions();
-      for (const auto& action : actions) {
-        Compiler::ActionCompiler::compile(op_res_reg_, action.get(), program);
-      }
-    }
-
-    // Compile each action in the rule
-    auto& actions = rule->actions();
-    for (const auto& action : actions) {
-      Compiler::ActionCompiler::compile(op_res_reg_, action.get(), program);
+    // Compile actions
+    if ((default_actions && !default_actions->empty()) || !rule->actions().empty()) {
+      Compiler::ActionCompiler::compile(rule->chainIndex(), op_res_reg_, program);
     }
   }
 
@@ -101,7 +96,7 @@ void RuleCompiler::compileRule(const Rule* rule, const Rule* default_action, Pro
   if (chain_rule_iter.has_value()) {
     // Compile chain rule
     const Rule* chain_rule = (**chain_rule_iter).get();
-    compileRule(chain_rule, default_action, program);
+    compileRule(chain_rule, default_action_rule, program);
 
     // Restore current rule
     program.emit({OpCode::MOV, {.g_reg_ = curr_rule_reg_}, {.cptr_ = rule}});

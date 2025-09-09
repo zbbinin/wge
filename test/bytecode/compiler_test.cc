@@ -27,6 +27,7 @@
 #include "bytecode/compiler/rule_compiler.h"
 #include "bytecode/compiler/transform_compiler.h"
 #include "bytecode/compiler/variable_compiler.h"
+#include "bytecode/program.h"
 #include "engine.h"
 #include "macro/macro_include.h"
 #include "operator/operator_include.h"
@@ -56,6 +57,7 @@ public:
 TEST_F(CompilerTest, compileVariable) {
   // Create a rule with all variables
   Rule rule("", 0);
+  rule.setOperator(std::make_unique<Operator::Lt>("", false, ""));
 
   rule.appendVariable(std::make_unique<Variable::ArgsCombinedSize>("", false, false, ""));
   rule.appendVariable(std::make_unique<Variable::ArgsGetNames>("", false, false, ""));
@@ -180,6 +182,7 @@ TEST_F(CompilerTest, compileVariable) {
 TEST_F(CompilerTest, compileTransform) {
   // Create a rule with all transformations
   Rule rule("", 0);
+  rule.setOperator(std::make_unique<Operator::Lt>("", false, ""));
   rule.appendVariable(std::make_unique<Variable::Args>("", false, false, ""));
   auto& transforms = rule.transforms();
 
@@ -347,16 +350,18 @@ TEST_F(CompilerTest, compileAction) {
   auto program = Wge::Bytecode::Compiler::RuleCompiler::compile(&rule, &default_action);
 
   size_t count = 0;
+  const std::vector<Bytecode::Program::ActionInfo>* action_infos = nullptr;
   for (auto& instruction : program->instructions()) {
     if (instruction.op_code_ == Bytecode::OpCode::ACTION) {
       ++count;
       EXPECT_EQ(instruction.op1_.ex_reg_, Compiler::RuleCompiler::op_res_reg_);
-      const Action::ActionBase* action =
-          reinterpret_cast<const Action::ActionBase*>(instruction.op3_.cptr_);
-      EXPECT_EQ(instruction.op2_.index_, action_index_map_.at(action->name()));
+      action_infos = reinterpret_cast<const std::vector<Bytecode::Program::ActionInfo>*>(
+          instruction.op2_.cptr_);
     }
   }
-  EXPECT_EQ(count, actions.size() + default_action.actions().size());
+  EXPECT_EQ(count, 1);
+  EXPECT_EQ(action_infos, program->actionInfos(-1));
+  EXPECT_EQ(action_infos->size(), default_action.actions().size() + actions.size());
 }
 
 TEST_F(CompilerTest, compileUncAction) {
@@ -384,15 +389,17 @@ TEST_F(CompilerTest, compileUncAction) {
   auto program = Wge::Bytecode::Compiler::RuleCompiler::compile(&rule, &default_action);
 
   size_t count = 0;
+  const std::vector<Bytecode::Program::ActionInfo>* action_infos = nullptr;
   for (auto& instruction : program->instructions()) {
     if (instruction.op_code_ == Bytecode::OpCode::UNC_ACTION) {
       ++count;
-      const Action::ActionBase* action =
-          reinterpret_cast<const Action::ActionBase*>(instruction.op2_.cptr_);
-      EXPECT_EQ(instruction.op1_.index_, action_index_map_.at(action->name()));
+      action_infos = reinterpret_cast<const std::vector<Bytecode::Program::ActionInfo>*>(
+          instruction.op1_.cptr_);
     }
   }
-  EXPECT_EQ(count, actions.size());
+  EXPECT_EQ(count, 1);
+  EXPECT_EQ(action_infos, program->actionInfos(-1));
+  EXPECT_EQ(action_infos->size(), actions.size());
 }
 
 TEST_F(CompilerTest, compileChainRule) {

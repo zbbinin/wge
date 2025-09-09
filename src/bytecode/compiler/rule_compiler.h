@@ -51,10 +51,10 @@ public:
   /**
    * Compile rule into a program
    * @param rules The rules to compile
-   * @param default_action The default action for the program
+   * @param default_action_rule The default action rule for the program
    * @return Compiled bytecode program
    */
-  static std::unique_ptr<Program> compile(const Rule* rule, const Rule* default_action);
+  static std::unique_ptr<Program> compile(const Rule* rule, const Rule* default_action_rule);
 
 public:
   // The current rule register

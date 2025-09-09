@@ -31,7 +31,8 @@ std::string Instruction::toString() const {
       to_string_map = {
           {OpCode::MOV,
            [](const Instruction& instruction) {
-             return std::format("MOV {}, 0x{:x}", GeneralRegister2String.at(instruction.op1_.g_reg_),
+             return std::format("MOV {}, 0x{:x}",
+                                GeneralRegister2String.at(instruction.op1_.g_reg_),
                                 instruction.op2_.imm_);
            }},
           {OpCode::JMP,
@@ -78,18 +79,34 @@ std::string Instruction::toString() const {
            }},
           {OpCode::ACTION,
            [](const Instruction& instruction) {
-             std::string action_name =
-                 reinterpret_cast<const Action::ActionBase*>(instruction.op3_.cptr_)->name();
-             return std::format("ACTION {}, {}, {}({})",
+             std::string action_names;
+             const std::vector<Program::ActionInfo>& action_infos =
+                 *reinterpret_cast<const std::vector<Program::ActionInfo>*>(instruction.op2_.cptr_);
+             for (auto& action_info : action_infos) {
+               if (!action_names.empty()) {
+                 action_names += ", ";
+               }
+               action_names +=
+                   reinterpret_cast<const Action::ActionBase*>(action_info.action_)->name();
+             }
+
+             return std::format("ACTION {}, {}({})",
                                 ExtraRegister2String.at(instruction.op1_.ex_reg_),
-                                instruction.op2_.index_, instruction.op3_.cptr_, action_name);
+                                instruction.op2_.cptr_, action_names);
            }},
           {OpCode::UNC_ACTION,
            [](const Instruction& instruction) {
-             std::string action_name =
-                 reinterpret_cast<const Action::ActionBase*>(instruction.op2_.cptr_)->name();
-             return std::format("UNC_ACTION {}, {}({})", instruction.op2_.index_,
-                                instruction.op2_.cptr_, action_name);
+             std::string action_names;
+             const std::vector<Program::ActionInfo>& action_infos =
+                 *reinterpret_cast<const std::vector<Program::ActionInfo>*>(instruction.op1_.cptr_);
+             for (auto& action_info : action_infos) {
+               if (!action_names.empty()) {
+                 action_names += ", ";
+               }
+               action_names +=
+                   reinterpret_cast<const Action::ActionBase*>(action_info.action_)->name();
+             }
+             return std::format("UNC_ACTION {}({})", instruction.op1_.cptr_, action_names);
            }},
           {OpCode::EXPAND_MACRO,
            [](const Instruction& instruction) {
