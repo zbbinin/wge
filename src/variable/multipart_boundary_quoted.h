@@ -24,7 +24,7 @@
 
 namespace Wge {
 namespace Variable {
-class MultipartBoundaryQuoted : public VariableBase {
+class MultipartBoundaryQuoted final : public VariableBase {
   DECLARE_VIRABLE_NAME(MULTIPART_BOUNDARY_QUOTED);
 
 public:

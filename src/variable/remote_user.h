@@ -24,7 +24,7 @@
 
 namespace Wge {
 namespace Variable {
-class RemoteUser : public VariableBase {
+class RemoteUser final : public VariableBase {
   DECLARE_VIRABLE_NAME(REMOTE_USER);
 
 public:

@@ -24,7 +24,7 @@
 
 namespace Wge {
 namespace Variable {
-class TimeSec : public VariableBase {
+class TimeSec final : public VariableBase {
   DECLARE_VIRABLE_NAME(TIME_SEC);
 
 public:

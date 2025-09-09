@@ -33,7 +33,7 @@ namespace Action {
  * Special-purpose action that initializes the RESOURCE collection using a key provided as
  * parameter.
  */
-class SetRsc : public ActionBase {
+class SetRsc final : public ActionBase {
   DECLARE_ACTION_NAME(setrsc);
 
 public:

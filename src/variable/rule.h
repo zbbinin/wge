@@ -26,7 +26,7 @@
 
 namespace Wge {
 namespace Variable {
-class Rule : public VariableBase {
+class Rule final : public VariableBase {
   DECLARE_VIRABLE_NAME(RULE);
 
 public:

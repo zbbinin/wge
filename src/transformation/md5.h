@@ -26,7 +26,7 @@
 
 namespace Wge {
 namespace Transformation {
-class Md5 : public TransformBase {
+class Md5 final : public TransformBase {
   DECLARE_TRANSFORM_NAME(md5);
 
 public:

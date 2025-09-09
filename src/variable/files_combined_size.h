@@ -24,7 +24,7 @@
 
 namespace Wge {
 namespace Variable {
-class FilesCombinedSize : public VariableBase {
+class FilesCombinedSize final : public VariableBase {
   DECLARE_VIRABLE_NAME(FILES_COMBINED_SIZE);
 
 public:

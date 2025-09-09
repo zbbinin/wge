@@ -26,7 +26,7 @@
 
 namespace Wge {
 namespace Transformation {
-class TrimRight : public TransformBase {
+class TrimRight final : public TransformBase {
   DECLARE_TRANSFORM_NAME(trimRight);
 
 public:

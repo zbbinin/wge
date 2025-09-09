@@ -24,7 +24,7 @@
 
 namespace Wge {
 namespace Variable {
-class MultipartMissingSemicolon : public VariableBase {
+class MultipartMissingSemicolon final : public VariableBase {
   DECLARE_VIRABLE_NAME(MULTIPART_MISSING_SEMICOLON);
 
 public:

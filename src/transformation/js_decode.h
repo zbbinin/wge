@@ -26,7 +26,7 @@
 
 namespace Wge {
 namespace Transformation {
-class JsDecode : public TransformBase {
+class JsDecode final : public TransformBase {
   DECLARE_TRANSFORM_NAME(jsDecode);
 
 public:

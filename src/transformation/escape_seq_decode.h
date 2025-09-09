@@ -26,7 +26,7 @@
 
 namespace Wge {
 namespace Transformation {
-class EscapeSeqDecode : public TransformBase {
+class EscapeSeqDecode final : public TransformBase {
   DECLARE_TRANSFORM_NAME(escapeSeqDecode);
 
 public:

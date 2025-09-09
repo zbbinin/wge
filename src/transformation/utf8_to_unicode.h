@@ -26,7 +26,7 @@
 
 namespace Wge {
 namespace Transformation {
-class Utf8ToUnicode : public TransformBase {
+class Utf8ToUnicode final : public TransformBase {
   DECLARE_TRANSFORM_NAME(utf8ToUnicode);
 
 public:

@@ -24,7 +24,7 @@
 
 namespace Wge {
 namespace Variable {
-class MatchedVarName : public VariableBase {
+class MatchedVarName final : public VariableBase {
   DECLARE_VIRABLE_NAME(MATCHED_VAR_NAME);
 
 public:

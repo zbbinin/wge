@@ -27,7 +27,7 @@ namespace Operator {
 /**
  * Validates the URL-encoded characters in the provided input string.
  */
-class ValidateUrlEncoding : public OperatorBase {
+class ValidateUrlEncoding final : public OperatorBase {
   DECLARE_OPERATOR_NAME(validateUrlEncoding);
 
 public:

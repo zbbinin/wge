@@ -24,7 +24,7 @@
 
 namespace Wge {
 namespace Variable {
-class MultipartFileName : public VariableBase {
+class MultipartFileName final : public VariableBase {
   DECLARE_VIRABLE_NAME(MULTIPART_FILENAME);
 
 public:

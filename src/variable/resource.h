@@ -25,7 +25,7 @@
 
 namespace Wge {
 namespace Variable {
-class Resource : public VariableBase, public PersistentCollectionBase {
+class Resource final : public VariableBase, public PersistentCollectionBase {
   DECLARE_VIRABLE_NAME(RESOURCE);
 
 public:

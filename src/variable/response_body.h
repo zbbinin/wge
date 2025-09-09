@@ -24,7 +24,7 @@
 
 namespace Wge {
 namespace Variable {
-class ResponseBody : public VariableBase {
+class ResponseBody final : public VariableBase {
   DECLARE_VIRABLE_NAME(RESPONSE_BODY);
 
 public:

@@ -24,7 +24,7 @@
 
 namespace Wge {
 namespace Variable {
-class QueryString : public VariableBase {
+class QueryString final : public VariableBase {
   DECLARE_VIRABLE_NAME(QUERY_STRING);
 
 public:

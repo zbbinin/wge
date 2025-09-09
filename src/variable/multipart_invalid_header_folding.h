@@ -24,7 +24,7 @@
 
 namespace Wge {
 namespace Variable {
-class MultipartInvalidHeaderFolding : public VariableBase {
+class MultipartInvalidHeaderFolding final : public VariableBase {
   DECLARE_VIRABLE_NAME(MULTIPART_INVALID_HEADER_FOLDING);
 
 public:

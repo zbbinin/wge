@@ -24,7 +24,7 @@
 
 namespace Wge {
 namespace Operator {
-class InspectFile : public OperatorBase {
+class InspectFile final : public OperatorBase {
   DECLARE_OPERATOR_NAME(inspectFile);
 
 public:

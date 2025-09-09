@@ -28,7 +28,7 @@
 
 namespace Wge {
 namespace Macro {
-class VariableMacro : public MacroBase {
+class VariableMacro final : public MacroBase {
 public:
   VariableMacro(std::string&& literal_value, const std::shared_ptr<Variable::VariableBase> variable)
       : MacroBase(std::move(literal_value)), variable_(variable) {}

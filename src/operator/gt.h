@@ -24,7 +24,7 @@
 
 namespace Wge {
 namespace Operator {
-class Gt : public OperatorBase {
+class Gt final : public OperatorBase {
   DECLARE_OPERATOR_NAME(gt);
 
 public:

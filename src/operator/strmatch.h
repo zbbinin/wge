@@ -24,7 +24,7 @@
 
 namespace Wge {
 namespace Operator {
-class Strmatch : public OperatorBase {
+class Strmatch final : public OperatorBase {
   DECLARE_OPERATOR_NAME(strmatch);
 
 public:

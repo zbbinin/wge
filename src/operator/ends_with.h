@@ -24,7 +24,7 @@
 
 namespace Wge {
 namespace Operator {
-class EndsWith : public OperatorBase {
+class EndsWith final : public OperatorBase {
   DECLARE_OPERATOR_NAME(endsWith);
 
 public:

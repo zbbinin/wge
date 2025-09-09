@@ -28,7 +28,7 @@
 
 namespace Wge {
 namespace Variable {
-class ArgsPost : public VariableBase, public CollectionBase {
+class ArgsPost final : public VariableBase, public CollectionBase {
   friend class Args;
   DECLARE_VIRABLE_NAME(ARGS_POST);
 

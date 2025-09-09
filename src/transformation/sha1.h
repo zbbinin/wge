@@ -26,7 +26,7 @@
 
 namespace Wge {
 namespace Transformation {
-class Sha1 : public TransformBase {
+class Sha1 final : public TransformBase {
   DECLARE_TRANSFORM_NAME(sha1);
 
 public:

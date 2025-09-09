@@ -33,7 +33,7 @@ namespace Action {
  * Special-purpose action that initializes the USER collection using the username provided as
  * parameter.
  */
-class SetUid : public ActionBase {
+class SetUid final : public ActionBase {
   DECLARE_ACTION_NAME(setuid);
 
 public:

@@ -24,7 +24,7 @@
 
 namespace Wge {
 namespace Variable {
-class ArgsCombinedSize : public VariableBase {
+class ArgsCombinedSize final : public VariableBase {
   DECLARE_VIRABLE_NAME(ARGS_COMBINED_SIZE);
 
 public:

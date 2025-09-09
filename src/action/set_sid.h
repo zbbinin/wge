@@ -33,7 +33,7 @@ namespace Action {
  * Special-purpose action that initializes the SESSION collection using the session token provided
  * as parameter.
  */
-class SetSid : public ActionBase {
+class SetSid final : public ActionBase {
   DECLARE_ACTION_NAME(setsid);
 
 public:

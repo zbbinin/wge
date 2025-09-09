@@ -24,7 +24,7 @@
 
 namespace Wge {
 namespace Operator {
-class IpMatchFromFile : public OperatorBase {
+class IpMatchFromFile final : public OperatorBase {
   DECLARE_OPERATOR_NAME(ipMatchFromFile);
 
 public:

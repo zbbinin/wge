@@ -25,7 +25,7 @@
 
 namespace Wge {
 namespace Variable {
-class ResponseContentLength : public VariableBase {
+class ResponseContentLength final : public VariableBase {
   DECLARE_VIRABLE_NAME(RESPONSE_CONTENT_LENGTH);
 
 public:

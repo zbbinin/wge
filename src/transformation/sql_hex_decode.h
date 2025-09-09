@@ -26,7 +26,7 @@
 
 namespace Wge {
 namespace Transformation {
-class SqlHexDecode : public TransformBase {
+class SqlHexDecode final : public TransformBase {
   DECLARE_TRANSFORM_NAME(sqlHexDecode);
 
 public:

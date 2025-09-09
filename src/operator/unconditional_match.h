@@ -24,7 +24,7 @@
 
 namespace Wge {
 namespace Operator {
-class UnconditionalMatch : public OperatorBase {
+class UnconditionalMatch final : public OperatorBase {
   DECLARE_OPERATOR_NAME(unconditionalMatch);
 
 public:

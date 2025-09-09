@@ -24,7 +24,7 @@
 
 namespace Wge {
 namespace Operator {
-class GeoLookup : public OperatorBase {
+class GeoLookup final : public OperatorBase {
   DECLARE_OPERATOR_NAME(geoLookup);
 
 public:

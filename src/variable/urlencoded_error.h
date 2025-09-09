@@ -24,7 +24,7 @@
 
 namespace Wge {
 namespace Variable {
-class UrlenCodedError : public VariableBase {
+class UrlenCodedError final : public VariableBase {
   DECLARE_VIRABLE_NAME(URLENCODED_ERROR);
 
 public:

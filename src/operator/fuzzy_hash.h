@@ -24,7 +24,7 @@
 
 namespace Wge {
 namespace Operator {
-class FuzzyHash : public OperatorBase {
+class FuzzyHash final : public OperatorBase {
   DECLARE_OPERATOR_NAME(fuzzyHash);
 
 public:

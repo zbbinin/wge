@@ -26,7 +26,7 @@
 
 namespace Wge {
 namespace Transformation {
-class LowerCase : public TransformBase {
+class LowerCase final : public TransformBase {
   DECLARE_TRANSFORM_NAME(lowercase);
 
 public:

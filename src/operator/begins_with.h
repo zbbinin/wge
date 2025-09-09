@@ -28,7 +28,7 @@ namespace Operator {
  * Returns true if the parameter string is found at the beginning of the input. Macro expansion is
  * performed on the parameter string before comparison.
  */
-class BeginsWith : public OperatorBase {
+class BeginsWith final : public OperatorBase {
   DECLARE_OPERATOR_NAME(beginsWith);
 
 public:

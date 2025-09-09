@@ -24,7 +24,7 @@
 
 namespace Wge {
 namespace Operator {
-class ValidateDTD : public OperatorBase {
+class ValidateDTD final : public OperatorBase {
   DECLARE_OPERATOR_NAME(validateDTD);
 
 public:

@@ -24,7 +24,7 @@
 
 namespace Wge {
 namespace Variable {
-class RequestMothod : public VariableBase {
+class RequestMothod final : public VariableBase {
   DECLARE_VIRABLE_NAME(REQUEST_METHOD);
 
 public:

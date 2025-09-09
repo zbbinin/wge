@@ -42,7 +42,7 @@ namespace Action {
  * To increase or decrease variable value, use + and - characters in front of a numerical value:
  * setvar:TX.score=+5
  */
-class SetVar : public ActionBase {
+class SetVar final : public ActionBase {
   DECLARE_ACTION_NAME(setvar);
 
 public:

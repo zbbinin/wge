@@ -26,7 +26,7 @@
 
 namespace Wge {
 namespace Transformation {
-class ParityEven7Bit : public TransformBase {
+class ParityEven7Bit final : public TransformBase {
   DECLARE_TRANSFORM_NAME(parityEven7Bit);
 
 public:

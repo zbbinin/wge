@@ -37,7 +37,7 @@ namespace Operator {
  * Full IPv6 Address - 2001:db8:85a3:8d3:1319:8a2e:370:7348
  * Network Block/CIDR Address - 2001:db8:85a3:8d3:1319:8a2e:370:0/24
  */
-class IpMatch : public OperatorBase {
+class IpMatch final : public OperatorBase {
   DECLARE_OPERATOR_NAME(ipMatch);
 
 public:

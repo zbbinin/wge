@@ -26,7 +26,7 @@
 
 namespace Wge {
 namespace Transformation {
-class ReplaceNulls : public TransformBase {
+class ReplaceNulls final : public TransformBase {
   DECLARE_TRANSFORM_NAME(replaceNulls);
 
 public:

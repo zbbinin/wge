@@ -24,7 +24,7 @@
 
 namespace Wge {
 namespace Variable {
-class ReqbodyProcessorError : public VariableBase {
+class ReqbodyProcessorError final : public VariableBase {
   DECLARE_VIRABLE_NAME(REQBODY_PROCESSOR_ERROR);
 
 public:

@@ -24,7 +24,7 @@
 
 namespace Wge {
 namespace Variable {
-class RemotePort : public VariableBase {
+class RemotePort final : public VariableBase {
   DECLARE_VIRABLE_NAME(REMOTE_PORT);
 
 public:

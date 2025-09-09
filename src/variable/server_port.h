@@ -24,7 +24,7 @@
 
 namespace Wge {
 namespace Variable {
-class ServerPort : public VariableBase {
+class ServerPort final : public VariableBase {
   DECLARE_VIRABLE_NAME(SERVER_PORT);
 
 public:

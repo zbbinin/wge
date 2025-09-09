@@ -30,7 +30,7 @@ namespace Action {
  * Creates and updates environment variables that can be accessed by both ModSecurity and the web
  * server.
  */
-class SetEnv : public ActionBase {
+class SetEnv final : public ActionBase {
   DECLARE_ACTION_NAME(setenv);
 
 public:

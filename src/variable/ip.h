@@ -25,7 +25,7 @@
 
 namespace Wge {
 namespace Variable {
-class Ip : public VariableBase, public PersistentCollectionBase {
+class Ip final : public VariableBase, public PersistentCollectionBase {
   DECLARE_VIRABLE_NAME(IP);
 
 public:

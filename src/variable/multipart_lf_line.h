@@ -24,7 +24,7 @@
 
 namespace Wge {
 namespace Variable {
-class MultipartLfLine : public VariableBase {
+class MultipartLfLine final : public VariableBase {
   DECLARE_VIRABLE_NAME(MULTIPART_LF_LINE);
 
 public:

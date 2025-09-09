@@ -26,7 +26,7 @@
 
 namespace Wge {
 namespace Transformation {
-class CompressWhiteSpace : public TransformBase {
+class CompressWhiteSpace final : public TransformBase {
   DECLARE_TRANSFORM_NAME(compressWhiteSpace);
 
 public:

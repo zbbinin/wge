@@ -26,7 +26,7 @@
 
 namespace Wge {
 namespace Operator {
-class ValidateByteRange : public OperatorBase {
+class ValidateByteRange final : public OperatorBase {
   DECLARE_OPERATOR_NAME(validateByteRange);
 
 public:

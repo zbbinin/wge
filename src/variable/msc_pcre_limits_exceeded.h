@@ -24,7 +24,7 @@
 
 namespace Wge {
 namespace Variable {
-class MscPcreLimitsExceeded : public VariableBase {
+class MscPcreLimitsExceeded final : public VariableBase {
   DECLARE_VIRABLE_NAME(MSC_PCRE_LIMITS_EXCEEDED);
 
 public:

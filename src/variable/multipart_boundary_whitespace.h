@@ -24,7 +24,7 @@
 
 namespace Wge {
 namespace Variable {
-class MultipartBoundaryWhitespace : public VariableBase {
+class MultipartBoundaryWhitespace final : public VariableBase {
   DECLARE_VIRABLE_NAME(MULTIPART_BOUNDARY_WHITESPACE);
 
 public:

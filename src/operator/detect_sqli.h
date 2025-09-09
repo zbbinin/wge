@@ -24,7 +24,7 @@
 
 namespace Wge {
 namespace Operator {
-class DetectSqli : public OperatorBase {
+class DetectSqli final : public OperatorBase {
   DECLARE_OPERATOR_NAME(detectSqli);
 
 public:

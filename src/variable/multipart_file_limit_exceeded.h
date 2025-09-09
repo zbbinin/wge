@@ -24,7 +24,7 @@
 
 namespace Wge {
 namespace Variable {
-class MultipartFileLimitExceeded : public VariableBase {
+class MultipartFileLimitExceeded final : public VariableBase {
   DECLARE_VIRABLE_NAME(MULTIPART_FILE_LIMIT_EXCEEDED);
 
 public:

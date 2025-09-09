@@ -24,7 +24,7 @@
 
 namespace Wge {
 namespace Variable {
-class ServerName : public VariableBase {
+class ServerName final : public VariableBase {
   DECLARE_VIRABLE_NAME(SERVER_NAME);
 
 public:

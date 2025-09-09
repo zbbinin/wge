@@ -24,7 +24,7 @@
 
 namespace Wge {
 namespace Variable {
-class WebAppId : public VariableBase {
+class WebAppId final : public VariableBase {
   DECLARE_VIRABLE_NAME(WEBAPPID);
 
 public:

@@ -30,7 +30,7 @@
 
 namespace Wge {
 namespace Variable {
-class Args : public VariableBase, public CollectionBase {
+class Args final : public VariableBase, public CollectionBase {
   DECLARE_VIRABLE_NAME(ARGS);
 
 public:

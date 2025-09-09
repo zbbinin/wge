@@ -24,7 +24,7 @@
 
 namespace Wge {
 namespace Variable {
-class StatusLine : public VariableBase {
+class StatusLine final : public VariableBase {
   DECLARE_VIRABLE_NAME(STATUS_LINE);
 
 public:

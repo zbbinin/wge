@@ -25,7 +25,7 @@
 
 namespace Wge {
 namespace Variable {
-class ArgsPostNames : public VariableBase, public CollectionBase {
+class ArgsPostNames final : public VariableBase, public CollectionBase {
   DECLARE_VIRABLE_NAME(ARGS_POST_NAMES);
 
 public:

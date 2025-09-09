@@ -26,7 +26,7 @@
 
 namespace Wge {
 namespace Transformation {
-class RemoveCommentsChar : public TransformBase {
+class RemoveCommentsChar final : public TransformBase {
   DECLARE_TRANSFORM_NAME(removeCommentsChar);
 
 public:

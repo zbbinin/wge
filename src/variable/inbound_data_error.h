@@ -24,7 +24,7 @@
 
 namespace Wge {
 namespace Variable {
-class InboundDataError : public VariableBase {
+class InboundDataError final : public VariableBase {
   DECLARE_VIRABLE_NAME(INBOUND_DATA_ERROR);
 
 public:

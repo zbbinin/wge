@@ -24,7 +24,7 @@
 
 namespace Wge {
 namespace Operator {
-class VerifyCC : public OperatorBase {
+class VerifyCC final : public OperatorBase {
   DECLARE_OPERATOR_NAME(verifyCC);
 
 public:

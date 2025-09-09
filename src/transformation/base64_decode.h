@@ -26,7 +26,7 @@
 
 namespace Wge {
 namespace Transformation {
-class Base64Decode : public TransformBase {
+class Base64Decode final : public TransformBase {
   DECLARE_TRANSFORM_NAME(base64Decode);
 
 public:

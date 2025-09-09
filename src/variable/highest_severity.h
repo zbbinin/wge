@@ -24,7 +24,7 @@
 
 namespace Wge {
 namespace Variable {
-class HighestSeverity : public VariableBase {
+class HighestSeverity final : public VariableBase {
   DECLARE_VIRABLE_NAME(HIGHEST_SEVERITY);
 
 public:

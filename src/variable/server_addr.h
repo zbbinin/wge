@@ -24,7 +24,7 @@
 
 namespace Wge {
 namespace Variable {
-class ServerAddr : public VariableBase {
+class ServerAddr final : public VariableBase {
   DECLARE_VIRABLE_NAME(SERVER_ADDR);
 
 public:

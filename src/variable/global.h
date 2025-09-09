@@ -26,7 +26,7 @@
 
 namespace Wge {
 namespace Variable {
-class Global : public VariableBase, public PersistentCollectionBase {
+class Global final : public VariableBase, public PersistentCollectionBase {
   DECLARE_VIRABLE_NAME(GLOBAL);
 
 public:

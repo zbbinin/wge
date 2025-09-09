@@ -24,7 +24,7 @@
 
 namespace Wge {
 namespace Variable {
-class MultipartStrictError : public VariableBase {
+class MultipartStrictError final : public VariableBase {
   DECLARE_VIRABLE_NAME(MULTIPART_STRICT_ERROR);
 
 public:

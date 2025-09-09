@@ -24,7 +24,7 @@
 
 namespace Wge {
 namespace Variable {
-class AuthType : public VariableBase {
+class AuthType final : public VariableBase {
   DECLARE_VIRABLE_NAME(AUTH_TYPE);
 
 public:

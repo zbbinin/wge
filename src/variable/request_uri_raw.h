@@ -24,7 +24,7 @@
 
 namespace Wge {
 namespace Variable {
-class RequestUriRaw : public VariableBase {
+class RequestUriRaw final : public VariableBase {
   DECLARE_VIRABLE_NAME(REQUEST_URI_RAW);
 
 public:

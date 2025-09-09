@@ -37,7 +37,7 @@ namespace Variable {
  * - `XML:/*@file@` for multi-pattern matching of tag values based on the specified file. When
  * filling Common::EvaluateResults, each element corresponds to the value of a tag.
  */
-class Xml : public VariableBase, public CollectionBase {
+class Xml final : public VariableBase, public CollectionBase {
   DECLARE_VIRABLE_NAME(XML);
 
 public:

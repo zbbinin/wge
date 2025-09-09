@@ -24,7 +24,7 @@
 
 namespace Wge {
 namespace Variable {
-class FilesSizes : public VariableBase {
+class FilesSizes final : public VariableBase {
   DECLARE_VIRABLE_NAME(FILES_SIZES);
 
 public:

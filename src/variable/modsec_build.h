@@ -24,7 +24,7 @@
 
 namespace Wge {
 namespace Variable {
-class ModSecBuild : public VariableBase {
+class ModSecBuild final : public VariableBase {
   DECLARE_VIRABLE_NAME(MODSEC_BUILD);
 
 public:

@@ -25,7 +25,7 @@
 
 namespace Wge {
 namespace Variable {
-class FilesNames : public VariableBase, public CollectionBase {
+class FilesNames final : public VariableBase, public CollectionBase {
   DECLARE_VIRABLE_NAME(FILES_NAMES);
 
 public:

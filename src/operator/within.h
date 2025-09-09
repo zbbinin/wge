@@ -33,7 +33,7 @@ namespace Operator {
  * Returns true if the input value (the needle) is found anywhere within the @within parameter (the
  * haystack). Macro expansion is performed on the parameter string before comparison.
  */
-class Within : public OperatorBase {
+class Within final : public OperatorBase {
   DECLARE_OPERATOR_NAME(within);
 
 public:

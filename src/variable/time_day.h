@@ -24,7 +24,7 @@
 
 namespace Wge {
 namespace Variable {
-class TimeDay : public VariableBase {
+class TimeDay final : public VariableBase {
   DECLARE_VIRABLE_NAME(TIME_DAY);
 
 public:

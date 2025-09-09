@@ -31,7 +31,7 @@
 
 namespace Wge {
 namespace Transformation {
-class HtmlEntityDecode : public TransformBase {
+class HtmlEntityDecode final : public TransformBase {
   DECLARE_TRANSFORM_NAME(htmlEntityDecode);
 
 public:

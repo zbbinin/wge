@@ -26,7 +26,7 @@
 
 namespace Wge {
 namespace Transformation {
-class NormalizePathWin : public TransformBase {
+class NormalizePathWin final : public TransformBase {
   DECLARE_TRANSFORM_NAME(normalizePathWin);
 
 public:

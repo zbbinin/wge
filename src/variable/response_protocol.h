@@ -24,7 +24,7 @@
 
 namespace Wge {
 namespace Variable {
-class ResponseProtocol : public VariableBase {
+class ResponseProtocol final : public VariableBase {
   DECLARE_VIRABLE_NAME(RESPONSE_PROTOCOL);
 
 public:

@@ -24,7 +24,7 @@
 
 namespace Wge {
 namespace Operator {
-class DetectXSS : public OperatorBase {
+class DetectXSS final : public OperatorBase {
   DECLARE_OPERATOR_NAME(detectXSS);
 
 public:

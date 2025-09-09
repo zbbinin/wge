@@ -26,7 +26,7 @@
 
 namespace Wge {
 namespace Transformation {
-class CmdLine : public TransformBase {
+class CmdLine final : public TransformBase {
   DECLARE_TRANSFORM_NAME(cmdLine);
 
 public:

@@ -38,7 +38,7 @@ namespace Operator {
  * Performs a regular expression match of the pattern provided as parameter. This is the default
  * operator; the rules that do not explicitly specify an operator default to @rx.
  */
-class Rx : public OperatorBase {
+class Rx final : public OperatorBase {
   DECLARE_OPERATOR_NAME(rx);
 
 public:

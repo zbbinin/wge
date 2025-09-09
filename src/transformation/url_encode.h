@@ -26,7 +26,7 @@
 
 namespace Wge {
 namespace Transformation {
-class UrlEncode : public TransformBase {
+class UrlEncode final : public TransformBase {
   DECLARE_TRANSFORM_NAME(urlEncode);
 
 public:

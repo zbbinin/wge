@@ -24,7 +24,7 @@
 
 namespace Wge {
 namespace Operator {
-class ContainsWord : public OperatorBase {
+class ContainsWord final : public OperatorBase {
   DECLARE_OPERATOR_NAME(containsWord);
 
 public:

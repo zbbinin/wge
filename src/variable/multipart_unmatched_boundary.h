@@ -24,7 +24,7 @@
 
 namespace Wge {
 namespace Variable {
-class MultipartUnmatchedBoundary : public VariableBase {
+class MultipartUnmatchedBoundary final : public VariableBase {
   DECLARE_VIRABLE_NAME(MULTIPART_UNMATCHED_BOUNDARY);
 
 public:

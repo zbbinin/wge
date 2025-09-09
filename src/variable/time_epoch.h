@@ -24,7 +24,7 @@
 
 namespace Wge {
 namespace Variable {
-class TimeEpoch : public VariableBase {
+class TimeEpoch final : public VariableBase {
   DECLARE_VIRABLE_NAME(TIME_EPOCH);
 
 public:

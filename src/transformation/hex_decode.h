@@ -26,7 +26,7 @@
 
 namespace Wge {
 namespace Transformation {
-class HexDecode : public TransformBase {
+class HexDecode final : public TransformBase {
   DECLARE_TRANSFORM_NAME(hexDecode);
 
 public:

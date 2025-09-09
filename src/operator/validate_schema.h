@@ -24,7 +24,7 @@
 
 namespace Wge {
 namespace Operator {
-class ValidateSchema : public OperatorBase {
+class ValidateSchema final : public OperatorBase {
   DECLARE_OPERATOR_NAME(validateSchema);
 
 public:

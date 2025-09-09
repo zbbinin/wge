@@ -24,7 +24,7 @@
 
 namespace Wge {
 namespace Variable {
-class ResponseStatus : public VariableBase {
+class ResponseStatus final : public VariableBase {
   DECLARE_VIRABLE_NAME(RESPONSE_STATUS);
 
 public:

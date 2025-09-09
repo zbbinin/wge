@@ -24,7 +24,7 @@
 
 namespace Wge {
 namespace Variable {
-class SessionId : public VariableBase {
+class SessionId final : public VariableBase {
   DECLARE_VIRABLE_NAME(SESSIONID);
 
 public:

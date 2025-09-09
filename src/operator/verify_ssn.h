@@ -24,7 +24,7 @@
 
 namespace Wge {
 namespace Operator {
-class VerifySSN : public OperatorBase {
+class VerifySSN final : public OperatorBase {
   DECLARE_OPERATOR_NAME(verifySSN);
 
 public:

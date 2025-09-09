@@ -24,7 +24,7 @@
 
 namespace Wge {
 namespace Variable {
-class RequestBodyLength : public VariableBase {
+class RequestBodyLength final : public VariableBase {
   DECLARE_VIRABLE_NAME(REQUEST_BODY_LENGTH);
 
 public:

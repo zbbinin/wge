@@ -26,7 +26,7 @@
 
 namespace Wge {
 namespace Transformation {
-class RemoveWhitespace : public TransformBase {
+class RemoveWhitespace final : public TransformBase {
   DECLARE_TRANSFORM_NAME(removeWhitespace);
 
 public:

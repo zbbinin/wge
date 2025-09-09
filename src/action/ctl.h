@@ -39,7 +39,7 @@ namespace Action {
  * this action will affect only the transaction in which the action is executed. The default
  * configuration, as well as the other transactions running in parallel, will be unaffected.
  */
-class Ctl : public ActionBase {
+class Ctl final : public ActionBase {
   DECLARE_ACTION_NAME(ctl);
 
 public:

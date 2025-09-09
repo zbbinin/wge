@@ -24,7 +24,7 @@
 
 namespace Wge {
 namespace Operator {
-class VerifyCPF : public OperatorBase {
+class VerifyCPF final : public OperatorBase {
   DECLARE_OPERATOR_NAME(verifyCPF);
 
 public:

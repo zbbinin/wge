@@ -26,7 +26,7 @@
 
 namespace Wge {
 namespace Variable {
-class MultipartPartHeaders : public VariableBase, public CollectionBase {
+class MultipartPartHeaders final : public VariableBase, public CollectionBase {
   DECLARE_VIRABLE_NAME(MULTIPART_PART_HEADERS);
 
 public:

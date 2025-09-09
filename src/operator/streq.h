@@ -28,7 +28,7 @@ namespace Operator {
  * Performs a string comparison and returns true if the parameter string is identical to the input
  * string. Macro expansion is performed on the parameter string before comparison.
  */
-class Streq : public OperatorBase {
+class Streq final : public OperatorBase {
   DECLARE_OPERATOR_NAME(streq);
 
 public:

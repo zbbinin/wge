@@ -28,7 +28,7 @@
 
 namespace Wge {
 namespace Variable {
-class ReqBodyProcessor : public VariableBase {
+class ReqBodyProcessor final : public VariableBase {
   DECLARE_VIRABLE_NAME(REQBODY_PROCESSOR);
 
 public:

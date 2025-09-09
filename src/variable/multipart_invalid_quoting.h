@@ -24,7 +24,7 @@
 
 namespace Wge {
 namespace Variable {
-class MultipartInvalidQuoting : public VariableBase {
+class MultipartInvalidQuoting final : public VariableBase {
   DECLARE_VIRABLE_NAME(MULTIPART_INVALID_QUOTING);
 
 public:

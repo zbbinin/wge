@@ -25,7 +25,7 @@
 
 namespace Wge {
 namespace Variable {
-class ResponseHeaders : public VariableBase, public CollectionBase {
+class ResponseHeaders final : public VariableBase, public CollectionBase {
   DECLARE_VIRABLE_NAME(RESPONSE_HEADERS);
 
 public:

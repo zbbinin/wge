@@ -29,7 +29,7 @@
 
 namespace Wge {
 namespace Variable {
-class ArgsGet : public VariableBase, public CollectionBase {
+class ArgsGet final : public VariableBase, public CollectionBase {
   friend class Args;
   DECLARE_VIRABLE_NAME(ARGS_GET);
 

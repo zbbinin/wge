@@ -24,7 +24,7 @@
 
 namespace Wge {
 namespace Variable {
-class PathInfo : public VariableBase {
+class PathInfo final : public VariableBase {
   DECLARE_VIRABLE_NAME(PATH_INFO);
 
 public:

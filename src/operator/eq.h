@@ -29,7 +29,7 @@ namespace Operator {
  * Performs numerical comparison and returns true if the input value is equal to the provided
  * parameter. Macro expansion is performed on the parameter string before comparison.
  */
-class Eq : public OperatorBase {
+class Eq final : public OperatorBase {
   DECLARE_OPERATOR_NAME(eq);
 
 public:

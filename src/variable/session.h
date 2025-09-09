@@ -25,7 +25,7 @@
 
 namespace Wge {
 namespace Variable {
-class Session : public VariableBase, public PersistentCollectionBase {
+class Session final : public VariableBase, public PersistentCollectionBase {
   DECLARE_VIRABLE_NAME(SESSION);
 
 public:

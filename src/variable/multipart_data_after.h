@@ -24,7 +24,7 @@
 
 namespace Wge {
 namespace Variable {
-class MultipartDataAfter : public VariableBase {
+class MultipartDataAfter final : public VariableBase {
   DECLARE_VIRABLE_NAME(MULTIPART_DATA_AFTER);
 
 public:

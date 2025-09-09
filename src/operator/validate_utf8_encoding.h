@@ -24,7 +24,7 @@
 
 namespace Wge {
 namespace Operator {
-class ValidateUtf8Encoding : public OperatorBase {
+class ValidateUtf8Encoding final : public OperatorBase {
   DECLARE_OPERATOR_NAME(validateUtf8Encoding);
 
 public:

@@ -25,7 +25,7 @@
 
 namespace Wge {
 namespace Variable {
-class Geo : public VariableBase, public CollectionBase {
+class Geo final : public VariableBase, public CollectionBase {
   DECLARE_VIRABLE_NAME(GEO);
 
 public:

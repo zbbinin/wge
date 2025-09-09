@@ -24,7 +24,7 @@
 
 namespace Wge {
 namespace Variable {
-class ReqBodyErrorMsg : public VariableBase {
+class ReqBodyErrorMsg final : public VariableBase {
   DECLARE_VIRABLE_NAME(REQBODY_ERROR_MSG);
 
 public:

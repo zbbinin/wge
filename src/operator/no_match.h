@@ -24,7 +24,7 @@
 
 namespace Wge {
 namespace Operator {
-class NoMatch : public OperatorBase {
+class NoMatch final : public OperatorBase {
   DECLARE_OPERATOR_NAME(noMatch);
 
 public:

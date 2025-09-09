@@ -27,7 +27,7 @@
 
 namespace Wge {
 namespace Action {
-class InitCol : public ActionBase {
+class InitCol final : public ActionBase {
   DECLARE_ACTION_NAME(initcol);
 
 public:

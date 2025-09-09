@@ -26,7 +26,7 @@
 
 namespace Wge {
 namespace Variable {
-class RequestCookies : public VariableBase, public CollectionBase {
+class RequestCookies final : public VariableBase, public CollectionBase {
   DECLARE_VIRABLE_NAME(REQUEST_COOKIES);
 
 public:

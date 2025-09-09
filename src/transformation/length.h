@@ -26,7 +26,7 @@
 
 namespace Wge {
 namespace Transformation {
-class Length : public TransformBase {
+class Length final : public TransformBase {
   DECLARE_TRANSFORM_NAME(length);
 
 public:

@@ -29,7 +29,7 @@ namespace Variable {
  * v3 implementation is to use a millisecond timestamp, followed by a dot character ('.'), followed
  * by a random six-digit number.
  */
-class UniqueId : public VariableBase {
+class UniqueId final : public VariableBase {
   DECLARE_VIRABLE_NAME(UNIQUE_ID);
 
 public:

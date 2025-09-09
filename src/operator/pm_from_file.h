@@ -56,7 +56,7 @@ namespace Operator {
  * - Lines starting with "##!+ -l" disable literal matching. The all patterns in the file will be
  * affected.
  */
-class PmFromFile : public OperatorBase {
+class PmFromFile final : public OperatorBase {
   DECLARE_OPERATOR_NAME(pmFromFile);
 
 public:
