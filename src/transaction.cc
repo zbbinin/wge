@@ -159,7 +159,7 @@ bool Transaction::processRequestHeaders(
     // }
   }
 
-  bool result = process(1);
+  bool result = vm_ ? process<true>(1) : process<false>(1);
 
   // Reset the log callback and additional condition
   log_callback_ = nullptr;
@@ -214,7 +214,7 @@ bool Transaction::processRequestBody(
     }
   }
 
-  bool result = process(2);
+  bool result = vm_ ? process<true>(2) : process<false>(2);
 
   // Reset the log callback and additional condition
   log_callback_ = nullptr;
@@ -239,7 +239,7 @@ bool Transaction::processResponseHeaders(
   response_line_info_.status_code_ = status_code;
   response_line_info_.protocol_ = protocol;
 
-  bool result = process(3);
+  bool result = vm_ ? process<true>(3) : process<false>(3);
 
   // Reset the log callback and additional condition
   log_callback_ = nullptr;
@@ -258,7 +258,7 @@ bool Transaction::processResponseBody(
   log_callback_ = std::move(log_callback);
   additional_cond_ = std::move(additional_cond);
 
-  bool result = process(4);
+  bool result = vm_ ? process<true>(4) : process<false>(4);
 
   // Reset the log callback and additional condition
   log_callback_ = nullptr;
@@ -571,7 +571,7 @@ void Transaction::initUniqueId() {
   unique_id_ = std::format("{}.{}", timestamp, random);
 }
 
-bool Transaction::process(int phase) {
+template <bool enable_bytecode> bool Transaction::process(int phase) {
   if (engine_.config().rule_engine_option_ == EngineConfig::Option::Off)
     [[unlikely]] { return true; }
 
@@ -581,17 +581,16 @@ bool Transaction::process(int phase) {
   if (allow_phases_.test(phase))
     [[unlikely]] { return true; }
 
-  if (vm_) {
-    return processWithBytecode(phase);
-  } else {
-    return processWithObjectGraph(phase);
-  }
-}
-
-bool Transaction::processWithObjectGraph(int phase) {
   // Get the rules in the given phase
   auto& rules = engine_.rules(phase);
   const Wge::Rule* default_action = engine_.defaultActions(phase);
+
+  // Get the bytecode programs
+  const std::vector<std::unique_ptr<Wge::Bytecode::Program>>* programs = nullptr;
+  if constexpr (enable_bytecode) {
+    programs = &engine_.programs(phase);
+    assert(rules.size() == programs->size());
+  }
 
   // Traverse the rules and evaluate them
   auto begin = rules.begin();
@@ -612,8 +611,15 @@ bool Transaction::processWithObjectGraph(int phase) {
     captured_.clear();
     matched_variables_.clear();
 
-    // Evaluate the rule
-    auto is_matched = current_rule_->evaluate(*this);
+    bool is_matched = false;
+    if constexpr (enable_bytecode) {
+      // Execute the bytecode program
+      vm_->execute(*(programs->at(std::distance(begin, iter))));
+      is_matched = vm_->rflags() != 0;
+    } else {
+      // Evaluate the rule
+      is_matched = current_rule_->evaluate(*this);
+    }
 
     if (!is_matched ||
         current_rule_->getOperator() == nullptr // It's a rule that defined by SecAction
@@ -658,98 +664,6 @@ bool Transaction::processWithObjectGraph(int phase) {
         } else {
           iter = rules.end();
         }
-        continue;
-      }
-    const std::string& skip_after = current_rule_->skipAfter();
-    if (!skip_after.empty())
-      [[unlikely]] {
-        auto next_rule_iter = engine_.marker(skip_after, current_rule_->phase());
-        if (next_rule_iter.has_value())
-          [[likely]] {
-            iter = next_rule_iter.value();
-            continue;
-          }
-      }
-
-    // If skip and skipAfter are not set, then continue to the next rule
-    ++iter;
-  }
-
-  return true;
-}
-
-bool Transaction::processWithBytecode(int phase) {
-  // Get the rules in the given phase
-  auto& rules = engine_.rules(phase);
-  const Wge::Rule* default_action = engine_.defaultActions(phase);
-
-  // Get the bytecode programs
-  auto& programs = engine_.programs(phase);
-  assert(rules.size() == programs.size());
-
-  // Traverse the rules and evaluate them
-  auto begin = rules.begin();
-  auto& rule_remove_flag = rule_remove_flags_[phase - 1];
-  for (auto iter = begin; iter != rules.end();) {
-    current_rule_ = *iter;
-    const size_t program_index = std::distance(begin, iter);
-
-    // Skip the rules that have been removed
-    assert(current_rule_->index() != -1);
-    if (!rule_remove_flag.empty() && rule_remove_flag[current_rule_->index()])
-      [[unlikely]] {
-        ++iter;
-        continue;
-      }
-
-    // Clean the current captured and matched, there are:
-    // TX.[0-99], MATCHED_VAR_NAME, MATCHED_VAR, MATCHED_VARS_NAMES, MATCHED_VARS
-    captured_.clear();
-    matched_variables_.clear();
-
-    // Execute the bytecode program
-    vm_->execute(*programs[program_index]);
-    bool is_matched = vm_->rflags() != 0;
-
-    if (!is_matched ||
-        current_rule_->getOperator() == nullptr // It's a rule that defined by SecAction
-    )
-      [[likely]] {
-        ++iter;
-        continue;
-      }
-
-    // Log the matched rule
-    if (log_callback_)
-      [[likely]] {
-        if (default_action) {
-          if (current_rule_->log().value_or(default_action->log().value_or(true))) {
-            log_callback_(*current_rule_);
-          }
-        } else {
-          if (current_rule_->log().value_or(true)) {
-            log_callback_(*current_rule_);
-          }
-        }
-      }
-
-    // Do the disruptive action
-    if (engine_.config().rule_engine_option_ != EngineConfig::Option::DetectionOnly) {
-      std::optional<bool> disruptive = doDisruptive(*current_rule_, default_action);
-      if (disruptive.has_value()) {
-        if (!disruptive.value()) {
-          // Modify the response status code
-          response_line_info_.status_code_ = "403";
-        }
-        return disruptive.value();
-      }
-    }
-
-    // Skip the rules if current rule that has a skip action or skipAfter action is matched
-    int skip = current_rule_->skip();
-    if (skip > 0)
-      [[unlikely]] {
-        iter += skip;
         continue;
       }
     const std::string& skip_after = current_rule_->skipAfter();

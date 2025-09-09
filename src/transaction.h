@@ -628,9 +628,7 @@ private:
 
   void initUniqueId();
 
-  inline bool process(int phase);
-  inline bool processWithObjectGraph(int phase);
-  inline bool processWithBytecode(int phase);
+  template <bool enable_bytecode> bool process(int phase);
 
   inline std::optional<size_t> getLocalVariableIndex(const std::string& key, bool force_create);
 
