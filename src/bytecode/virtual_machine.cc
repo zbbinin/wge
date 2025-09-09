@@ -580,15 +580,13 @@ void VirtualMachine::execOperate(const Instruction& instruction) {
                                                      &&VerifyCC,
                                                      &&VerifyCPF,
                                                      &&VerifySSN,
-                                                     &&Within,
-                                                     &&END};
+                                                     &&Within};
 #define CASE(operator)                                                                             \
   operator: rule_matched = dispatchOperator(                                                       \
                 reinterpret_cast < const Operator::operator*>(instruction.op4_.cptr_),             \
                 transaction_, curr_rule, curr_var, input, output);                                 \
-  goto*                                                                                            \
-      operate_dispatch_table[sizeof(operate_dispatch_table) / sizeof(operate_dispatch_table[0]) -  \
-                             1];
+  rflags_ |= rule_matched;                                                                         \
+  return;
 
   const Rule* curr_rule =
       reinterpret_cast<const Rule*>(general_registers_[Compiler::RuleCompiler::curr_rule_reg_]);
@@ -640,12 +638,6 @@ void VirtualMachine::execOperate(const Instruction& instruction) {
   CASE(VerifySSN);
   CASE(Within);
 #undef CASE
-
-END:
-  // If the operator was matched, set rflags_
-  if (rule_matched) {
-    rflags_ = 1;
-  }
 }
 
 template <class ActionType> void dispatchAction(const ActionType* action, Transaction& t) {
@@ -730,8 +722,12 @@ void VirtualMachine::execUncAction(const Instruction& instruction) {
 }
 
 void VirtualMachine::execExpandMacro(const Instruction& instruction) {
-  execMsgExpandMacro(instruction);
-  execLogDataExpandMacro(instruction);
+  if (instruction.op2_.cptr_) {
+    execMsgExpandMacro(instruction);
+  }
+  if (instruction.op4_.cptr_) {
+    execLogDataExpandMacro(instruction);
+  }
 }
 
 template <class MacroType> void dispatchMsgMacro(const MacroType* macro, Transaction& t) {

@@ -19,19 +19,24 @@ std::unique_ptr<Program> RuleCompiler::compile(const Rule* rule, const Rule* def
 
 void RuleCompiler::compileRule(const Rule* rule, const Rule* default_action_rule,
                                Program& program) {
-  // Initialize action infos
-  const auto default_actions = default_action_rule ? &default_action_rule->actions() : nullptr;
-  Compiler::ActionCompiler::initProgramActionInfo(rule->chainIndex(), default_actions,
-                                                  &rule->actions(), program);
 
   auto& op = rule->getOperator();
   if (op == nullptr) {
+    // Initialize action infos
+    Compiler::ActionCompiler::initProgramActionInfo(rule->chainIndex(), nullptr, &rule->actions(),
+                                                    program);
+
     // Compile each uncondition action in the rule
     if (!rule->actions().empty()) {
       Compiler::ActionCompiler::compile(rule->chainIndex(), program);
     }
     return;
   }
+
+  // Initialize action infos
+  const auto default_actions = default_action_rule ? &default_action_rule->actions() : nullptr;
+  Compiler::ActionCompiler::initProgramActionInfo(rule->chainIndex(), default_actions,
+                                                  &rule->actions(), program);
 
   // Set current rule
   program.emit({OpCode::MOV, {.g_reg_ = curr_rule_reg_}, {.cptr_ = rule}});

@@ -430,7 +430,7 @@ TEST_F(CompilerTest, compileChainRule) {
     }
   }
   EXPECT_EQ(operator_count, chain_rule_count + 1);
-  EXPECT_EQ(jz_count, chain_rule_count + 1);
+  EXPECT_EQ(jz_count, chain_rule_count * 2 + 1);
 }
 
 TEST_F(CompilerTest, compileExpandMacro) {
