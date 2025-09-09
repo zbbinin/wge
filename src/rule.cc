@@ -285,7 +285,8 @@ inline void Rule::evaluateVariable(Transaction& t,
         return std::format("evaluate collection: {}&{} = {}", var->isNot() ? "!" : "",
                            var->mainName(), VISTIT_VARIANT_AS_STRING(result.front().variant_));
       } else {
-        return std::format("evaluate collection: {}{}", var->isNot() ? "!" : "", var->mainName());
+        return std::format("evaluate collection: {}{}, size: {}", var->isNot() ? "!" : "",
+                           var->mainName(), result.size());
       }
     }
   }());

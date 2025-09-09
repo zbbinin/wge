@@ -135,8 +135,9 @@ void dispatchVariable(const VariableType* variable, Transaction& t,
             "evaluate collection: {}&{} = {}", variable->VariableType::isNot() ? "!" : "",
             variable->VariableType::mainName(), VISTIT_VARIANT_AS_STRING(output.front().variant_));
       } else {
-        return std::format("evaluate collection: {}{}", variable->VariableType::isNot() ? "!" : "",
-                           variable->VariableType::mainName());
+        return std::format("evaluate collection: {}{}, size: {}",
+                           variable->VariableType::isNot() ? "!" : "",
+                           variable->VariableType::mainName(), output.size());
       }
     }
   }());
@@ -367,6 +368,9 @@ void dispatchTransform(const TransformType* transform, Transaction& t,
   for (size_t i = 0; i < input_size; ++i) {
     const Common::EvaluateResults::Element& input_element = input.get(i);
     if (!IS_STRING_VIEW_VARIANT(input_element.variant_)) {
+      // Not a string, just pass it through. The OPERATE instruction use the output as the input, so
+      // we need to keep the size consistent
+      output.append(input_element.variant_);
       continue;
     }
 
@@ -412,6 +416,8 @@ void dispatchTransform(const TransformType* transform, Transaction& t,
     }
     output_element.variable_sub_name_ = input_element.variable_sub_name_;
     output.append(std::move(output_element));
+    WGE_LOG_TRACE("evaluate action defined transformation: {} {}", transform->TransformType::name(),
+                  ret);
   }
 }
 
@@ -660,7 +666,7 @@ void VirtualMachine::execAction(const Instruction& instruction) {
   const std::vector<Program::ActionInfo>& action_infos =
       *reinterpret_cast<const std::vector<Program::ActionInfo>*>(instruction.op2_.cptr_);
 
-  assert(operate_results.size() <= original_value.size());
+  assert(operate_results.size() == original_value.size());
   assert(original_value.size() == transformed_value.size());
 
   size_t operate_results_size = operate_results.size();
