@@ -100,7 +100,8 @@ int main(int argc, char* argv[]) {
 
   // Parse command line arguments
   int opt;
-  while ((opt = getopt(argc, argv, "c:n:h")) != -1) {
+  bool enable_bytecode = true;
+  while ((opt = getopt(argc, argv, "c:n:dh")) != -1) {
     switch (opt) {
     case 'c':
       try {
@@ -110,6 +111,9 @@ int main(int argc, char* argv[]) {
         usage();
         return 1;
       }
+      break;
+    case 'd':
+      enable_bytecode = false;
       break;
     case 'n':
       try {
@@ -141,7 +145,7 @@ int main(int argc, char* argv[]) {
   }
 
   // Load rules
-  Wge::Engine engine(spdlog::level::trace);
+  Wge::Engine engine(spdlog::level::trace, "", enable_bytecode);
   std::expected<bool, std::string> result;
   std::vector<std::string> rule_files = {
       "test/test_data/engin-setup.conf",
@@ -226,9 +230,12 @@ int main(int argc, char* argv[]) {
 }
 
 void usage() {
-  std::cout << R"(USAGE: modsecurity_benchmark [-c concurrency] [-n test count]
+  std::cout
+      << R"(USAGE: modsecurity_benchmark [-c concurrency] [-d disable bytecode] [-n test count]
        -c concurrency
                thread count, default is the number of CPU cores
+       -d disable bytecode
+               disable the bytecode engine, default enable
        -n test count
                the maximum requests number of tests, default 10000000
 
