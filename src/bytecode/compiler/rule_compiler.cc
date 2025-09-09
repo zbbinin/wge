@@ -87,10 +87,11 @@ void RuleCompiler::compileRule(const Rule* rule, const Rule* default_action_rule
 
   // Skip the instuctions of chain rule if the OPERATE was not matched
   constexpr int64_t relocation = -1;
-  const size_t jz_index = program.instructions().size();
+  const size_t jz_index_for_rule_matched = program.instructions().size();
   program.emit({OpCode::JZ, {.address_ = relocation}});
 
   // Compile chain rule
+  std::optional<size_t> jz_index_for_chain_matched;
   std::optional<std::list<std::unique_ptr<Rule>>::const_iterator> chain_rule_iter =
       rule->chainRule(0);
   if (chain_rule_iter.has_value()) {
@@ -100,6 +101,11 @@ void RuleCompiler::compileRule(const Rule* rule, const Rule* default_action_rule
 
     // Restore current rule
     program.emit({OpCode::MOV, {.g_reg_ = curr_rule_reg_}, {.cptr_ = rule}});
+
+    // If the chained rule are matched means the rule is matched, otherwise the rule is not
+    // matched
+    jz_index_for_chain_matched = program.instructions().size();
+    program.emit({OpCode::JZ, {.address_ = relocation}});
   }
 
   // Compile expand macro
@@ -107,7 +113,10 @@ void RuleCompiler::compileRule(const Rule* rule, const Rule* default_action_rule
 
   // Relocate jump address
   const size_t curr_index = program.instructions().size();
-  program.relocate(jz_index, curr_index);
+  program.relocate(jz_index_for_rule_matched, curr_index);
+  if (jz_index_for_chain_matched.has_value()) {
+    program.relocate(jz_index_for_chain_matched.value(), curr_index);
+  }
 }
 
 } // namespace Compiler

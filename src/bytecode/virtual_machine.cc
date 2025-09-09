@@ -497,25 +497,26 @@ void VirtualMachine::execTransform(const Instruction& instruction) {
 }
 
 template <class OperatorType>
-void dispatchOperator(const OperatorType* op, Transaction& t, const Rule* curr_rule,
+bool dispatchOperator(const OperatorType* op, Transaction& t, const Rule* curr_rule,
                       const std::unique_ptr<Wge::Variable::VariableBase>* curr_var,
                       const Common::EvaluateResults& input, Common::EvaluateResults& output) {
+  bool rule_matched = false;
   size_t input_size = input.size();
   for (size_t i = 0; i < input_size; ++i) {
     auto& var_value = input.get(i).variant_;
-    bool matched = op->OperatorType::evaluate(t, var_value);
-    matched = op->OperatorType::isNot() ^ matched;
+    bool variable_matched = op->OperatorType::evaluate(t, var_value);
+    variable_matched = op->OperatorType::isNot() ^ variable_matched;
 
     // Call additional conditions if they are defined
-    if (matched && t.getAdditionalCond()) {
+    if (variable_matched && t.getAdditionalCond()) {
       if (IS_STRING_VIEW_VARIANT(var_value)) {
-        matched =
+        variable_matched =
             t.getAdditionalCond()(*curr_rule, std::get<std::string_view>(var_value), *curr_var);
-        WGE_LOG_TRACE("call additional condition: {}", matched);
+        WGE_LOG_TRACE("call additional condition: {}", variable_matched);
       }
     }
 
-    if (matched) {
+    if (variable_matched) {
       auto merged_count = t.mergeCapture();
       if (merged_count) {
         std::string_view tx_0 = std::get<std::string_view>(t.getCapture(0));
@@ -526,6 +527,8 @@ void dispatchOperator(const OperatorType* op, Transaction& t, const Rule* curr_r
       } else {
         output.append(std::string_view());
       }
+
+      rule_matched = true;
     } else {
       t.clearTempCapture();
       output.append(0);
@@ -535,8 +538,10 @@ void dispatchOperator(const OperatorType* op, Transaction& t, const Rule* curr_r
                   op->OperatorType::isNot() ? "!" : "", op->OperatorType::name(),
                   op->OperatorType::macro() ? op->OperatorType::macro()->literalValue()
                                             : op->OperatorType::literalValue(),
-                  matched);
+                  variable_matched);
   }
+
+  return rule_matched;
 }
 
 void VirtualMachine::execOperate(const Instruction& instruction) {
@@ -578,9 +583,9 @@ void VirtualMachine::execOperate(const Instruction& instruction) {
                                                      &&Within,
                                                      &&END};
 #define CASE(operator)                                                                             \
-  operator                                                                                         \
-      : dispatchOperator(reinterpret_cast < const Operator::operator*>(instruction.op4_.cptr_),    \
-                         transaction_, curr_rule, curr_var, input, output);                        \
+  operator: rule_matched = dispatchOperator(                                                       \
+                reinterpret_cast < const Operator::operator*>(instruction.op4_.cptr_),             \
+                transaction_, curr_rule, curr_var, input, output);                                 \
   goto*                                                                                            \
       operate_dispatch_table[sizeof(operate_dispatch_table) / sizeof(operate_dispatch_table[0]) -  \
                              1];
@@ -593,6 +598,7 @@ void VirtualMachine::execOperate(const Instruction& instruction) {
   const auto& input = extra_registers_[instruction.op2_.ex_reg_];
   auto& output = extra_registers_[instruction.op1_.ex_reg_];
   output.clear();
+  bool rule_matched = false;
 
   // Reset RFLAGS
   rflags_ = 0;
@@ -637,8 +643,9 @@ void VirtualMachine::execOperate(const Instruction& instruction) {
 
 END:
   // If the operator was matched, set rflags_
-  const auto& op_results = extra_registers_[Compiler::RuleCompiler::op_res_reg_];
-  rflags_ = op_results.size() != 0;
+  if (rule_matched) {
+    rflags_ = 1;
+  }
 }
 
 template <class ActionType> void dispatchAction(const ActionType* action, Transaction& t) {
