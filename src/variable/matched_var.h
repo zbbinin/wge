@@ -20,6 +20,7 @@
  */
 #pragma once
 
+#include "evaluate_help.h"
 #include "variable_base.h"
 
 namespace Wge {
@@ -34,6 +35,18 @@ public:
 
 public:
   void evaluate(Transaction& t, Common::EvaluateResults& result) const override {
+    if (is_counter_)
+      [[unlikely]] {
+        evaluate<IS_COUNTER, NOT_COLLECTION>(t, result);
+        return;
+      }
+
+    evaluate<NOT_COUNTER, NOT_COLLECTION>(t, result);
+  }
+
+public:
+  template <bool is_counter, bool is_collection, bool is_regex = false>
+  void evaluate(Transaction& t, Common::EvaluateResults& result) const {
     // If the current evaluate rule is a chained rule, we should get the matched variable from the
     // parent rule. If the current evaluate rule is not a chained rule, we should get the matched
     // variable from the current rule.
@@ -45,7 +58,7 @@ public:
       }
     }
 
-    if (is_counter_)
+    if constexpr (is_counter)
       [[unlikely]] {
         if (!t.getMatchedVariables(rule_chain_index).empty())
           [[likely]] { result.append(1); }

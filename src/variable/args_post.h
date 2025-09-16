@@ -24,6 +24,7 @@
 #include <string_view>
 
 #include "collection_base.h"
+#include "evaluate_help.h"
 #include "variable_base.h"
 
 namespace Wge {
@@ -40,44 +41,68 @@ public:
 
 public:
   void evaluate(Transaction& t, Common::EvaluateResults& result) const override {
-    // Get the query params by the request body processor type
-    const std::vector<std::pair<std::string_view, std::string_view>>* query_params = nullptr;
-    const std::unordered_multimap<std::string_view, std::string_view>* query_params_map = nullptr;
-    switch (t.getRequestBodyProcessor()) {
-    case BodyProcessorType::UrlEncoded:
-      query_params = &t.getBodyQueryParam().getLinked();
-      query_params_map = &t.getBodyQueryParam().get();
-      break;
-    case BodyProcessorType::MultiPart:
-      query_params = &t.getBodyMultiPart().getNameValueLinked();
-      query_params_map = &t.getBodyMultiPart().getNameValue();
-      break;
-    default:
-      query_params = &t.getBodyQueryParam().getLinked();
-      query_params_map = &t.getBodyQueryParam().get();
-      break;
-    }
-
     RETURN_IF_COUNTER(
         // collection
-        { result.append(static_cast<int64_t>(query_params->size())); },
+        { (evaluate<IS_COUNTER, IS_COLLECTION, NOT_REGEX_COLLECTION>(t, result)); },
         // specify subname
-        {
-          int64_t count = query_params_map->count(sub_name_);
-          result.append(count);
-        });
+        { (evaluate<IS_COUNTER, NOT_COLLECTION, NOT_REGEX_COLLECTION>(t, result)); });
 
     RETURN_VALUE(
         // collection
+        { (evaluate<NOT_COUNTER, IS_COLLECTION, NOT_REGEX_COLLECTION>(t, result)); },
+        // collection regex
+        { (evaluate<NOT_COUNTER, IS_COLLECTION, IS_REGEX_COLLECTION>(t, result)); },
+        // specify subname
+        { (evaluate<NOT_COUNTER, NOT_COLLECTION, NOT_REGEX_COLLECTION>(t, result)); });
+  }
+
+  bool isCollection() const override { return sub_name_.empty(); };
+
+public:
+  template <bool is_counter, bool is_collection, bool is_regex = false>
+  void evaluate(Transaction& t, Common::EvaluateResults& result) const {
+    // Get the query params by the request body processor type
+    const std::vector<std::pair<std::string_view, std::string_view>>* body_query_params;
+    const std::unordered_multimap<std::string_view, std::string_view>* body_query_params_map;
+    switch (t.getRequestBodyProcessor()) {
+    case BodyProcessorType::UrlEncoded:
+      body_query_params = &t.getBodyQueryParam().getLinked();
+      body_query_params_map = &t.getBodyQueryParam().get();
+      break;
+    case BodyProcessorType::MultiPart:
+      body_query_params = &t.getBodyMultiPart().getNameValueLinked();
+      body_query_params_map = &t.getBodyMultiPart().getNameValue();
+      break;
+    case BodyProcessorType::Json:
+      body_query_params = &t.getBodyJson().getKeyValuesLinked();
+      body_query_params_map = &t.getBodyJson().getKeyValues();
+      break;
+    default:
+      body_query_params = &t.getBodyQueryParam().getLinked();
+      body_query_params_map = &t.getBodyQueryParam().get();
+      break;
+    }
+
+    RETURN_IF_COUNTER_CT(
+        // collection
+        { result.append(static_cast<int64_t>(body_query_params->size())); },
+        // specify subname
         {
-          for (auto& elem : *query_params) {
+          int64_t count = body_query_params_map->count(sub_name_);
+          result.append(count);
+        });
+
+    RETURN_VALUE_CT(
+        // collection
+        {
+          for (auto& elem : *body_query_params) {
             if (!hasExceptVariable(t, main_name_, elem.first))
               [[likely]] { result.append(elem.second, elem.first); }
           }
         },
         // collection regex
         {
-          for (auto& elem : *query_params) {
+          for (auto& elem : *body_query_params) {
             if (!hasExceptVariable(t, main_name_, elem.first))
               [[likely]] {
                 if (match(elem.first)) {
@@ -88,14 +113,12 @@ public:
         },
         // specify subname
         {
-          auto range = query_params_map->equal_range(sub_name_);
+          auto range = body_query_params_map->equal_range(sub_name_);
           for (auto iter = range.first; iter != range.second; ++iter) {
             result.append(iter->second);
           }
         });
   }
-
-  bool isCollection() const override { return sub_name_.empty(); };
 };
 } // namespace Variable
 } // namespace Wge

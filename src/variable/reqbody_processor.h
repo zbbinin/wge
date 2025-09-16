@@ -22,6 +22,7 @@
 
 #include <unordered_map>
 
+#include "evaluate_help.h"
 #include "variable_base.h"
 
 #include "../config.h"
@@ -38,23 +39,32 @@ public:
 
 public:
   void evaluate(Transaction& t, Common::EvaluateResults& result) const override {
-    auto body_processor_type = t.getRequestBodyProcessor();
-    auto iter = body_processor_type_map_.find(body_processor_type);
-
     if (is_counter_)
       [[unlikely]] {
-        if (iter != body_processor_type_map_.end()) {
-          result.append(1);
-        } else {
-          result.append(0);
-        }
+        evaluate<IS_COUNTER, NOT_COLLECTION>(t, result);
         return;
       }
 
-    if (iter == body_processor_type_map_.end())
-      [[unlikely]] { return; }
+    evaluate<NOT_COUNTER, NOT_COLLECTION>(t, result);
+  }
 
-    result.append(iter->second);
+public:
+  template <bool is_counter, bool is_collection, bool is_regex = false>
+  void evaluate(Transaction& t, Common::EvaluateResults& result) const {
+    auto body_processor_type = t.getRequestBodyProcessor();
+    auto iter = body_processor_type_map_.find(body_processor_type);
+
+    if constexpr (is_counter) {
+      if (iter != body_processor_type_map_.end()) {
+        result.append(1);
+      } else {
+        result.append(0);
+      }
+      return;
+    }
+
+    if (iter != body_processor_type_map_.end())
+      [[likely]] { result.append(iter->second); }
   }
 
 private:

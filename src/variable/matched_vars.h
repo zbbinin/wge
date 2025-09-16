@@ -21,6 +21,7 @@
 #pragma once
 
 #include "collection_base.h"
+#include "evaluate_help.h"
 #include "variable_base.h"
 
 namespace Wge {
@@ -36,6 +37,26 @@ public:
 
 public:
   void evaluate(Transaction& t, Common::EvaluateResults& result) const override {
+    RETURN_IF_COUNTER(
+        // collection
+        { (evaluate<IS_COUNTER, IS_COLLECTION>(t, result)); },
+        // specify subname
+        { (evaluate<IS_COUNTER, NOT_COLLECTION>(t, result)); });
+
+    RETURN_VALUE(
+        // collection
+        { (evaluate<NOT_COUNTER, IS_COLLECTION, NOT_REGEX_COLLECTION>(t, result)); },
+        // collection regex
+        { (evaluate<NOT_COUNTER, IS_COLLECTION, IS_REGEX_COLLECTION>(t, result)); },
+        // specify subname
+        { (evaluate<NOT_COUNTER, NOT_COLLECTION, NOT_REGEX_COLLECTION>(t, result)); });
+  }
+
+  bool isCollection() const override { return sub_name_.empty(); };
+
+public:
+  template <bool is_counter, bool is_collection, bool is_regex = false>
+  void evaluate(Transaction& t, Common::EvaluateResults& result) const {
     // If the current evaluate rule is a chained rule, we should get the matched variable from the
     // parent rule. If the current evaluate rule is not a chained rule, we should get the matched
     // variable from the current rule.
@@ -47,13 +68,13 @@ public:
       }
     }
 
-    RETURN_IF_COUNTER(
+    RETURN_IF_COUNTER_CT(
         // collection
         { result.append(static_cast<int64_t>(t.getMatchedVariables(rule_chain_index).size())); },
         // specify subname
         { UNREACHABLE(); });
 
-    RETURN_VALUE(
+    RETURN_VALUE_CT(
         // collection
         {
           for (auto& matched_variable : t.getMatchedVariables(rule_chain_index)) {
@@ -67,8 +88,6 @@ public:
         // specify subname
         { UNREACHABLE(); });
   }
-
-  bool isCollection() const override { return sub_name_.empty(); };
 };
 } // namespace Variable
 } // namespace Wge

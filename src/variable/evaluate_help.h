@@ -41,3 +41,34 @@
       speicify_func                                                                                \
     }                                                                                              \
   }
+
+// For Compile time
+#define RETURN_IF_COUNTER_CT(collection_func, speicify_func)                                       \
+  if constexpr (is_counter) {                                                                      \
+    if constexpr (is_collection) {                                                                 \
+      collection_func                                                                              \
+    } else {                                                                                       \
+      speicify_func                                                                                \
+    }                                                                                              \
+                                                                                                   \
+    return;                                                                                        \
+  }
+
+// For Compile time
+#define RETURN_VALUE_CT(collection_func, collection_regex_func, speicify_func)                     \
+  if constexpr (is_collection) {                                                                   \
+    if constexpr (is_regex) {                                                                      \
+      collection_regex_func                                                                        \
+    } else {                                                                                       \
+      collection_func                                                                              \
+    }                                                                                              \
+  } else {                                                                                         \
+    speicify_func                                                                                  \
+  }
+
+static constexpr bool IS_COUNTER = true;
+static constexpr bool NOT_COUNTER = false;
+static constexpr bool IS_COLLECTION = true;
+static constexpr bool NOT_COLLECTION = false;
+static constexpr bool IS_REGEX_COLLECTION = true;
+static constexpr bool NOT_REGEX_COLLECTION = false;

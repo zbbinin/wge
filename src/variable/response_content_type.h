@@ -20,6 +20,7 @@
  */
 #pragma once
 
+#include "evaluate_help.h"
 #include "response_headers.h"
 #include "variable_base.h"
 
@@ -36,7 +37,18 @@ public:
 
 public:
   void evaluate(Transaction& t, Common::EvaluateResults& result) const override {
-    response_content_type_.evaluate(t, result);
+    if (is_counter_) {
+      evaluate<IS_COUNTER, NOT_COLLECTION>(t, result);
+      return;
+    }
+
+    evaluate<NOT_COUNTER, NOT_COLLECTION>(t, result);
+  }
+
+public:
+  template <bool is_counter, bool is_collection, bool is_regex = false>
+  void evaluate(Transaction& t, Common::EvaluateResults& result) const {
+    response_content_type_.evaluate<is_counter, is_collection, is_regex>(t, result);
   }
 
 private:

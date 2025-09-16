@@ -39,6 +39,26 @@ public:
   void evaluate(Transaction& t, Common::EvaluateResults& result) const override {
     RETURN_IF_COUNTER(
         // collection
+        { (evaluate<IS_COUNTER, IS_COLLECTION>(t, result)); },
+        // specify subname
+        { (evaluate<IS_COUNTER, NOT_COLLECTION>(t, result)); });
+
+    RETURN_VALUE(
+        // collection
+        { (evaluate<NOT_COUNTER, IS_COLLECTION, NOT_REGEX_COLLECTION>(t, result)); },
+        // collection regex
+        { (evaluate<NOT_COUNTER, IS_COLLECTION, IS_REGEX_COLLECTION>(t, result)); },
+        // specify subname
+        { (evaluate<NOT_COUNTER, NOT_COLLECTION, NOT_REGEX_COLLECTION>(t, result)); });
+  }
+
+  bool isCollection() const override { return sub_name_.empty(); };
+
+public:
+  template <bool is_counter, bool is_collection, bool is_regex = false>
+  void evaluate(Transaction& t, Common::EvaluateResults& result) const {
+    RETURN_IF_COUNTER_CT(
+        // collection
         { result.append(static_cast<int64_t>(size(t))); },
         // specify subname
         {
@@ -46,7 +66,7 @@ public:
           result.append(IS_EMPTY_VARIANT(value) ? 0 : 1);
         });
 
-    RETURN_VALUE(
+    RETURN_VALUE_CT(
         // collection
         {
           travel(t, [&](const std::string& key, const Common::Variant& value) {
@@ -74,8 +94,6 @@ public:
             [[likely]] { result.append(value); }
         });
   }
-
-  bool isCollection() const override { return sub_name_.empty(); };
 };
 } // namespace Variable
 } // namespace Wge

@@ -39,9 +39,21 @@ public:
 
 public:
   void evaluate(Transaction& t, Common::EvaluateResults& result) const override {
-    if (!is_counter_)
-      [[likely]] { result.append(t.getUniqueId()); }
-    else {
+    if (is_counter_)
+      [[unlikely]] {
+        evaluate<IS_COUNTER, NOT_COLLECTION>(t, result);
+        return;
+      }
+
+    evaluate<NOT_COUNTER, NOT_COLLECTION>(t, result);
+  }
+
+public:
+  template <bool is_counter, bool is_collection, bool is_regex = false>
+  void evaluate(Transaction& t, Common::EvaluateResults& result) const {
+    if constexpr (is_counter) {
+      result.append(t.getUniqueId());
+    } else {
       result.append(t.getUniqueId().empty() ? 0 : 1);
     }
   }

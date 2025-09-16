@@ -23,54 +23,5 @@
 #include "../rule.h"
 
 namespace Wge {
-namespace Variable {
-void Rule::initEvaluateFunc() {
-  static const std::unordered_map<std::string,
-                                  std::function<void(Transaction&, Common::EvaluateResults&, bool)>>
-      evaluate_func_map = {
-          {"id",
-           [](Transaction& t, Common::EvaluateResults& result, bool is_count) {
-             if (is_count) {
-               result.append(t.getCurrentEvaluateRule()->id() == 0 ? 0 : 1);
-               return;
-             }
-
-             result.append(static_cast<int64_t>(t.getCurrentEvaluateRule()->id()), "id");
-           }},
-          {"phase",
-           [](Transaction& t, Common::EvaluateResults& result, bool is_count) {
-             if (is_count) {
-               result.append(t.getCurrentEvaluateRule()->phase() == -1 ? 0 : 1);
-               return;
-             }
-
-             result.append(t.getCurrentEvaluateRule()->phase(), "phase");
-           }},
-          {"operator_value", [](Transaction& t, Common::EvaluateResults& result, bool is_count) {
-             if (is_count) {
-               if (t.getCurrentEvaluateRule()->getOperator()->literalValue().empty() &&
-                   t.getCurrentEvaluateRule()->getOperator()->macro() == nullptr) {
-                 result.append(0, "operator_value");
-               } else {
-                 result.append(1, "operator_value");
-               }
-
-               return;
-             }
-
-             if (!t.getCurrentEvaluateRule()->getOperator()->literalValue().empty()) {
-               result.append(t.getCurrentEvaluateRule()->getOperator()->literalValue(),
-                             "operator_value");
-             }
-           }}};
-  std::string sub_name_ignore_case;
-  sub_name_ignore_case.reserve(sub_name_.size());
-  std::transform(sub_name_.begin(), sub_name_.end(), std::back_inserter(sub_name_ignore_case),
-                 ::tolower);
-  auto iter = evaluate_func_map.find(sub_name_ignore_case);
-  if (iter != evaluate_func_map.end()) {
-    evaluate_func_ = iter->second;
-  }
-}
-} // namespace Variable
+namespace Variable {}
 } // namespace Wge

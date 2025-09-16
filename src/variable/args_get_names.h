@@ -37,10 +37,30 @@ public:
 
 public:
   void evaluate(Transaction& t, Common::EvaluateResults& result) const override {
+    RETURN_IF_COUNTER(
+        // collection
+        { (evaluate<IS_COUNTER, IS_COLLECTION>(t, result)); },
+        // specify subname
+        { (evaluate<IS_COUNTER, NOT_COLLECTION>(t, result)); });
+
+    RETURN_VALUE(
+        // collection
+        { (evaluate<NOT_COUNTER, IS_COLLECTION, NOT_REGEX_COLLECTION>(t, result)); },
+        // collection regex
+        { (evaluate<NOT_COUNTER, IS_COLLECTION, IS_REGEX_COLLECTION>(t, result)); },
+        // specify subname
+        { (evaluate<NOT_COUNTER, NOT_COLLECTION, NOT_REGEX_COLLECTION>(t, result)); });
+  }
+
+  bool isCollection() const override { return sub_name_.empty(); };
+
+public:
+  template <bool is_counter, bool is_collection, bool is_regex = false>
+  void evaluate(Transaction& t, Common::EvaluateResults& result) const {
     auto& query_params = t.getRequestLineInfo().query_params_.getLinked();
     auto& query_params_map = t.getRequestLineInfo().query_params_.get();
 
-    RETURN_IF_COUNTER(
+    RETURN_IF_COUNTER_CT(
         // collection
         { result.append(static_cast<int64_t>(query_params.size())); },
         // specify subname
@@ -49,7 +69,7 @@ public:
           result.append(count);
         });
 
-    RETURN_VALUE(
+    RETURN_VALUE_CT(
         // collection
         {
           for (auto& elem : query_params) {
@@ -76,8 +96,6 @@ public:
           }
         });
   }
-
-  bool isCollection() const override { return sub_name_.empty(); };
 };
 } // namespace Variable
 } // namespace Wge

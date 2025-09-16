@@ -71,8 +71,9 @@ using GeneralRegisterArray =
     RegisterArray<GeneralRegister, GeneralRegisterValue,
                   static_cast<size_t>(GeneralRegister::MAX_GENERAL_REGISTER)>;
 
-using ExtendedRegisterArray = RegisterArray<ExtendedRegister, ExtendedRegisterValue,
-                                         static_cast<size_t>(ExtendedRegister::MAX_EXTENDED_REGISTER)>;
+using ExtendedRegisterArray =
+    RegisterArray<ExtendedRegister, ExtendedRegisterValue,
+                  static_cast<size_t>(ExtendedRegister::MAX_EXTENDED_REGISTER)>;
 
 } // namespace Bytecode
 } // namespace Wge

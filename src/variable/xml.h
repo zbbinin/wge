@@ -65,23 +65,66 @@ public:
             curr_rule_file_path) {}
 
 public:
+  enum class Type { AttrValue, TagValue, AttrValuePmf, TagValuePmf };
+
+public:
   void evaluate(Transaction& t, Common::EvaluateResults& result) const override {
+    RETURN_IF_COUNTER(
+        // collection
+        { (evaluate<Type::AttrValue, IS_COUNTER, IS_COLLECTION>(t, result)); },
+        // specify subname
+        { (evaluate<Type::AttrValue, IS_COUNTER, NOT_COLLECTION>(t, result)); });
+
+    RETURN_VALUE(
+        // collection
+        { (evaluateByType<NOT_COUNTER, IS_COLLECTION, NOT_REGEX_COLLECTION>(t, result)); },
+        // collection regex
+        { (evaluateByType<NOT_COUNTER, IS_COLLECTION, IS_REGEX_COLLECTION>(t, result)); },
+        // specify subname
+        { (evaluateByType<NOT_COUNTER, NOT_COLLECTION, NOT_REGEX_COLLECTION>(t, result)); });
+  }
+
+  bool isCollection() const override { return true; };
+
+private:
+  template <bool is_counter, bool is_collection, bool is_regex>
+  void evaluateByType(Transaction& t, Common::EvaluateResults& result) const {
+    switch (type_) {
+    case Type::AttrValue:
+      evaluate<Type::AttrValue, is_counter, is_collection, is_regex>(t, result);
+      break;
+    case Type::TagValue:
+      evaluate<Type::TagValue, is_counter, is_collection, is_regex>(t, result);
+      break;
+    case Type::AttrValuePmf:
+      evaluate<Type::AttrValuePmf, is_counter, is_collection, is_regex>(t, result);
+      break;
+    case Type::TagValuePmf:
+      evaluate<Type::TagValuePmf, is_counter, is_collection, is_regex>(t, result);
+      break;
+    default:
+      UNREACHABLE();
+    }
+  }
+
+public:
+  template <Type type, bool is_counter, bool is_collection, bool is_regex = false>
+  void evaluate(Transaction& t, Common::EvaluateResults& result) const {
     const std::vector<std::pair<std::string_view, std::string_view>>* kv_pairs = nullptr;
-    if (type_ == Type::TagValue || type_ == Type::TagValuePmf) {
+    if constexpr (type == Type::TagValue || type == Type::TagValuePmf) {
       kv_pairs = &(t.getBodyXml().getTags());
     } else {
       kv_pairs = &(t.getBodyXml().getAttributes());
     }
 
-    RETURN_IF_COUNTER(
+    RETURN_IF_COUNTER_CT(
         // collection
         { result.append(static_cast<int64_t>(kv_pairs->size())); },
         // specify subname
         { result.append(static_cast<int64_t>(kv_pairs->size())); });
 
-    switch (type_) {
-    case Type::AttrValue: {
-      RETURN_VALUE(
+    if constexpr (type == Type::AttrValue) {
+      RETURN_VALUE_CT(
           // collection
           {
             for (auto& elem : *kv_pairs) {
@@ -96,9 +139,8 @@ public:
               result.append(elem.second);
             }
           });
-    } break;
-    case Type::TagValue: {
-      RETURN_VALUE(
+    } else if constexpr (type == Type::TagValue) {
+      RETURN_VALUE_CT(
           // collection
           {
             auto& tag_value_str = t.getBodyXml().getTagValuesStr();
@@ -115,10 +157,8 @@ public:
               result.append(tag_value_str);
             }
           });
-    } break;
-    case Type::AttrValuePmf:
-    case Type::TagValuePmf: {
-      RETURN_VALUE(
+    } else if constexpr (type == Type::AttrValuePmf || type == Type::TagValuePmf) {
+      RETURN_VALUE_CT(
           // collection
           { UNREACHABLE(); },
           // collection regex
@@ -138,17 +178,15 @@ public:
           },
           // specify subname
           { UNREACHABLE(); });
-    } break;
-    default:
+    } else {
       UNREACHABLE();
     }
   }
 
-  bool isCollection() const override { return sub_name_.empty(); };
+public:
+  Type type() const { return type_; }
 
 private:
-  enum class Type { AttrValue, TagValue, AttrValuePmf, TagValuePmf };
-
   Type type_;
 };
 } // namespace Variable

@@ -20,6 +20,7 @@
  */
 #pragma once
 
+#include "evaluate_help.h"
 #include "variable_base.h"
 
 namespace Wge {
@@ -35,6 +36,18 @@ public:
 public:
   void evaluate(Transaction& t, Common::EvaluateResults& result) const override {
     if (is_counter_)
+      [[unlikely]] {
+        evaluate<IS_COUNTER, NOT_COLLECTION>(t, result);
+        return;
+      }
+
+    evaluate<NOT_COUNTER, NOT_COLLECTION>(t, result);
+  }
+
+public:
+  template <bool is_counter, bool is_collection, bool is_regex = false>
+  void evaluate(Transaction& t, Common::EvaluateResults& result) const {
+    if constexpr (is_counter)
       [[unlikely]] {
         result.append(t.getRequestLineInfo().uri_.empty() ? 0 : 1);
         return;

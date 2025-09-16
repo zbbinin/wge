@@ -41,6 +41,13 @@ public:
   }
 
   bool isCollection() const override { return sub_name_.empty(); };
+
+public:
+  template <bool is_counter, bool is_collection, bool is_regex = false>
+  void evaluate(Transaction& t, Common::EvaluateResults& result) const {
+    assert(false);
+    throw "Not implemented!";
+  }
 };
 } // namespace Variable
 } // namespace Wge

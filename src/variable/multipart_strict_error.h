@@ -20,6 +20,7 @@
  */
 #pragma once
 
+#include "evaluate_help.h"
 #include "variable_base.h"
 
 namespace Wge {
@@ -34,6 +35,12 @@ public:
 
 public:
   void evaluate(Transaction& t, Common::EvaluateResults& result) const override {
+    evaluate<IS_COUNTER, NOT_COLLECTION>(t, result);
+  }
+
+public:
+  template <bool is_counter, bool is_collection, bool is_regex = false>
+  void evaluate(Transaction& t, Common::EvaluateResults& result) const {
     result.append(t.getBodyMultiPart().getError().get(
                       Wge::MultipartStrictError::ErrorType::MultipartStrictError)
                       ? 1

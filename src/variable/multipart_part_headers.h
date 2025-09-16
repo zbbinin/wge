@@ -41,11 +41,42 @@ public:
 
 public:
   void evaluate(Transaction& t, Common::EvaluateResults& result) const override {
+    static constexpr bool IS_CHARSET = true;
+    static constexpr bool NOT_CHARSET = false;
     // _charset_ is a special case, it is used to get the charset of the multipart/form-data
     // content. It is not a header, we can get it from the name-value pair.
     if (is_charset_) {
-      static constexpr std::string_view key = "_charset_";
       if (is_counter_) {
+        evaluate<IS_CHARSET, IS_COUNTER, IS_COLLECTION>(t, result);
+      } else {
+        evaluate<IS_CHARSET, NOT_COUNTER, IS_COLLECTION>(t, result);
+      }
+      return;
+    }
+
+    RETURN_IF_COUNTER(
+        // collection
+        { (evaluate<NOT_CHARSET, IS_COUNTER, IS_COLLECTION>(t, result)); },
+        // specify subname
+        { (evaluate<NOT_CHARSET, IS_COUNTER, NOT_COLLECTION>(t, result)); });
+
+    RETURN_VALUE(
+        // collection
+        { (evaluate<NOT_CHARSET, NOT_COUNTER, IS_COLLECTION, NOT_REGEX_COLLECTION>(t, result)); },
+        // collection regex
+        { (evaluate<NOT_CHARSET, NOT_COUNTER, IS_COLLECTION, IS_REGEX_COLLECTION>(t, result)); },
+        // specify subname
+        { (evaluate<NOT_CHARSET, NOT_COUNTER, NOT_COLLECTION, NOT_REGEX_COLLECTION>(t, result)); });
+  }
+
+public:
+  template <bool is_charset, bool is_counter, bool is_collection, bool is_regex = false>
+  void evaluate(Transaction& t, Common::EvaluateResults& result) const {
+    // _charset_ is a special case, it is used to get the charset of the multipart/form-data
+    // content. It is not a header, we can get it from the name-value pair.
+    if constexpr (is_charset) {
+      static constexpr std::string_view key = "_charset_";
+      if constexpr (is_counter) {
         int64_t count = t.getBodyMultiPart().getNameValue().count(key);
         result.append(count);
       } else {
@@ -58,7 +89,7 @@ public:
       return;
     }
 
-    RETURN_IF_COUNTER(
+    RETURN_IF_COUNTER_CT(
         // collection
         { result.append(static_cast<int64_t>(t.getBodyMultiPart().getHeaders().size())); },
         // specify subname
@@ -67,7 +98,7 @@ public:
           result.append(count);
         });
 
-    RETURN_VALUE(
+    RETURN_VALUE_CT(
         // collection
         {
           for (auto& elem : t.getBodyMultiPart().getHeaders()) {
@@ -94,6 +125,9 @@ public:
           }
         });
   }
+
+public:
+  bool isCharset() const { return is_charset_; }
 
 private:
   bool is_charset_{false};

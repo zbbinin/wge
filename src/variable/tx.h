@@ -43,21 +43,52 @@ public:
 
 public:
   void evaluate(Transaction& t, Common::EvaluateResults& result) const override {
+    static constexpr bool IS_INDEX = true;
+    static constexpr bool NOT_INDEX = false;
+
     // Process capture that definded by TX:[1-99]
     if (capture_index_.has_value())
       [[unlikely]] {
         if (is_counter_)
-          [[unlikely]] {
-            result.append(IS_EMPTY_VARIANT(t.getCapture(capture_index_.value())) ? 1 : 0);
-          }
+          [[unlikely]] { evaluate<IS_INDEX, IS_COUNTER, NOT_COLLECTION>(t, result); }
         else {
-          result.append(t.getCapture(capture_index_.value()));
+          evaluate<IS_INDEX, NOT_COUNTER, NOT_COLLECTION>(t, result);
         }
         return;
       }
 
-    // Process single variable and collection
     RETURN_IF_COUNTER(
+        // collection
+        { (evaluate<NOT_INDEX, IS_COUNTER, IS_COLLECTION>(t, result)); },
+        // specify subname
+        { (evaluate<NOT_INDEX, IS_COUNTER, NOT_COLLECTION>(t, result)); });
+
+    RETURN_VALUE(
+        // collection
+        { (evaluate<NOT_INDEX, NOT_COUNTER, IS_COLLECTION, NOT_REGEX_COLLECTION>(t, result)); },
+        // collection regex
+        { (evaluate<NOT_INDEX, NOT_COUNTER, IS_COLLECTION, IS_REGEX_COLLECTION>(t, result)); },
+        // specify subname
+        { (evaluate<NOT_INDEX, NOT_COUNTER, NOT_COLLECTION, NOT_REGEX_COLLECTION>(t, result)); });
+  }
+
+  bool isCollection() const override { return sub_name_.empty(); };
+
+public:
+  template <bool is_capture_index, bool is_counter, bool is_collection, bool is_regex = false>
+  void evaluate(Transaction& t, Common::EvaluateResults& result) const {
+    // Process capture that definded by TX:[1-99]
+    if constexpr (is_capture_index) {
+      if constexpr (is_counter) {
+        result.append(IS_EMPTY_VARIANT(t.getCapture(capture_index_.value())) ? 1 : 0);
+      } else {
+        result.append(t.getCapture(capture_index_.value()));
+      }
+      return;
+    }
+
+    // Process single variable and collection
+    RETURN_IF_COUNTER_CT(
         // collection
         { result.append(t.getVariablesCount()); },
         // specify subname
@@ -69,7 +100,7 @@ public:
           }
         });
 
-    RETURN_VALUE(
+    RETURN_VALUE_CT(
         // collection
         {
           auto variables = t.getVariables();
@@ -100,7 +131,7 @@ public:
         });
   }
 
-  bool isCollection() const override { return sub_name_.empty(); };
+  std::optional<size_t> captureIndex() const { return capture_index_; }
 
 private:
   std::optional<size_t> index_;
