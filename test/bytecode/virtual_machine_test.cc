@@ -147,6 +147,23 @@ TEST_F(VirtualMachineTest, execNop) {
   EXPECT_EQ(registers[GeneralRegister::RBX], 100);
 }
 
+TEST_F(VirtualMachineTest, execPrint) {
+  Program program;
+
+  program.emit({OpCode::PRINT, {.cptr_ = "Hello, World!"}});
+
+  // Capture the output
+  std::ostringstream oss;
+  std::streambuf* old_cout_buf = std::cout.rdbuf(oss.rdbuf());
+
+  vm_->execute(program);
+
+  // Restore the original buffer
+  std::cout.rdbuf(old_cout_buf);
+
+  EXPECT_EQ(oss.str(), "Hello, World!\n");
+}
+
 TEST_F(VirtualMachineTest, execLoadVar) {
   Variable::Args args("", false, false, "");
 

@@ -47,10 +47,19 @@ void VirtualMachine::execute(const Program& program) {
   // clang-format on
 
   // Dispatch table for bytecode instructions. We use computed gotos for efficiency
-  static constexpr void* dispatch_table[] = {
-      &&MOV,    &&JMP,        &&JZ,           &&JNZ,
-      &&NOP,    &&LOAD_VAR,   &&TRANSFORM,    &&OPERATE,
-      &&ACTION, &&UNC_ACTION, &&EXPAND_MACRO, TRAVEL_VARIABLES(LOAD_VAR_LABEL)};
+  static constexpr void* dispatch_table[] = {&&MOV,
+                                             &&JMP,
+                                             &&JZ,
+                                             &&JNZ,
+                                             &&NOP,
+                                             &&PRINT,
+                                             &&LOAD_VAR,
+                                             &&TRANSFORM,
+                                             &&OPERATE,
+                                             &&ACTION,
+                                             &&UNC_ACTION,
+                                             &&EXPAND_MACRO,
+                                             TRAVEL_VARIABLES(LOAD_VAR_LABEL)};
 #undef LOAD_VAR_LABEL
 #define CASE(ins, proc, forward)                                                                   \
   ins:                                                                                             \
@@ -84,6 +93,7 @@ void VirtualMachine::execute(const Program& program) {
   CASE(JZ, execJz(*iter, instructions, iter), {});
   CASE(JNZ, execJnz(*iter, instructions, iter), {});
   CASE(NOP, {}, ++iter);
+  CASE(PRINT, execPrint(*iter), ++iter);
   CASE(LOAD_VAR, execLoadVar(*iter), ++iter);
   CASE(TRANSFORM, execTransform(*iter), ++iter);
   CASE(OPERATE, execOperate(*iter), ++iter);
@@ -137,6 +147,11 @@ void VirtualMachine::execJnz(const Instruction& instruction,
   } else {
     ++iter;
   }
+}
+
+inline void VirtualMachine::execPrint(const Instruction& instruction) {
+  const char* msg = reinterpret_cast<const char*>(instruction.op1_.cptr_);
+  std::cout << msg << std::endl;
 }
 
 template <class VariableType>
