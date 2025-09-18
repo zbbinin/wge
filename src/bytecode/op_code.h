@@ -62,10 +62,10 @@ enum class OpCode {
   NOP,
 
   // Print debug information (for testing purposes)
-  // Syntax: PRINT <message>
+  // Syntax: DEBUG <message>
   // @param op1 [cptr]: Constant pointer to message string
-  // Example: PRINT 123456
-  PRINT,
+  // Example: DEBUG 123456
+  DEBUG,
 
   // Load variable value into register
   // Syntax: LOAD_VAR <dst_reg>, <var_index>, <var_ptr>

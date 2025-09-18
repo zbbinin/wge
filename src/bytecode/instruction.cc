@@ -55,9 +55,9 @@ std::string Instruction::toString() const {
              return std::format("JNZ 0x{:x}", instruction.op1_.address_);
            }},
           {OpCode::NOP, [](const Instruction&) { return "NOP"; }},
-          {OpCode::PRINT,
+          {OpCode::DEBUG,
            [](const Instruction& instruction) {
-             return std::format("PRINT {}", reinterpret_cast<const char*>(instruction.op1_.cptr_));
+             return std::format("DEBUG {}", reinterpret_cast<const char*>(instruction.op1_.cptr_));
            }},
           {OpCode::LOAD_VAR,
            [](const Instruction& instruction) {

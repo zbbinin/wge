@@ -102,8 +102,8 @@ void RuleCompiler::compileRule(const Rule* rule, const Rule* default_action_rule
       rule->chainRule(0);
   if (chain_rule_iter.has_value()) {
     // Add debug info to indicate the start of chain rule execution
-    WGE_LOG_TRACE("", [&]() {
-      program.emit({OpCode::PRINT, {.cptr_ = "↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓"}});
+    WGE_LOG_DEBUG("", [&]() {
+      program.emit({OpCode::DEBUG, {.cptr_ = "↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓"}});
       return std::string();
     }());
 

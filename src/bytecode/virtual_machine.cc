@@ -52,7 +52,7 @@ void VirtualMachine::execute(const Program& program) {
                                              &&JZ,
                                              &&JNZ,
                                              &&NOP,
-                                             &&PRINT,
+                                             &&DEBUG,
                                              &&LOAD_VAR,
                                              &&TRANSFORM,
                                              &&OPERATE,
@@ -104,7 +104,7 @@ void VirtualMachine::execute(const Program& program) {
   CASE(JZ, execJz(*iter, instructions, iter), {});
   CASE(JNZ, execJnz(*iter, instructions, iter), {});
   CASE(NOP, {}, ++iter);
-  CASE(PRINT, execPrint(*iter), ++iter);
+  CASE(DEBUG, execDebug(*iter), ++iter);
   CASE(LOAD_VAR, execLoadVar(*iter), ++iter);
   CASE(TRANSFORM, execTransform(*iter), ++iter);
   CASE(OPERATE, execOperate(*iter), ++iter);
@@ -160,9 +160,9 @@ void VirtualMachine::execJnz(const Instruction& instruction,
   }
 }
 
-inline void VirtualMachine::execPrint(const Instruction& instruction) {
+inline void VirtualMachine::execDebug(const Instruction& instruction) {
   const char* msg = reinterpret_cast<const char*>(instruction.op1_.cptr_);
-  std::cout << msg << std::endl;
+  WGE_LOG_DEBUG("{}", msg);
 }
 
 template <class VariableType>

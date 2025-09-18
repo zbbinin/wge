@@ -147,21 +147,26 @@ TEST_F(VirtualMachineTest, execNop) {
   EXPECT_EQ(registers[GeneralRegister::RBX], 100);
 }
 
-TEST_F(VirtualMachineTest, execPrint) {
+TEST_F(VirtualMachineTest, execDebug) {
   Program program;
 
-  program.emit({OpCode::PRINT, {.cptr_ = "Hello, World!"}});
+  program.emit({OpCode::DEBUG, {.cptr_ = "Hello, World!"}});
 
-  // Capture the output
-  std::ostringstream oss;
-  std::streambuf* old_cout_buf = std::cout.rdbuf(oss.rdbuf());
+  // Capture the log output
+  Common::Log::init(spdlog::level::trace, "test_log.txt");
 
   vm_->execute(program);
 
-  // Restore the original buffer
-  std::cout.rdbuf(old_cout_buf);
+  // Check the log file for the debug message
+  std::ifstream ifs("test_log.txt");
+  std::ostringstream oss;
+  oss << ifs.rdbuf();
+  ifs.close();
 
-  EXPECT_EQ(oss.str(), "Hello, World!\n");
+  EXPECT_NE(oss.str().find("Hello, World!"), std::string::npos);
+
+  // Clean up the log file
+  std::remove("test_log.txt");
 }
 
 TEST_F(VirtualMachineTest, execLoadVar) {
