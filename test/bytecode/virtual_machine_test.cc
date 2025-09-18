@@ -49,8 +49,8 @@ public:
   Engine engine_;
   std::unique_ptr<VirtualMachine> vm_;
   TransactionPtr t_;
-  const std::unordered_map<const char*, int64_t>& variable_index_map_{
-      Compiler::VariableCompiler::variable_index_map_};
+  const std::unordered_map<const char*, Compiler::VariableCompiler::VariableTypeInfo>&
+      variable_type_info_map_{Compiler::VariableCompiler::variable_type_info_map_};
   const std::unordered_map<const char*, int64_t>& transform_index_map_{
       Compiler::TransformCompiler::transform_index_map_};
   const std::unordered_map<const char*, int64_t>& operator_index_map_{
@@ -155,10 +155,11 @@ TEST_F(VirtualMachineTest, execLoadVar) {
 
   // Create a dummy program with LOAD_VAR instruction
   Program program;
-  Instruction instruction = {OpCode::LOAD_VAR,
-                             {.x_reg_ = ExtendedRegister::R8},
-                             {.index_ = variable_index_map_.at(Variable::Args::main_name_.data())},
-                             {.cptr_ = &args}};
+  Instruction instruction = {
+      OpCode::LOAD_VAR,
+      {.x_reg_ = ExtendedRegister::R8},
+      {.index_ = variable_type_info_map_.at(Variable::Args::main_name_.data()).index_},
+      {.cptr_ = &args}};
   program.emit(instruction);
 
   // Execute the program

@@ -20,6 +20,7 @@
  */
 #pragma once
 
+#include "compiler/variable_travel_helper.h"
 #include "program.h"
 #include "register.h"
 
@@ -84,6 +85,17 @@ private:
   inline void execMsgExpandMacro(const Instruction& instruction);
   inline void execLogDataExpandMacro(const Instruction& instruction);
 
+  // Load variable handlers
+private:
+#define DECLARE_LOAD_VAR_PROC(var_tyep)                                                            \
+  inline void execLoad##var_tyep##_CC(const Instruction& instruction);                             \
+  inline void execLoad##var_tyep##_CS(const Instruction& instruction);                             \
+  inline void execLoad##var_tyep##_VC(const Instruction& instruction);                             \
+  inline void execLoad##var_tyep##_VR(const Instruction& instruction);                             \
+  inline void execLoad##var_tyep##_VS(const Instruction& instruction);
+
+  TRAVEL_VARIABLES(DECLARE_LOAD_VAR_PROC)
+#undef DECLARE_LOAD_VAR_PROC
 private:
   // Registers
   GeneralRegisterArray general_registers_{};

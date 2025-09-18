@@ -20,6 +20,8 @@
  */
 #pragma once
 
+#include "compiler/variable_travel_helper.h"
+
 namespace Wge {
 namespace Bytecode {
 
@@ -115,6 +117,39 @@ enum class OpCode {
   // Example:
   // EXPAND_MACRO 0 123456 1 654321
   EXPAND_MACRO,
+
+// ==================== Variable Loading Optimized Instructions ====================
+// These instructions provide compile-time specialized versions of LOAD_VAR
+// for specific variable types and access patterns, eliminating runtime dispatch
+// overhead and enabling better JIT compilation optimization.
+//
+// Naming convention: LOAD_{VARIABLE_TYPE}_{C|V}{C|S|R}
+// - C/V: Counter or Value mode
+// - C/S/R: Collection, Specific subname, or Regex collection
+//
+// Parameters follow same convention as LOAD_VAR:
+// @param op1 [x_reg]: Destination register
+// @param op2 [index]: Variable index (for compatibility, may be unused)
+// @param op3 [cptr]: Constant pointer to variable instance
+
+// clang-format off
+#define LOAD_VAR_INSTRUCTIONS(var_type)           \
+  LOAD_##var_type##_CC, /* Counter Collection */  \
+  LOAD_##var_type##_CS, /* Counter Specific */    \
+  LOAD_##var_type##_VC, /* Value Collection */    \
+  LOAD_##var_type##_VR, /* Value Regex */         \
+  LOAD_##var_type##_VS, /* Value Specific */
+  // clang-format on
+
+  // Variable loading instructions for different types
+  TRAVEL_VARIABLES(LOAD_VAR_INSTRUCTIONS)
 };
+
+static constexpr OpCode LOAD_VAR_INSTRUCTIONS_START = OpCode::LOAD_ArgsCombinedSize_CC;
+static constexpr OpCode LOAD_VAR_INSTRUCTIONS_END = OpCode::LOAD_Xml_TagValuePmf_VS;
+
+inline OpCode operator+(OpCode lhs, int rhs) {
+  return static_cast<OpCode>(static_cast<int>(lhs) + rhs);
+}
 } // namespace Bytecode
 } // namespace Wge

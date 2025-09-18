@@ -39,8 +39,8 @@ namespace Wge {
 namespace Bytecode {
 class CompilerTest : public testing::Test {
 public:
-  const std::unordered_map<const char*, int64_t>& variable_index_map_{
-      Compiler::VariableCompiler::variable_index_map_};
+  const std::unordered_map<const char*, Compiler::VariableCompiler::VariableTypeInfo>&
+      variable_type_info_map_{Compiler::VariableCompiler::variable_type_info_map_};
   const std::unordered_map<const char*, int64_t>& transform_index_map_{
       Compiler::TransformCompiler::transform_index_map_};
   const std::unordered_map<const char*, int64_t>& operator_index_map_{
@@ -139,7 +139,7 @@ TEST_F(CompilerTest, compileVariable) {
   rule.appendVariable(std::make_unique<Variable::ResponseHeaders>("", false, false, ""));
   rule.appendVariable(std::make_unique<Variable::ResponseProtocol>("", false, false, ""));
   rule.appendVariable(std::make_unique<Variable::ResponseStatus>("", false, false, ""));
-  rule.appendVariable(std::make_unique<Variable::Rule>("", false, false, ""));
+  rule.appendVariable(std::make_unique<Variable::Rule>("id", false, false, ""));
   rule.appendVariable(std::make_unique<Variable::ServerAddr>("", false, false, ""));
   rule.appendVariable(std::make_unique<Variable::ServerName>("", false, false, ""));
   rule.appendVariable(std::make_unique<Variable::ServerPort>("", false, false, ""));
@@ -168,12 +168,13 @@ TEST_F(CompilerTest, compileVariable) {
 
   size_t load_var_count = 0;
   for (auto& instruction : instructions) {
-    if (instruction.op_code_ == Bytecode::OpCode::LOAD_VAR) {
+    if (instruction.op_code_ >= Bytecode::LOAD_VAR_INSTRUCTIONS_START &&
+        instruction.op_code_ <= Bytecode::LOAD_VAR_INSTRUCTIONS_END) {
       ++load_var_count;
       EXPECT_EQ(instruction.op1_.x_reg_, Compiler::RuleCompiler::load_var_reg_);
       const Variable::VariableBase* var =
           reinterpret_cast<const Variable::VariableBase*>(instruction.op3_.cptr_);
-      EXPECT_EQ(instruction.op2_.index_, variable_index_map_.at(var->mainName().data()));
+      EXPECT_EQ(instruction.op2_.index_, variable_type_info_map_.at(var->mainName().data()).index_);
     }
   }
   EXPECT_EQ(load_var_count, rule.variables().size());

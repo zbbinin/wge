@@ -4,6 +4,8 @@
 #include <functional>
 #include <unordered_map>
 
+#include "compiler/variable_travel_helper.h"
+
 #include "../action/action_base.h"
 #include "../macro/macro_base.h"
 #include "../operator/operator_base.h"
@@ -24,6 +26,14 @@ std::string Instruction::toString() const {
       {ExtendedRegister::R10, "R10"},
       {ExtendedRegister::R11, "R11"}};
 
+  static auto loadVariable2String = [](const Instruction& instruction, const std::string& op_name) {
+    std::string var_name = reinterpret_cast<const Variable::VariableBase*>(instruction.op3_.cptr_)
+                               ->fullName()
+                               .tostring();
+    return std::format("{} {}, {}, {}({})", op_name,
+                       ExtendedRegister2String.at(instruction.op1_.x_reg_), instruction.op2_.index_,
+                       instruction.op3_.cptr_, var_name);
+  };
   static const std::unordered_map<OpCode, std::function<std::string(const Instruction&)>>
       to_string_map = {
           {OpCode::MOV,
@@ -119,6 +129,28 @@ std::string Instruction::toString() const {
                                 instruction.op2_.cptr_, msg_macro_name, instruction.op3_.index_,
                                 instruction.op4_.cptr_, log_macro_name);
            }},
+#define TO_STRING(var_type)                                                                        \
+  {OpCode::LOAD_##var_type##_CC,                                                                   \
+   [](const Instruction& instruction) {                                                            \
+     return loadVariable2String(instruction, "LOAD_" #var_type "_CC");                             \
+   }},                                                                                             \
+      {OpCode::LOAD_##var_type##_CS,                                                               \
+       [](const Instruction& instruction) {                                                        \
+         return loadVariable2String(instruction, "LOAD_" #var_type "_CS");                         \
+       }},                                                                                         \
+      {OpCode::LOAD_##var_type##_VC,                                                               \
+       [](const Instruction& instruction) {                                                        \
+         return loadVariable2String(instruction, "LOAD_" #var_type "_VC");                         \
+       }},                                                                                         \
+      {OpCode::LOAD_##var_type##_VR,                                                               \
+       [](const Instruction& instruction) {                                                        \
+         return loadVariable2String(instruction, "LOAD_" #var_type "_VR");                         \
+       }},                                                                                         \
+      {OpCode::LOAD_##var_type##_VS, [](const Instruction& instruction) {                          \
+         return loadVariable2String(instruction, "LOAD_" #var_type "_VS");                         \
+       }},
+          TRAVEL_VARIABLES(TO_STRING)
+#undef TO_STRING
       };
 
   std::string result;

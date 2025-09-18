@@ -20,130 +20,132 @@
  */
 #include "variable_compiler.h"
 
+#include "variable_travel_helper.h"
+
+#include "../../common/log.h"
 #include "../../variable/variables_include.h"
 #include "../program.h"
 
-#define VAR_INDEX(name)                                                                            \
-  { Variable::name::main_name_.data(), __COUNTER__ }
+// clang-format off
+#define VAR_TYPE_INFO(var_type)                                                                                       \
+  {Variable::var_type::main_name_.data(), { __COUNTER__, Wge::Bytecode::OpCode::LOAD_##var_type##_CC }},
+// clang-format on
 
 namespace Wge {
 namespace Bytecode {
 namespace Compiler {
-const std::unordered_map<const char*, int64_t> VariableCompiler::variable_index_map_ = {
-    VAR_INDEX(ArgsCombinedSize),
-    VAR_INDEX(ArgsGetNames),
-    VAR_INDEX(ArgsGet),
-    VAR_INDEX(ArgsNames),
-    VAR_INDEX(ArgsPostNames),
-    VAR_INDEX(ArgsPost),
-    VAR_INDEX(Args),
-    VAR_INDEX(AuthType),
-    VAR_INDEX(Duration),
-    VAR_INDEX(Env),
-    VAR_INDEX(FilesCombinedSize),
-    VAR_INDEX(FilesNames),
-    VAR_INDEX(FilesSizes),
-    VAR_INDEX(FilesTmpContent),
-    VAR_INDEX(FilesTmpNames),
-    VAR_INDEX(Files),
-    VAR_INDEX(FullRequestLength),
-    VAR_INDEX(FullRequest),
-    VAR_INDEX(Geo),
-    VAR_INDEX(Global),
-    VAR_INDEX(HighestSeverity),
-    VAR_INDEX(InboundDataError),
-    VAR_INDEX(Ip),
-    VAR_INDEX(MatchedVarName),
-    VAR_INDEX(MatchedVar),
-    VAR_INDEX(MatchedVarsNames),
-    VAR_INDEX(MatchedVars),
-    VAR_INDEX(ModSecBuild),
-    VAR_INDEX(MscPcreLimitsExceeded),
-    VAR_INDEX(MultipartBoundaryQuoted),
-    VAR_INDEX(MultipartBoundaryWhitespace),
-    VAR_INDEX(MultipartCrlfLfLines),
-    VAR_INDEX(MultipartDataAfter),
-    VAR_INDEX(MultipartDataBefore),
-    VAR_INDEX(MultipartFileLimitExceeded),
-    VAR_INDEX(MultipartFileName),
-    VAR_INDEX(MultipartHeaderFolding),
-    VAR_INDEX(MultipartInvalidHeaderFolding),
-    VAR_INDEX(MultipartInvalidPart),
-    VAR_INDEX(MultipartInvalidQuoting),
-    VAR_INDEX(MultipartLfLine),
-    VAR_INDEX(MultipartMissingSemicolon),
-    VAR_INDEX(MultipartName),
-    VAR_INDEX(MultipartPartHeaders),
-    VAR_INDEX(MultipartStrictError),
-    VAR_INDEX(MultipartUnmatchedBoundary),
-    VAR_INDEX(OutboundDataError),
-    VAR_INDEX(PathInfo),
-    VAR_INDEX(QueryString),
-    VAR_INDEX(RemoteAddr),
-    VAR_INDEX(RemoteHost),
-    VAR_INDEX(RemotePort),
-    VAR_INDEX(RemoteUser),
-    VAR_INDEX(ReqBodyErrorMsg),
-    VAR_INDEX(ReqBodyError),
-    VAR_INDEX(ReqbodyProcessorError),
-    VAR_INDEX(ReqBodyProcessor),
-    VAR_INDEX(RequestBaseName),
-    VAR_INDEX(RequestBodyLength),
-    VAR_INDEX(RequestBody),
-    VAR_INDEX(RequestCookiesNames),
-    VAR_INDEX(RequestCookies),
-    VAR_INDEX(RequestFileName),
-    VAR_INDEX(RequestHeadersNames),
-    VAR_INDEX(RequestHeaders),
-    VAR_INDEX(RequestLine),
-    VAR_INDEX(RequestMothod),
-    VAR_INDEX(RequestProtocol),
-    VAR_INDEX(RequestUriRaw),
-    VAR_INDEX(RequestUri),
-    VAR_INDEX(Resource),
-    VAR_INDEX(ResponseBody),
-    VAR_INDEX(ResponseContentLength),
-    VAR_INDEX(ResponseContentType),
-    VAR_INDEX(ResponseHeadersNames),
-    VAR_INDEX(ResponseHeaders),
-    VAR_INDEX(ResponseProtocol),
-    VAR_INDEX(ResponseStatus),
-    VAR_INDEX(Rule),
-    VAR_INDEX(ServerAddr),
-    VAR_INDEX(ServerName),
-    VAR_INDEX(ServerPort),
-    VAR_INDEX(Session),
-    VAR_INDEX(SessionId),
-    VAR_INDEX(StatusLine),
-    VAR_INDEX(TimeDay),
-    VAR_INDEX(TimeEpoch),
-    VAR_INDEX(TimeHour),
-    VAR_INDEX(TimeMin),
-    VAR_INDEX(TimeMon),
-    VAR_INDEX(TimeSec),
-    VAR_INDEX(TimeWDay),
-    VAR_INDEX(TimeYear),
-    VAR_INDEX(Time),
-    VAR_INDEX(Tx),
-    VAR_INDEX(UniqueId),
-    VAR_INDEX(UrlenCodedError),
-    VAR_INDEX(User),
-    VAR_INDEX(UserId),
-    VAR_INDEX(WebAppId),
-    VAR_INDEX(Xml)};
+const std::unordered_map<const char*, VariableCompiler::VariableTypeInfo>
+    VariableCompiler::variable_type_info_map_ = {TRAVEL_VARIABLES(VAR_TYPE_INFO)};
 
-void VariableCompiler::compile(const Variable::VariableBase* variable, Program& program) {
-  auto iter = variable_index_map_.find(variable->mainName().data());
-  assert(iter != variable_index_map_.end());
-  if (iter != variable_index_map_.end()) {
-    program.emit({OpCode::LOAD_VAR,
-                  {.x_reg_ = ExtendedRegister::R8},
-                  {.index_ = iter->second},
-                  {.cptr_ = variable}});
+void VariableCompiler::compile(ExtendedRegister dst_reg, const Variable::VariableBase* variable,
+                               Program& program) {
+  auto iter = variable_type_info_map_.find(variable->mainName().data());
+  assert(iter != variable_type_info_map_.end());
+  if (iter == variable_type_info_map_.end()) {
+    UNREACHABLE();
+    WGE_LOG_CRITICAL("variable compile error: unknown variable {}",
+                     variable->fullName().tostring());
+    return;
   }
+
+  std::optional<OpCode> op_code = calcOpCode(variable, iter->second.base_opcode_);
+  if (op_code.has_value()) {
+    program.emit({op_code.value(),
+                  {.x_reg_ = dst_reg},
+                  {.index_ = iter->second.index_},
+                  {.cptr_ = variable}});
+  } else {
+    UNREACHABLE();
+    WGE_LOG_CRITICAL("variable compile error: unknown opreator code {}",
+                     variable->fullName().tostring());
+    return;
+  }
+}
+
+std::optional<OpCode> VariableCompiler::calcOpCode(const Variable::VariableBase* variable,
+                                                   OpCode base_opcode) {
+  // Calculate the offset based on whether it's a counter and collection
+  int offset = 0;
+  if (variable->isCounter()) {
+    offset = variable->isCollection() ? 0 : 1; // CC : CS
+  } else {
+    if (variable->isCollection()) {
+      const Variable::CollectionBase* p = dynamic_cast<const Variable::CollectionBase*>(variable);
+      offset = p && p->isRegex() ? 3 : 2; // VR : VC
+    } else {
+      offset = 4; // VS
+    }
+  }
+
+  // Adjust base_opcode for special variable types
+  std::optional<OpCode> real_base_opcode;
+  switch (base_opcode) {
+  case OpCode::LOAD_MultipartPartHeaders_IsCharSet_CC: {
+    auto p = dynamic_cast<const Variable::MultipartPartHeaders*>(variable);
+    if (p->isCharset()) {
+      real_base_opcode = OpCode::LOAD_MultipartPartHeaders_IsCharSet_CC;
+    } else {
+      real_base_opcode = OpCode::LOAD_MultipartPartHeaders_NotCharSet_CC;
+    }
+  } break;
+  case OpCode::LOAD_Rule_Id_CC: {
+    auto p = dynamic_cast<const Variable::Rule*>(variable);
+    switch (p->subNameType()) {
+    case Variable::Rule::SubNameType::Id:
+      real_base_opcode = OpCode::LOAD_Rule_Id_CC;
+      break;
+    case Variable::Rule::SubNameType::Phase:
+      real_base_opcode = OpCode::LOAD_Rule_Phase_CC;
+      break;
+    case Variable::Rule::SubNameType::OperatorValue:
+      real_base_opcode = OpCode::LOAD_Rule_OperatorValue_CC;
+      break;
+    default:
+      UNREACHABLE();
+      break;
+    }
+  } break;
+  case OpCode::LOAD_Tx_IsCaptureIndex_CC: {
+    auto p = dynamic_cast<const Variable::Tx*>(variable);
+    if (p->captureIndex().has_value()) {
+      real_base_opcode = OpCode::LOAD_Tx_IsCaptureIndex_CC;
+    } else {
+      real_base_opcode = OpCode::LOAD_Tx_NotCaptureIndex_CC;
+    }
+  } break;
+  case OpCode::LOAD_Xml_AttrValue_CC: {
+    auto p = dynamic_cast<const Variable::Xml*>(variable);
+    switch (p->type()) {
+    case Variable::Xml::Type::AttrValue:
+      real_base_opcode = OpCode::LOAD_Xml_AttrValue_CC;
+      break;
+    case Variable::Xml::Type::TagValue:
+      real_base_opcode = OpCode::LOAD_Xml_TagValue_CC;
+      break;
+    case Variable::Xml::Type::AttrValuePmf:
+      real_base_opcode = OpCode::LOAD_Xml_AttrValuePmf_CC;
+      break;
+    case Variable::Xml::Type::TagValuePmf:
+      real_base_opcode = OpCode::LOAD_Xml_TagValuePmf_CC;
+      break;
+    default:
+      UNREACHABLE();
+      break;
+    }
+  } break;
+  default:
+    real_base_opcode = base_opcode;
+    break;
+  }
+
+  if (real_base_opcode.has_value()) {
+    return real_base_opcode.value() + offset;
+  }
+
+  return std::nullopt;
 }
 } // namespace Compiler
 } // namespace Bytecode
 } // namespace Wge
 
-#undef VAR_INDEX
+#undef VAR_TYPE_INFO

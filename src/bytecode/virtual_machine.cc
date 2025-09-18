@@ -28,6 +28,7 @@
 #include "../operator/operator_include.h"
 #include "../rule.h"
 #include "../transformation/transform_include.h"
+#include "../variable/evaluate_help.h"
 #include "../variable/variables_include.h"
 
 // Dispatch instruction with index
@@ -36,10 +37,21 @@
 namespace Wge {
 namespace Bytecode {
 void VirtualMachine::execute(const Program& program) {
+// clang-format off
+#define LOAD_VAR_LABEL(var_type)                                                                                                              \
+  &&LOAD_##var_type##_CC,                                                                                                                     \
+  &&LOAD_##var_type##_CS,                                                                                                                     \
+  &&LOAD_##var_type##_VC,                                                                                                                     \
+  &&LOAD_##var_type##_VR,                                                                                                                     \
+  &&LOAD_##var_type##_VS,
+  // clang-format on
+
   // Dispatch table for bytecode instructions. We use computed gotos for efficiency
-  static constexpr void* dispatch_table[] = {&&MOV,    &&JMP,        &&JZ,          &&JNZ,
-                                             &&NOP,    &&LOAD_VAR,   &&TRANSFORM,   &&OPERATE,
-                                             &&ACTION, &&UNC_ACTION, &&EXPAND_MACRO};
+  static constexpr void* dispatch_table[] = {
+      &&MOV,    &&JMP,        &&JZ,           &&JNZ,
+      &&NOP,    &&LOAD_VAR,   &&TRANSFORM,    &&OPERATE,
+      &&ACTION, &&UNC_ACTION, &&EXPAND_MACRO, TRAVEL_VARIABLES(LOAD_VAR_LABEL)};
+#undef LOAD_VAR_LABEL
 #define CASE(ins, proc, forward)                                                                   \
   ins:                                                                                             \
   WGE_LOG_TRACE("exec[{}]: {}", std::distance(begin, iter), iter->toString());                     \
@@ -48,7 +60,15 @@ void VirtualMachine::execute(const Program& program) {
   if (iter == instructions.end()) {                                                                \
     return;                                                                                        \
   }                                                                                                \
+  assert(static_cast<size_t>(iter->op_code_) < std::size(dispatch_table));                         \
   goto* dispatch_table[static_cast<size_t>(iter->op_code_)];
+
+#define CASE_LOAD_VAR(var_type)                                                                    \
+  CASE(LOAD_##var_type##_CC, execLoad##var_type##_CC(*iter), ++iter);                              \
+  CASE(LOAD_##var_type##_CS, execLoad##var_type##_CS(*iter), ++iter);                              \
+  CASE(LOAD_##var_type##_VC, execLoad##var_type##_VC(*iter), ++iter);                              \
+  CASE(LOAD_##var_type##_VR, execLoad##var_type##_VR(*iter), ++iter);                              \
+  CASE(LOAD_##var_type##_VS, execLoad##var_type##_VS(*iter), ++iter);
 
   // Get instruction iterator
   auto& instructions = program.instructions();
@@ -70,6 +90,7 @@ void VirtualMachine::execute(const Program& program) {
   CASE(ACTION, execAction(*iter), ++iter);
   CASE(UNC_ACTION, execUncAction(*iter), ++iter);
   CASE(EXPAND_MACRO, execExpandMacro(*iter), ++iter);
+  TRAVEL_VARIABLES(CASE_LOAD_VAR)
 #undef CASE
 }
 
@@ -771,6 +792,339 @@ void VirtualMachine::execLogDataExpandMacro(const Instruction& instruction) {
 #undef CASE
 }
 
+#define IMPL(var_type, proc)                                                                       \
+  const Variable::var_type* v =                                                                    \
+      reinterpret_cast<const Variable::var_type*>(instruction.op3_.cptr_);                         \
+  auto& output = extended_registers_[instruction.op1_.x_reg_];                                     \
+  output.clear();                                                                                  \
+  proc;
+
+#define IMPL_LOAD_VAR(var_type, cc_proc, cs_proc, vc_proc, vr_proc, vs_proc)                       \
+  void VirtualMachine::execLoad##var_type##_CC(const Instruction& instruction) {                   \
+    IMPL(var_type, cc_proc);                                                                       \
+  }                                                                                                \
+  void VirtualMachine::execLoad##var_type##_CS(const Instruction& instruction) {                   \
+    IMPL(var_type, cs_proc);                                                                       \
+  }                                                                                                \
+  void VirtualMachine::execLoad##var_type##_VC(const Instruction& instruction) {                   \
+    IMPL(var_type, vc_proc);                                                                       \
+  }                                                                                                \
+  void VirtualMachine::execLoad##var_type##_VR(const Instruction& instruction) {                   \
+    IMPL(var_type, vr_proc);                                                                       \
+  }                                                                                                \
+  void VirtualMachine::execLoad##var_type##_VS(const Instruction& instruction) {                   \
+    IMPL(var_type, vs_proc);                                                                       \
+  }
+
+#define IMPL_LOAD_VAR_PROC(var_type)                                                               \
+  IMPL_LOAD_VAR(                                                                                   \
+      var_type, { (v->evaluate<IS_COUNTER, IS_COLLECTION>(transaction_, output)); },               \
+      { (v->evaluate<IS_COUNTER, NOT_COLLECTION>(transaction_, output)); },                        \
+      { (v->evaluate<NOT_COUNTER, IS_COLLECTION, NOT_REGEX_COLLECTION>(transaction_, output)); },  \
+      { (v->evaluate<NOT_COUNTER, IS_COLLECTION, IS_REGEX_COLLECTION>(transaction_, output)); },   \
+      { (v->evaluate<NOT_COUNTER, NOT_COLLECTION, NOT_REGEX_COLLECTION>(transaction_, output)); })
+
+IMPL_LOAD_VAR_PROC(ArgsCombinedSize);
+IMPL_LOAD_VAR_PROC(ArgsGetNames);
+IMPL_LOAD_VAR_PROC(ArgsGet);
+IMPL_LOAD_VAR_PROC(ArgsNames);
+IMPL_LOAD_VAR_PROC(ArgsPostNames);
+IMPL_LOAD_VAR_PROC(ArgsPost);
+IMPL_LOAD_VAR_PROC(Args);
+IMPL_LOAD_VAR_PROC(AuthType);
+IMPL_LOAD_VAR_PROC(Duration);
+IMPL_LOAD_VAR_PROC(Env);
+IMPL_LOAD_VAR_PROC(FilesCombinedSize);
+IMPL_LOAD_VAR_PROC(FilesNames);
+IMPL_LOAD_VAR_PROC(FilesSizes);
+IMPL_LOAD_VAR_PROC(FilesTmpContent);
+IMPL_LOAD_VAR_PROC(FilesTmpNames);
+IMPL_LOAD_VAR_PROC(Files);
+IMPL_LOAD_VAR_PROC(FullRequestLength);
+IMPL_LOAD_VAR_PROC(FullRequest);
+IMPL_LOAD_VAR_PROC(Geo);
+IMPL_LOAD_VAR_PROC(Global);
+IMPL_LOAD_VAR_PROC(HighestSeverity);
+IMPL_LOAD_VAR_PROC(InboundDataError);
+IMPL_LOAD_VAR_PROC(Ip);
+IMPL_LOAD_VAR_PROC(MatchedVarName);
+IMPL_LOAD_VAR_PROC(MatchedVar);
+IMPL_LOAD_VAR_PROC(MatchedVarsNames);
+IMPL_LOAD_VAR_PROC(MatchedVars);
+IMPL_LOAD_VAR_PROC(ModSecBuild);
+IMPL_LOAD_VAR_PROC(MscPcreLimitsExceeded);
+IMPL_LOAD_VAR_PROC(MultipartBoundaryQuoted);
+IMPL_LOAD_VAR_PROC(MultipartBoundaryWhitespace);
+IMPL_LOAD_VAR_PROC(MultipartCrlfLfLines);
+IMPL_LOAD_VAR_PROC(MultipartDataAfter);
+IMPL_LOAD_VAR_PROC(MultipartDataBefore);
+IMPL_LOAD_VAR_PROC(MultipartFileLimitExceeded);
+IMPL_LOAD_VAR_PROC(MultipartFileName);
+IMPL_LOAD_VAR_PROC(MultipartHeaderFolding);
+IMPL_LOAD_VAR_PROC(MultipartInvalidHeaderFolding);
+IMPL_LOAD_VAR_PROC(MultipartInvalidPart);
+IMPL_LOAD_VAR_PROC(MultipartInvalidQuoting);
+IMPL_LOAD_VAR_PROC(MultipartLfLine);
+IMPL_LOAD_VAR_PROC(MultipartMissingSemicolon);
+IMPL_LOAD_VAR_PROC(MultipartName);
+IMPL_LOAD_VAR(
+    MultipartPartHeaders_IsCharSet,
+    { (v->evaluate<true, IS_COUNTER, IS_COLLECTION>(transaction_, output)); },
+    { (v->evaluate<true, IS_COUNTER, NOT_COLLECTION>(transaction_, output)); },
+    {
+      (v->evaluate<true, NOT_COUNTER, IS_COLLECTION, NOT_REGEX_COLLECTION>(transaction_, output));
+    },
+    { (v->evaluate<true, NOT_COUNTER, IS_COLLECTION, IS_REGEX_COLLECTION>(transaction_, output)); },
+    {
+      (v->evaluate<true, NOT_COUNTER, NOT_COLLECTION, NOT_REGEX_COLLECTION>(transaction_, output));
+    });
+IMPL_LOAD_VAR(
+    MultipartPartHeaders_NotCharSet,
+    { (v->evaluate<false, IS_COUNTER, IS_COLLECTION>(transaction_, output)); },
+    { (v->evaluate<false, IS_COUNTER, NOT_COLLECTION>(transaction_, output)); },
+    {
+      (v->evaluate<false, NOT_COUNTER, IS_COLLECTION, NOT_REGEX_COLLECTION>(transaction_, output));
+    },
+    {
+      (v->evaluate<false, NOT_COUNTER, IS_COLLECTION, IS_REGEX_COLLECTION>(transaction_, output));
+    },
+    {
+      (v->evaluate<false, NOT_COUNTER, NOT_COLLECTION, NOT_REGEX_COLLECTION>(transaction_, output));
+    });
+IMPL_LOAD_VAR_PROC(MultipartStrictError);
+IMPL_LOAD_VAR_PROC(MultipartUnmatchedBoundary);
+IMPL_LOAD_VAR_PROC(OutboundDataError);
+IMPL_LOAD_VAR_PROC(PathInfo);
+IMPL_LOAD_VAR_PROC(QueryString);
+IMPL_LOAD_VAR_PROC(RemoteAddr);
+IMPL_LOAD_VAR_PROC(RemoteHost);
+IMPL_LOAD_VAR_PROC(RemotePort);
+IMPL_LOAD_VAR_PROC(RemoteUser);
+IMPL_LOAD_VAR_PROC(ReqBodyErrorMsg);
+IMPL_LOAD_VAR_PROC(ReqBodyError);
+IMPL_LOAD_VAR_PROC(ReqbodyProcessorError);
+IMPL_LOAD_VAR_PROC(ReqBodyProcessor);
+IMPL_LOAD_VAR_PROC(RequestBaseName);
+IMPL_LOAD_VAR_PROC(RequestBodyLength);
+IMPL_LOAD_VAR_PROC(RequestBody);
+IMPL_LOAD_VAR_PROC(RequestCookiesNames);
+IMPL_LOAD_VAR_PROC(RequestCookies);
+IMPL_LOAD_VAR_PROC(RequestFileName);
+IMPL_LOAD_VAR_PROC(RequestHeadersNames);
+IMPL_LOAD_VAR_PROC(RequestHeaders);
+IMPL_LOAD_VAR_PROC(RequestLine);
+IMPL_LOAD_VAR_PROC(RequestMothod);
+IMPL_LOAD_VAR_PROC(RequestProtocol);
+IMPL_LOAD_VAR_PROC(RequestUriRaw);
+IMPL_LOAD_VAR_PROC(RequestUri);
+IMPL_LOAD_VAR_PROC(Resource);
+IMPL_LOAD_VAR_PROC(ResponseBody);
+IMPL_LOAD_VAR_PROC(ResponseContentLength);
+IMPL_LOAD_VAR_PROC(ResponseContentType);
+IMPL_LOAD_VAR_PROC(ResponseHeadersNames);
+IMPL_LOAD_VAR_PROC(ResponseHeaders);
+IMPL_LOAD_VAR_PROC(ResponseProtocol);
+IMPL_LOAD_VAR_PROC(ResponseStatus);
+IMPL_LOAD_VAR(
+    Rule_Id,
+    {
+      (v->evaluate<Variable::Rule::SubNameType::Id, IS_COUNTER, IS_COLLECTION>(transaction_,
+                                                                               output));
+    },
+    {
+      (v->evaluate<Variable::Rule::SubNameType::Id, IS_COUNTER, NOT_COLLECTION>(transaction_,
+                                                                                output));
+    },
+    {
+      (v->evaluate<Variable::Rule::SubNameType::Id, NOT_COUNTER, IS_COLLECTION,
+                   NOT_REGEX_COLLECTION>(transaction_, output));
+    },
+    {
+      (v->evaluate<Variable::Rule::SubNameType::Id, NOT_COUNTER, IS_COLLECTION,
+                   IS_REGEX_COLLECTION>(transaction_, output));
+    },
+    {
+      (v->evaluate<Variable::Rule::SubNameType::Id, NOT_COUNTER, NOT_COLLECTION,
+                   NOT_REGEX_COLLECTION>(transaction_, output));
+    });
+IMPL_LOAD_VAR(
+    Rule_Phase,
+    {
+      (v->evaluate<Variable::Rule::SubNameType::Phase, IS_COUNTER, IS_COLLECTION>(transaction_,
+                                                                                  output));
+    },
+    {
+      (v->evaluate<Variable::Rule::SubNameType::Phase, IS_COUNTER, NOT_COLLECTION>(transaction_,
+                                                                                   output));
+    },
+    {
+      (v->evaluate<Variable::Rule::SubNameType::Phase, NOT_COUNTER, IS_COLLECTION,
+                   NOT_REGEX_COLLECTION>(transaction_, output));
+    },
+    {
+      (v->evaluate<Variable::Rule::SubNameType::Phase, NOT_COUNTER, IS_COLLECTION,
+                   IS_REGEX_COLLECTION>(transaction_, output));
+    },
+    {
+      (v->evaluate<Variable::Rule::SubNameType::Phase, NOT_COUNTER, NOT_COLLECTION,
+                   NOT_REGEX_COLLECTION>(transaction_, output));
+    });
+IMPL_LOAD_VAR(
+    Rule_OperatorValue,
+    {
+      (v->evaluate<Variable::Rule::SubNameType::OperatorValue, IS_COUNTER, IS_COLLECTION>(
+          transaction_, output));
+    },
+    {
+      (v->evaluate<Variable::Rule::SubNameType::OperatorValue, IS_COUNTER, NOT_COLLECTION>(
+          transaction_, output));
+    },
+    {
+      (v->evaluate<Variable::Rule::SubNameType::OperatorValue, NOT_COUNTER, IS_COLLECTION,
+                   NOT_REGEX_COLLECTION>(transaction_, output));
+    },
+    {
+      (v->evaluate<Variable::Rule::SubNameType::OperatorValue, NOT_COUNTER, IS_COLLECTION,
+                   IS_REGEX_COLLECTION>(transaction_, output));
+    },
+    {
+      (v->evaluate<Variable::Rule::SubNameType::OperatorValue, NOT_COUNTER, NOT_COLLECTION,
+                   NOT_REGEX_COLLECTION>(transaction_, output));
+    });
+IMPL_LOAD_VAR_PROC(ServerAddr);
+IMPL_LOAD_VAR_PROC(ServerName);
+IMPL_LOAD_VAR_PROC(ServerPort);
+IMPL_LOAD_VAR_PROC(Session);
+IMPL_LOAD_VAR_PROC(SessionId);
+IMPL_LOAD_VAR_PROC(StatusLine);
+IMPL_LOAD_VAR_PROC(TimeDay);
+IMPL_LOAD_VAR_PROC(TimeEpoch);
+IMPL_LOAD_VAR_PROC(TimeHour);
+IMPL_LOAD_VAR_PROC(TimeMin);
+IMPL_LOAD_VAR_PROC(TimeMon);
+IMPL_LOAD_VAR_PROC(TimeSec);
+IMPL_LOAD_VAR_PROC(TimeWDay);
+IMPL_LOAD_VAR_PROC(TimeYear);
+IMPL_LOAD_VAR_PROC(Time);
+IMPL_LOAD_VAR(
+    Tx_IsCaptureIndex, { (v->evaluate<true, IS_COUNTER, IS_COLLECTION>(transaction_, output)); },
+    { (v->evaluate<true, IS_COUNTER, NOT_COLLECTION>(transaction_, output)); },
+    {
+      (v->evaluate<true, NOT_COUNTER, IS_COLLECTION, NOT_REGEX_COLLECTION>(transaction_, output));
+    },
+    { (v->evaluate<true, NOT_COUNTER, IS_COLLECTION, IS_REGEX_COLLECTION>(transaction_, output)); },
+    {
+      (v->evaluate<true, NOT_COUNTER, NOT_COLLECTION, NOT_REGEX_COLLECTION>(transaction_, output));
+    });
+IMPL_LOAD_VAR(
+    Tx_NotCaptureIndex, { (v->evaluate<false, IS_COUNTER, IS_COLLECTION>(transaction_, output)); },
+    { (v->evaluate<false, IS_COUNTER, NOT_COLLECTION>(transaction_, output)); },
+    {
+      (v->evaluate<false, NOT_COUNTER, IS_COLLECTION, NOT_REGEX_COLLECTION>(transaction_, output));
+    },
+    {
+      (v->evaluate<false, NOT_COUNTER, IS_COLLECTION, IS_REGEX_COLLECTION>(transaction_, output));
+    },
+    {
+      (v->evaluate<false, NOT_COUNTER, NOT_COLLECTION, NOT_REGEX_COLLECTION>(transaction_, output));
+    });
+IMPL_LOAD_VAR_PROC(UniqueId);
+IMPL_LOAD_VAR_PROC(UrlenCodedError);
+IMPL_LOAD_VAR_PROC(User);
+IMPL_LOAD_VAR_PROC(UserId);
+IMPL_LOAD_VAR_PROC(WebAppId);
+IMPL_LOAD_VAR(
+    Xml_AttrValue,
+    {
+      (v->evaluate<Variable::Xml::Type::AttrValue, IS_COUNTER, IS_COLLECTION>(transaction_,
+                                                                              output));
+    },
+    {
+      (v->evaluate<Variable::Xml::Type::AttrValue, IS_COUNTER, NOT_COLLECTION>(transaction_,
+                                                                               output));
+    },
+    {
+      (v->evaluate<Variable::Xml::Type::AttrValue, NOT_COUNTER, IS_COLLECTION,
+                   NOT_REGEX_COLLECTION>(transaction_, output));
+    },
+    {
+      (v->evaluate<Variable::Xml::Type::AttrValue, NOT_COUNTER, IS_COLLECTION, IS_REGEX_COLLECTION>(
+          transaction_, output));
+    },
+    {
+      (v->evaluate<Variable::Xml::Type::AttrValue, NOT_COUNTER, NOT_COLLECTION,
+                   NOT_REGEX_COLLECTION>(transaction_, output));
+    });
+IMPL_LOAD_VAR(
+    Xml_TagValue,
+    {
+      (v->evaluate<Variable::Xml::Type::TagValue, IS_COUNTER, IS_COLLECTION>(transaction_, output));
+    },
+    {
+      (v->evaluate<Variable::Xml::Type::TagValue, IS_COUNTER, NOT_COLLECTION>(transaction_,
+                                                                              output));
+    },
+    {
+      (v->evaluate<Variable::Xml::Type::TagValue, NOT_COUNTER, IS_COLLECTION, NOT_REGEX_COLLECTION>(
+          transaction_, output));
+    },
+    {
+      (v->evaluate<Variable::Xml::Type::TagValue, NOT_COUNTER, IS_COLLECTION, IS_REGEX_COLLECTION>(
+          transaction_, output));
+    },
+    {
+      (v->evaluate<Variable::Xml::Type::TagValue, NOT_COUNTER, NOT_COLLECTION,
+                   NOT_REGEX_COLLECTION>(transaction_, output));
+    });
+IMPL_LOAD_VAR(
+    Xml_AttrValuePmf,
+    {
+      (v->evaluate<Variable::Xml::Type::AttrValuePmf, IS_COUNTER, IS_COLLECTION>(transaction_,
+                                                                                 output));
+    },
+    {
+      (v->evaluate<Variable::Xml::Type::AttrValuePmf, IS_COUNTER, NOT_COLLECTION>(transaction_,
+                                                                                  output));
+    },
+    {
+      (v->evaluate<Variable::Xml::Type::AttrValuePmf, NOT_COUNTER, IS_COLLECTION,
+                   NOT_REGEX_COLLECTION>(transaction_, output));
+    },
+    {
+      (v->evaluate<Variable::Xml::Type::AttrValuePmf, NOT_COUNTER, IS_COLLECTION,
+                   IS_REGEX_COLLECTION>(transaction_, output));
+    },
+    {
+      (v->evaluate<Variable::Xml::Type::AttrValuePmf, NOT_COUNTER, NOT_COLLECTION,
+                   NOT_REGEX_COLLECTION>(transaction_, output));
+    });
+IMPL_LOAD_VAR(
+    Xml_TagValuePmf,
+    {
+      (v->evaluate<Variable::Xml::Type::TagValuePmf, IS_COUNTER, IS_COLLECTION>(transaction_,
+                                                                                output));
+    },
+    {
+      (v->evaluate<Variable::Xml::Type::TagValuePmf, IS_COUNTER, NOT_COLLECTION>(transaction_,
+                                                                                 output));
+    },
+    {
+      (v->evaluate<Variable::Xml::Type::TagValuePmf, NOT_COUNTER, IS_COLLECTION,
+                   NOT_REGEX_COLLECTION>(transaction_, output));
+    },
+    {
+      (v->evaluate<Variable::Xml::Type::TagValuePmf, NOT_COUNTER, IS_COLLECTION,
+                   IS_REGEX_COLLECTION>(transaction_, output));
+    },
+    {
+      (v->evaluate<Variable::Xml::Type::TagValuePmf, NOT_COUNTER, NOT_COLLECTION,
+                   NOT_REGEX_COLLECTION>(transaction_, output));
+    });
+#undef IMPL
+#undef IMPL_LOAD_VAR
+#undef IMPL_LOAD_VAR_PROC
+#undef IMPL_LOAD_VAR_PROCESSOR
+#undef IMPL_LOAD_VAR_PROCESSOR_PROC
 } // namespace Bytecode
 } // namespace Wge
 

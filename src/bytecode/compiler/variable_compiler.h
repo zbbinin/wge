@@ -20,9 +20,13 @@
  */
 #pragma once
 
+#include <optional>
 #include <unordered_map>
 
 #include <stdint.h>
+
+#include "../op_code.h"
+#include "../register.h"
 
 namespace Wge {
 namespace Variable {
@@ -42,10 +46,19 @@ class VariableCompiler {
   friend class Wge::Bytecode::VirtualMachineTest;
 
 public:
-  static void compile(const Variable::VariableBase* variable, Program& program);
+  static void compile(ExtendedRegister dst_reg, const Variable::VariableBase* variable,
+                      Program& program);
 
 private:
-  static const std::unordered_map<const char*, int64_t> variable_index_map_;
+  inline static std::optional<OpCode> calcOpCode(const Variable::VariableBase* variable,
+                                                 OpCode base_opcode);
+
+private:
+  struct VariableTypeInfo {
+    int64_t index_;
+    OpCode base_opcode_;
+  };
+  static const std::unordered_map<const char*, VariableTypeInfo> variable_type_info_map_;
 };
 
 } // namespace Compiler

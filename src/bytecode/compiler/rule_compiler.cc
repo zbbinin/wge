@@ -46,7 +46,7 @@ void RuleCompiler::compileRule(const Rule* rule, const Rule* default_action_rule
     program.emit({OpCode::MOV, {.g_reg_ = curr_variable_reg_}, {.cptr_ = &var}});
 
     // Compile variable
-    Compiler::VariableCompiler::compile(var.get(), program);
+    Compiler::VariableCompiler::compile(load_var_reg_, var.get(), program);
 
     // Compile transformations
     ExtendedRegister transform_dst_reg = transform_tmp_reg1_;
