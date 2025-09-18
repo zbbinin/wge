@@ -86,6 +86,17 @@ void VirtualMachine::execute(const Program& program) {
   if (iter == instructions.end())
     [[unlikely]] { return; }
 
+  WGE_LOG_TRACE("------------------------------------");
+  WGE_LOG_TRACE("{}", [&]() {
+    const Rule* rule = program.rule();
+    if (rule) {
+      return std::format("executing bytecode program. rule id:{} [{}:{}]", rule->id(),
+                         rule->filePath(), rule->line());
+    } else {
+      return std::format("executing bytecode program without rule.", instructions.size());
+    }
+  }());
+
   // Dispatch instructions
   DISPATCH(dispatch_table[static_cast<size_t>(iter->op_code_)]);
   CASE(MOV, execMov(*iter), ++iter);

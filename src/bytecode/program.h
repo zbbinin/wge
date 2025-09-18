@@ -28,6 +28,7 @@
 #include "instruction.h"
 
 namespace Wge {
+class Rule;
 namespace Action {
 class ActionBase;
 } // namespace Action
@@ -40,7 +41,7 @@ namespace Bytecode {
  */
 class Program {
 public:
-  Program() {
+  Program(const Rule* rule = nullptr) : rule_(rule) {
     // Preallocate space for instructions
     instructions_.reserve(64);
   }
@@ -91,12 +92,19 @@ public:
    */
   const std::vector<ActionInfo>* actionInfos(int chain_index) const;
 
+  /**
+   * Get the rule associated with the program
+   * @return The rule
+   */
+  const Rule* rule() const { return rule_; }
+
 private:
   void appendActionInfo(std::vector<ActionInfo>& action_info,
                         const std::vector<std::unique_ptr<Action::ActionBase>>& actions,
                         std::function<int(Action::ActionBase*)> toIndexFunc);
 
 private:
+  const Rule* rule_{nullptr};
   std::vector<Instruction> instructions_;
   boost::unordered_flat_map<int, std::vector<ActionInfo>> action_info_map_;
 };

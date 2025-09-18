@@ -6,13 +6,14 @@
 #include "transform_compiler.h"
 #include "variable_compiler.h"
 
+#include "../../common/log.h"
 #include "../../rule.h"
 
 namespace Wge {
 namespace Bytecode {
 namespace Compiler {
 std::unique_ptr<Program> RuleCompiler::compile(const Rule* rule, const Rule* default_action) {
-  auto program = std::make_unique<Program>();
+  auto program = std::make_unique<Program>(rule);
   compileRule(rule, default_action, *program);
   return program;
 }
@@ -81,11 +82,11 @@ void RuleCompiler::compileRule(const Rule* rule, const Rule* default_action_rule
     const ExtendedRegister op_src_reg = transform_src_reg;
     Compiler::OperatorCompiler::compile(op_res_reg_, op_src_reg, op.get(), program);
 
-    // Set the transformed values register for action use
-    program.emit({OpCode::MOV, {.g_reg_ = op_src_reg_}, {.x_reg_ = op_src_reg}});
-
     // Compile actions
     if ((default_actions && !default_actions->empty()) || !rule->actions().empty()) {
+      // Set the transformed values register for action use
+      program.emit({OpCode::MOV, {.g_reg_ = op_src_reg_}, {.x_reg_ = op_src_reg}});
+      // Compile actions
       Compiler::ActionCompiler::compile(rule->chainIndex(), op_res_reg_, program);
     }
   }
@@ -100,6 +101,12 @@ void RuleCompiler::compileRule(const Rule* rule, const Rule* default_action_rule
   std::optional<std::list<std::unique_ptr<Rule>>::const_iterator> chain_rule_iter =
       rule->chainRule(0);
   if (chain_rule_iter.has_value()) {
+    // Add debug info to indicate the start of chain rule execution
+    WGE_LOG_TRACE("", [&]() {
+      program.emit({OpCode::PRINT, {.cptr_ = "↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓"}});
+      return std::string();
+    }());
+
     // Compile chain rule
     const Rule* chain_rule = (**chain_rule_iter).get();
     compileRule(chain_rule, default_action_rule, program);
