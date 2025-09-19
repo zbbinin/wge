@@ -114,13 +114,13 @@ enum class OpCode {
   // UNC_ACTION 123456
   UNC_ACTION,
 
-  // Indicate no action is to be performed (used to push the matched variable without action)
-  // Syntax: ACTION <op_src_reg>, <op_res_reg>
+  // Used to push the matched variable without action
+  // Syntax: PUSH_MATCHED <op_src_reg>, <op_res_reg>
   // @param op1 [x_reg]: Source register(the input of the previous OPERATE)
   // @param op2 [x_reg]: Source register(the result of the previous OPERATE)
   // Example:
-  // NO_ACTION R8, R11
-  NO_ACTION,
+  // PUSH_MATCHED R8, R11
+  PUSH_MATCHED,
 
   // Expand msg macro and log macro
   // Syntax: EXPAND_MACRO <msg_macro_index> <msg_macro_instance_pointer> <log_macro_index>

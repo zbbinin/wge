@@ -77,7 +77,7 @@ private:
   inline void execOperate(const Instruction& instruction);
   inline void execAction(const Instruction& instruction);
   inline void execUncAction(const Instruction& instruction);
-  inline void execNoAction(const Instruction& instruction);
+  inline void execPushMatched(const Instruction& instruction);
   inline void execExpandMacro(const Instruction& instruction);
   inline void execMsgExpandMacro(const Instruction& instruction);
   inline void execLogDataExpandMacro(const Instruction& instruction);

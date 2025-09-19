@@ -48,9 +48,9 @@ bool VirtualMachine::execute(const Program& program) {
 
   // Dispatch table for bytecode instructions. We use computed gotos for efficiency
   static constexpr void* dispatch_table[] = {
-      &&MOV,        &&JMP,       &&JZ,           &&JNZ,     &&NOP,
-      &&DEBUG,      &&LOAD_VAR,  &&TRANSFORM,    &&OPERATE, &&ACTION,
-      &&UNC_ACTION, &&NO_ACTION, &&EXPAND_MACRO, &&CHAIN,   TRAVEL_VARIABLES(LOAD_VAR_LABEL)};
+      &&MOV,        &&JMP,          &&JZ,           &&JNZ,     &&NOP,
+      &&DEBUG,      &&LOAD_VAR,     &&TRANSFORM,    &&OPERATE, &&ACTION,
+      &&UNC_ACTION, &&PUSH_MATCHED, &&EXPAND_MACRO, &&CHAIN,   TRAVEL_VARIABLES(LOAD_VAR_LABEL)};
 #undef LOAD_VAR_LABEL
 #define CASE(ins, proc, forward)                                                                   \
   ins:                                                                                             \
@@ -104,7 +104,7 @@ bool VirtualMachine::execute(const Program& program) {
   CASE(OPERATE, execOperate(*iter), ++iter);
   CASE(ACTION, execAction(*iter), ++iter);
   CASE(UNC_ACTION, execUncAction(*iter), ++iter);
-  CASE(NO_ACTION, execNoAction(*iter), ++iter);
+  CASE(PUSH_MATCHED, execPushMatched(*iter), ++iter);
   CASE(EXPAND_MACRO, execExpandMacro(*iter), ++iter);
   CASE(CHAIN, execChain(*iter), ++iter);
   TRAVEL_VARIABLES(CASE_LOAD_VAR)
@@ -760,7 +760,7 @@ void VirtualMachine::execUncAction(const Instruction& instruction) {
 #undef CASE
 }
 
-inline void VirtualMachine::execNoAction(const Instruction& instruction) {
+inline void VirtualMachine::execPushMatched(const Instruction& instruction) {
   const Rule* curr_rule =
       reinterpret_cast<const Rule*>(general_registers_[Compiler::RuleCompiler::curr_rule_reg_]);
   const std::unique_ptr<Variable::VariableBase>* curr_var =

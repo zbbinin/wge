@@ -87,8 +87,8 @@ void RuleCompiler::compileRule(const Rule* rule, const Rule* default_action_rule
       // Compile actions
       Compiler::ActionCompiler::compile(rule->chainIndex(), op_src_reg, op_res_reg_, program);
     } else {
-      // Compile no action
-      Compiler::ActionCompiler::compile(op_src_reg, op_res_reg_, program);
+      // Push matched
+      program.emit({OpCode::PUSH_MATCHED, {.x_reg_ = op_src_reg}, {.x_reg_ = op_res_reg_}});
     }
   }
 

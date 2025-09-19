@@ -121,9 +121,9 @@ std::string Instruction::toString() const {
              }
              return std::format("UNC_ACTION {}({})", instruction.op1_.cptr_, action_names);
            }},
-          {OpCode::NO_ACTION,
+          {OpCode::PUSH_MATCHED,
            [](const Instruction& instruction) {
-             return std::format("NO_ACTION {}, {}",
+             return std::format("PUSH_MATCHED {}, {}",
                                 ExtendedRegister2String.at(instruction.op1_.x_reg_),
                                 ExtendedRegister2String.at(instruction.op2_.x_reg_));
            }},

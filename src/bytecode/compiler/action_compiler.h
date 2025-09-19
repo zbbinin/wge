@@ -52,8 +52,6 @@ public:
                       Program& program);
   // For UNC_ACTION
   static void compile(int chain_index, Program& program);
-  // For NO_ACTION
-  static void compile(ExtendedRegister op_src_reg, ExtendedRegister op_res_reg, Program& program);
 
 private:
   static const std::unordered_map<const char*, int64_t> action_index_map_;
