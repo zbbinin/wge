@@ -84,7 +84,7 @@ public:
         { (evaluateByType<NOT_COUNTER, NOT_COLLECTION, NOT_REGEX_COLLECTION>(t, result)); });
   }
 
-  bool isCollection() const override { return true; };
+  bool isCollection() const override { return sub_name_.empty(); };
 
 private:
   template <bool is_counter, bool is_collection, bool is_regex>

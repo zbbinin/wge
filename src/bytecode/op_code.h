@@ -139,11 +139,11 @@ enum class OpCode {
 // @param op3 [cptr]: Constant pointer to variable instance
 
 // clang-format off
-#define LOAD_VAR_INSTRUCTIONS(var_type)           \
-  LOAD_##var_type##_CC, /* Counter Collection */  \
-  LOAD_##var_type##_CS, /* Counter Specific */    \
-  LOAD_##var_type##_VC, /* Value Collection */    \
-  LOAD_##var_type##_VR, /* Value Regex */         \
+#define LOAD_VAR_INSTRUCTIONS(var_type)                      \
+  LOAD_##var_type##_CC, /* Counter Collection */             \
+  LOAD_##var_type##_CS, /* Counter Specific */               \
+  LOAD_##var_type##_VC, /* Value Collection */               \
+  LOAD_##var_type##_VR, /* Value Regex Collection */         \
   LOAD_##var_type##_VS, /* Value Specific */
   // clang-format on
 

@@ -65,15 +65,20 @@ void VariableCompiler::compile(ExtendedRegister dst_reg, const Variable::Variabl
 std::optional<OpCode> VariableCompiler::calcOpCode(const Variable::VariableBase* variable,
                                                    OpCode base_opcode) {
   // Calculate the offset based on whether it's a counter and collection
+  // CC: Counter Collection
+  // CS: Counter Specify
+  // VC: Value Collection
+  // VR: Value Regex Collection
+  // VS: Value Specify
   int offset = 0;
   if (variable->isCounter()) {
     offset = variable->isCollection() ? 0 : 1; // CC : CS
   } else {
     if (variable->isCollection()) {
-      const Variable::CollectionBase* p = dynamic_cast<const Variable::CollectionBase*>(variable);
-      offset = p && p->isRegex() ? 3 : 2; // VR : VC
+      offset = 2; // VC
     } else {
-      offset = 4; // VS
+      const Variable::CollectionBase* p = dynamic_cast<const Variable::CollectionBase*>(variable);
+      offset = p && p->isRegex() ? 3 : 4; // VR : VS
     }
   }
 
