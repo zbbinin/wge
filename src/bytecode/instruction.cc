@@ -121,6 +121,12 @@ std::string Instruction::toString() const {
              }
              return std::format("UNC_ACTION {}({})", instruction.op1_.cptr_, action_names);
            }},
+          {OpCode::NO_ACTION,
+           [](const Instruction& instruction) {
+             return std::format("NO_ACTION {}, {}",
+                                ExtendedRegister2String.at(instruction.op1_.x_reg_),
+                                ExtendedRegister2String.at(instruction.op2_.x_reg_));
+           }},
           {OpCode::EXPAND_MACRO,
            [](const Instruction& instruction) {
              std::string msg_macro_name =

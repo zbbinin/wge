@@ -47,13 +47,10 @@ bool VirtualMachine::execute(const Program& program) {
   // clang-format on
 
   // Dispatch table for bytecode instructions. We use computed gotos for efficiency
-  static constexpr void* dispatch_table[] = {&&MOV,        &&JMP,
-                                             &&JZ,         &&JNZ,
-                                             &&NOP,        &&DEBUG,
-                                             &&LOAD_VAR,   &&TRANSFORM,
-                                             &&OPERATE,    &&ACTION,
-                                             &&UNC_ACTION, &&EXPAND_MACRO,
-                                             &&CHAIN,      TRAVEL_VARIABLES(LOAD_VAR_LABEL)};
+  static constexpr void* dispatch_table[] = {
+      &&MOV,        &&JMP,       &&JZ,           &&JNZ,     &&NOP,
+      &&DEBUG,      &&LOAD_VAR,  &&TRANSFORM,    &&OPERATE, &&ACTION,
+      &&UNC_ACTION, &&NO_ACTION, &&EXPAND_MACRO, &&CHAIN,   TRAVEL_VARIABLES(LOAD_VAR_LABEL)};
 #undef LOAD_VAR_LABEL
 #define CASE(ins, proc, forward)                                                                   \
   ins:                                                                                             \
@@ -107,6 +104,7 @@ bool VirtualMachine::execute(const Program& program) {
   CASE(OPERATE, execOperate(*iter), ++iter);
   CASE(ACTION, execAction(*iter), ++iter);
   CASE(UNC_ACTION, execUncAction(*iter), ++iter);
+  CASE(NO_ACTION, execNoAction(*iter), ++iter);
   CASE(EXPAND_MACRO, execExpandMacro(*iter), ++iter);
   CASE(CHAIN, execChain(*iter), ++iter);
   TRAVEL_VARIABLES(CASE_LOAD_VAR)
@@ -760,6 +758,35 @@ void VirtualMachine::execUncAction(const Instruction& instruction) {
     CASE(SetVar);
   }
 #undef CASE
+}
+
+inline void VirtualMachine::execNoAction(const Instruction& instruction) {
+  const Rule* curr_rule =
+      reinterpret_cast<const Rule*>(general_registers_[Compiler::RuleCompiler::curr_rule_reg_]);
+  const std::unique_ptr<Variable::VariableBase>* curr_var =
+      reinterpret_cast<const std::unique_ptr<Variable::VariableBase>*>(
+          general_registers_[Compiler::RuleCompiler::curr_variable_reg_]);
+  auto& transformed_value = extended_registers_[instruction.op1_.x_reg_];
+  auto& operate_results = extended_registers_[instruction.op2_.x_reg_];
+  auto& original_value = extended_registers_[Compiler::RuleCompiler::load_var_reg_];
+
+  assert(operate_results.size() == original_value.size());
+  assert(original_value.size() == transformed_value.size());
+
+  size_t operate_results_size = operate_results.size();
+  for (size_t i = 0; i < operate_results_size; ++i) {
+    // Not matched
+    if (IS_INT_VARIANT(operate_results.get(i).variant_)) {
+      continue;
+    }
+
+    // TODO(zhouyu 2025-09-02): fix the transformation list
+    std::list<const Transformation::TransformBase*> transform_list;
+
+    transaction_.pushMatchedVariable((*curr_var).get(), curr_rule->chainIndex(),
+                                     original_value.move(i), transformed_value.move(i),
+                                     operate_results.move(i), std::move(transform_list));
+  }
 }
 
 void VirtualMachine::execExpandMacro(const Instruction& instruction) {

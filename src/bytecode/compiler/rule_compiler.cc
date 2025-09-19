@@ -86,6 +86,9 @@ void RuleCompiler::compileRule(const Rule* rule, const Rule* default_action_rule
     if ((default_actions && !default_actions->empty()) || !rule->actions().empty()) {
       // Compile actions
       Compiler::ActionCompiler::compile(rule->chainIndex(), op_src_reg, op_res_reg_, program);
+    } else {
+      // Compile no action
+      Compiler::ActionCompiler::compile(op_src_reg, op_res_reg_, program);
     }
   }
 

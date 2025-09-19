@@ -61,6 +61,11 @@ void ActionCompiler::compile(int chain_index, Program& program) {
   program.emit({OpCode::UNC_ACTION, {.cptr_ = program.actionInfos(chain_index)}});
 }
 
+void ActionCompiler::compile(ExtendedRegister op_src_reg, ExtendedRegister op_res_reg,
+                             Program& program) {
+  program.emit({OpCode::NO_ACTION, {.x_reg_ = op_src_reg}, {.x_reg_ = op_res_reg}});
+}
+
 } // namespace Compiler
 } // namespace Bytecode
 } // namespace Wge

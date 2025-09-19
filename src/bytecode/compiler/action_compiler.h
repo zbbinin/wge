@@ -47,9 +47,13 @@ public:
   static void initProgramActionInfo(
       int chain_index, const std::vector<std::unique_ptr<Action::ActionBase>>* default_actions,
       const std::vector<std::unique_ptr<Action::ActionBase>>* actions, Program& program);
+  // For ACTION instruction
   static void compile(int chain_index, ExtendedRegister op_src_reg, ExtendedRegister op_res_reg,
                       Program& program);
+  // For UNC_ACTION
   static void compile(int chain_index, Program& program);
+  // For NO_ACTION
+  static void compile(ExtendedRegister op_src_reg, ExtendedRegister op_res_reg, Program& program);
 
 private:
   static const std::unordered_map<const char*, int64_t> action_index_map_;

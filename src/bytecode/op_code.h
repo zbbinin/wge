@@ -97,7 +97,7 @@ enum class OpCode {
   OPERATE,
 
   // Perform an action
-  // Syntax: ACTION <src_reg>, <action_infos_pointer>
+  // Syntax: ACTION <op_src_reg>, <op_res_reg>, <action_infos_pointer>
   // @param op1 [x_reg]: Source register(the input of the previous OPERATE)
   // @param op2 [x_reg]: Source register(the result of the previous OPERATE)
   // @param op2 [cptr]: An array of constant pointers specifying the action infos
@@ -113,6 +113,14 @@ enum class OpCode {
   // Example:
   // UNC_ACTION 123456
   UNC_ACTION,
+
+  // Indicate no action is to be performed (used to push the matched variable without action)
+  // Syntax: ACTION <op_src_reg>, <op_res_reg>
+  // @param op1 [x_reg]: Source register(the input of the previous OPERATE)
+  // @param op2 [x_reg]: Source register(the result of the previous OPERATE)
+  // Example:
+  // NO_ACTION R8, R11
+  NO_ACTION,
 
   // Expand msg macro and log macro
   // Syntax: EXPAND_MACRO <msg_macro_index> <msg_macro_instance_pointer> <log_macro_index>
