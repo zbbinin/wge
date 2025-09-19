@@ -19,7 +19,8 @@ std::string Instruction::toString() const {
       {GeneralRegister::RAX, "RAX"},
       {GeneralRegister::RBX, "RBX"},
       {GeneralRegister::RCX, "RCX"},
-      {GeneralRegister::RDX, "RDX"}};
+      {GeneralRegister::RDX, "RDX"},
+      {GeneralRegister::RFLAGS, "RFLAGS"}};
   static const std::unordered_map<ExtendedRegister, std::string> ExtendedRegister2String = {
       {ExtendedRegister::R8, "R8"},
       {ExtendedRegister::R9, "R9"},
@@ -133,6 +134,7 @@ std::string Instruction::toString() const {
                                 instruction.op2_.cptr_, msg_macro_name, instruction.op3_.index_,
                                 instruction.op4_.cptr_, log_macro_name);
            }},
+          {OpCode::CHAIN, [](const Instruction& instruction) { return std::string("CHAIN"); }},
 #define TO_STRING(var_type)                                                                        \
   {OpCode::LOAD_##var_type##_CC,                                                                   \
    [](const Instruction& instruction) {                                                            \

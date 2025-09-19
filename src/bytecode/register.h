@@ -36,6 +36,7 @@ enum class GeneralRegister : uint64_t {
   RBX,     // Base register
   RCX,     // Counter register
   RDX,     // Data register
+  RFLAGS,  // Flags register (for condition codes)
 
   MAX_GENERAL_REGISTER
 };

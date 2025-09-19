@@ -90,9 +90,8 @@ TEST_F(VirtualMachineTest, execJmp) {
 TEST_F(VirtualMachineTest, execJz) {
   Program program;
 
-  vm_->rflags() = 1;
-
-  program.emit({OpCode::JZ, {.address_ = 2}});
+  program.emit({OpCode::MOV, {.g_reg_ = GeneralRegister::RFLAGS}, {.imm_ = 1}});
+  program.emit({OpCode::JZ, {.address_ = 3}});
   program.emit({OpCode::MOV, {.g_reg_ = GeneralRegister::RAX}, {.imm_ = 100}});
   program.emit({OpCode::MOV, {.g_reg_ = GeneralRegister::RBX}, {.imm_ = 100}});
 
@@ -109,9 +108,8 @@ TEST_F(VirtualMachineTest, execJz) {
 TEST_F(VirtualMachineTest, execJnz) {
   Program program;
 
-  vm_->rflags() = 1;
-
-  program.emit({OpCode::JNZ, {.address_ = 2}});
+  program.emit({OpCode::MOV, {.g_reg_ = GeneralRegister::RFLAGS}, {.imm_ = 1}});
+  program.emit({OpCode::JNZ, {.address_ = 3}});
   program.emit({OpCode::MOV, {.g_reg_ = GeneralRegister::RAX}, {.imm_ = 100}});
   program.emit({OpCode::MOV, {.g_reg_ = GeneralRegister::RBX}, {.imm_ = 100}});
 

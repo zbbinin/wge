@@ -124,6 +124,12 @@ enum class OpCode {
   // EXPAND_MACRO 0 123456 1 654321
   EXPAND_MACRO,
 
+  // Indicate the start of chain rule execution
+  // Syntax: CHAIN
+  // Example:
+  // CHAIN
+  CHAIN,
+
 // ==================== Variable Loading Optimized Instructions ====================
 // These instructions provide compile-time specialized versions of LOAD_VAR
 // for specific variable types and access patterns, eliminating runtime dispatch

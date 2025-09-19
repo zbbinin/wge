@@ -42,8 +42,9 @@ public:
   /**
    * Execute a bytecode program
    * @param program The compiled bytecode program
+   * @return true if associated rule matched, false otherwise
    */
-  void execute(const Program& program);
+  bool execute(const Program& program);
 
   // For testing purposes
 public:
@@ -58,12 +59,6 @@ public:
    * @return reference to the array of extended register values
    */
   ExtendedRegisterArray& extendedRegisters() { return extended_registers_; }
-
-  /**
-   * Get the current state of the flags register
-   * @return reference to the flags register value
-   */
-  int64_t& rflags() { return rflags_; }
 
 private:
   inline void execMov(const Instruction& instruction);
@@ -85,6 +80,7 @@ private:
   inline void execExpandMacro(const Instruction& instruction);
   inline void execMsgExpandMacro(const Instruction& instruction);
   inline void execLogDataExpandMacro(const Instruction& instruction);
+  inline void execChain(const Instruction& instruction);
 
   // Load variable handlers
 private:
@@ -101,9 +97,6 @@ private:
   // Registers
   GeneralRegisterArray general_registers_{};
   ExtendedRegisterArray extended_registers_{};
-
-  // Simple flag register for conditions
-  int64_t rflags_ = 0;
 
   Transaction& transaction_;
 };

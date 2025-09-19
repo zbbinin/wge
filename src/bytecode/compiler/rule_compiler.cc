@@ -101,11 +101,8 @@ void RuleCompiler::compileRule(const Rule* rule, const Rule* default_action_rule
   std::optional<std::list<std::unique_ptr<Rule>>::const_iterator> chain_rule_iter =
       rule->chainRule(0);
   if (chain_rule_iter.has_value()) {
-    // Add debug info to indicate the start of chain rule execution
-    WGE_LOG_DEBUG("", [&]() {
-      program.emit({OpCode::DEBUG, {.cptr_ = "↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓"}});
-      return std::string();
-    }());
+    // Indicate the start of chain rule execution
+    program.emit({OpCode::CHAIN});
 
     // Compile chain rule
     const Rule* chain_rule = (**chain_rule_iter).get();

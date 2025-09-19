@@ -614,8 +614,7 @@ template <bool enable_bytecode> bool Transaction::process(int phase) {
     bool is_matched = false;
     if constexpr (enable_bytecode) {
       // Execute the bytecode program
-      vm_->execute(*(programs->at(std::distance(begin, iter))));
-      is_matched = vm_->rflags() != 0;
+      is_matched = vm_->execute(*(programs->at(std::distance(begin, iter))));
     } else {
       // Evaluate the rule
       is_matched = current_rule_->evaluate(*this);

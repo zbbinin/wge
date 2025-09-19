@@ -36,7 +36,7 @@
 
 namespace Wge {
 namespace Bytecode {
-void VirtualMachine::execute(const Program& program) {
+bool VirtualMachine::execute(const Program& program) {
 // clang-format off
 #define LOAD_VAR_LABEL(var_type)                                                                                                              \
   &&LOAD_##var_type##_CC,                                                                                                                     \
@@ -47,19 +47,13 @@ void VirtualMachine::execute(const Program& program) {
   // clang-format on
 
   // Dispatch table for bytecode instructions. We use computed gotos for efficiency
-  static constexpr void* dispatch_table[] = {&&MOV,
-                                             &&JMP,
-                                             &&JZ,
-                                             &&JNZ,
-                                             &&NOP,
-                                             &&DEBUG,
-                                             &&LOAD_VAR,
-                                             &&TRANSFORM,
-                                             &&OPERATE,
-                                             &&ACTION,
-                                             &&UNC_ACTION,
-                                             &&EXPAND_MACRO,
-                                             TRAVEL_VARIABLES(LOAD_VAR_LABEL)};
+  static constexpr void* dispatch_table[] = {&&MOV,        &&JMP,
+                                             &&JZ,         &&JNZ,
+                                             &&NOP,        &&DEBUG,
+                                             &&LOAD_VAR,   &&TRANSFORM,
+                                             &&OPERATE,    &&ACTION,
+                                             &&UNC_ACTION, &&EXPAND_MACRO,
+                                             &&CHAIN,      TRAVEL_VARIABLES(LOAD_VAR_LABEL)};
 #undef LOAD_VAR_LABEL
 #define CASE(ins, proc, forward)                                                                   \
   ins:                                                                                             \
@@ -67,7 +61,7 @@ void VirtualMachine::execute(const Program& program) {
   proc;                                                                                            \
   forward;                                                                                         \
   if (iter == instructions.end()) {                                                                \
-    return;                                                                                        \
+    return general_registers_[GeneralRegister::RFLAGS] != 0;                                       \
   }                                                                                                \
   assert(static_cast<size_t>(iter->op_code_) < std::size(dispatch_table));                         \
   goto* dispatch_table[static_cast<size_t>(iter->op_code_)];
@@ -84,7 +78,7 @@ void VirtualMachine::execute(const Program& program) {
   auto begin = instructions.begin();
   auto iter = begin;
   if (iter == instructions.end())
-    [[unlikely]] { return; }
+    [[unlikely]] { return general_registers_[GeneralRegister::RFLAGS] != 0; }
 
   WGE_LOG_TRACE("------------------------------------");
   WGE_LOG_TRACE("{}", [&]() {
@@ -96,6 +90,9 @@ void VirtualMachine::execute(const Program& program) {
       return std::format("executing bytecode program without rule.", instructions.size());
     }
   }());
+
+  // Reset RFLAGS
+  general_registers_[GeneralRegister::RFLAGS] = 0;
 
   // Dispatch instructions
   DISPATCH(dispatch_table[static_cast<size_t>(iter->op_code_)]);
@@ -111,6 +108,7 @@ void VirtualMachine::execute(const Program& program) {
   CASE(ACTION, execAction(*iter), ++iter);
   CASE(UNC_ACTION, execUncAction(*iter), ++iter);
   CASE(EXPAND_MACRO, execExpandMacro(*iter), ++iter);
+  CASE(CHAIN, execChain(*iter), ++iter);
   TRAVEL_VARIABLES(CASE_LOAD_VAR)
 #undef CASE
 }
@@ -133,7 +131,7 @@ void VirtualMachine::execJmp(const Instruction& instruction,
 void VirtualMachine::execJz(const Instruction& instruction,
                             const std::vector<Wge::Bytecode::Instruction>& instruction_array,
                             std::vector<Wge::Bytecode::Instruction>::const_iterator& iter) {
-  if (!rflags_) {
+  if (!general_registers_[GeneralRegister::RFLAGS]) {
     const int64_t target_address = instruction.op1_.address_;
     if (target_address < 0 || target_address >= instruction_array.size())
       [[unlikely]] { iter = instruction_array.end(); }
@@ -148,7 +146,7 @@ void VirtualMachine::execJz(const Instruction& instruction,
 void VirtualMachine::execJnz(const Instruction& instruction,
                              const std::vector<Wge::Bytecode::Instruction>& instruction_array,
                              std::vector<Wge::Bytecode::Instruction>::const_iterator& iter) {
-  if (rflags_) {
+  if (general_registers_[GeneralRegister::RFLAGS]) {
     const int64_t target_address = instruction.op1_.address_;
     if (target_address < 0 || target_address >= instruction_array.size())
       [[unlikely]] { iter = instruction_array.end(); }
@@ -629,10 +627,10 @@ void VirtualMachine::execOperate(const Instruction& instruction) {
                                                      &&VerifySSN,
                                                      &&Within};
 #define CASE(operator)                                                                             \
-  operator: rule_matched = dispatchOperator(                                                       \
-                reinterpret_cast < const Operator::operator*>(instruction.op4_.cptr_),             \
-                transaction_, curr_rule, curr_var, input, output);                                 \
-  rflags_ |= rule_matched;                                                                         \
+  operator: matched = dispatchOperator(reinterpret_cast <                                          \
+                                           const Operator::operator*>(instruction.op4_.cptr_),     \
+                                       transaction_, curr_rule, curr_var, input, output);          \
+  general_registers_[GeneralRegister::RFLAGS] |= matched;                                          \
   return;
 
   const Rule* curr_rule =
@@ -643,10 +641,7 @@ void VirtualMachine::execOperate(const Instruction& instruction) {
   const auto& input = extended_registers_[instruction.op2_.x_reg_];
   auto& output = extended_registers_[instruction.op1_.x_reg_];
   output.clear();
-  bool rule_matched = false;
-
-  // Reset RFLAGS
-  rflags_ = 0;
+  bool matched = false;
 
   DISPATCH(operate_dispatch_table[instruction.op3_.index_]);
   CASE(BeginsWith);
@@ -816,6 +811,13 @@ void VirtualMachine::execLogDataExpandMacro(const Instruction& instruction) {
   CASE(MultiMacro);
   CASE(VariableMacro);
 #undef CASE
+}
+
+void VirtualMachine::execChain(const Instruction& instruction) {
+  // Reset RFLAGS
+  general_registers_[GeneralRegister::RFLAGS] = 0;
+  WGE_LOG_TRACE("start of rule chain execution");
+  WGE_LOG_TRACE("↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓");
 }
 
 #define IMPL(var_type, proc)                                                                       \
