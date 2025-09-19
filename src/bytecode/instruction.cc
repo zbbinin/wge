@@ -93,7 +93,7 @@ std::string Instruction::toString() const {
            [](const Instruction& instruction) {
              std::string action_names;
              const std::vector<Program::ActionInfo>& action_infos =
-                 *reinterpret_cast<const std::vector<Program::ActionInfo>*>(instruction.op2_.cptr_);
+                 *reinterpret_cast<const std::vector<Program::ActionInfo>*>(instruction.op3_.cptr_);
              for (auto& action_info : action_infos) {
                if (!action_names.empty()) {
                  action_names += ", ";
@@ -102,9 +102,10 @@ std::string Instruction::toString() const {
                    reinterpret_cast<const Action::ActionBase*>(action_info.action_)->name();
              }
 
-             return std::format("ACTION {}, {}({})",
+             return std::format("ACTION {}, {}, {}({})",
                                 ExtendedRegister2String.at(instruction.op1_.x_reg_),
-                                instruction.op2_.cptr_, action_names);
+                                ExtendedRegister2String.at(instruction.op2_.x_reg_),
+                                instruction.op3_.cptr_, action_names);
            }},
           {OpCode::UNC_ACTION,
            [](const Instruction& instruction) {

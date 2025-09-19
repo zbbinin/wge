@@ -84,10 +84,8 @@ void RuleCompiler::compileRule(const Rule* rule, const Rule* default_action_rule
 
     // Compile actions
     if ((default_actions && !default_actions->empty()) || !rule->actions().empty()) {
-      // Set the transformed values register for action use
-      program.emit({OpCode::MOV, {.g_reg_ = op_src_reg_}, {.x_reg_ = op_src_reg}});
       // Compile actions
-      Compiler::ActionCompiler::compile(rule->chainIndex(), op_res_reg_, program);
+      Compiler::ActionCompiler::compile(rule->chainIndex(), op_src_reg, op_res_reg_, program);
     }
   }
 

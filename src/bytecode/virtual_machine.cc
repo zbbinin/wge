@@ -700,12 +700,11 @@ void VirtualMachine::execAction(const Instruction& instruction) {
   const std::unique_ptr<Variable::VariableBase>* curr_var =
       reinterpret_cast<const std::unique_ptr<Variable::VariableBase>*>(
           general_registers_[Compiler::RuleCompiler::curr_variable_reg_]);
-  auto& operate_results = extended_registers_[instruction.op1_.x_reg_];
+  auto& transformed_value = extended_registers_[instruction.op1_.x_reg_];
+  auto& operate_results = extended_registers_[instruction.op2_.x_reg_];
   auto& original_value = extended_registers_[Compiler::RuleCompiler::load_var_reg_];
-  auto& transformed_value = extended_registers_[static_cast<ExtendedRegister>(
-      general_registers_[Compiler::RuleCompiler::op_src_reg_])];
   const std::vector<Program::ActionInfo>& action_infos =
-      *reinterpret_cast<const std::vector<Program::ActionInfo>*>(instruction.op2_.cptr_);
+      *reinterpret_cast<const std::vector<Program::ActionInfo>*>(instruction.op3_.cptr_);
 
   assert(operate_results.size() == original_value.size());
   assert(original_value.size() == transformed_value.size());

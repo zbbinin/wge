@@ -49,8 +49,12 @@ void ActionCompiler::initProgramActionInfo(
                          });
 }
 
-void ActionCompiler::compile(int chain_index, ExtendedRegister src_reg, Program& program) {
-  program.emit({OpCode::ACTION, {.x_reg_ = src_reg}, {.cptr_ = program.actionInfos(chain_index)}});
+void ActionCompiler::compile(int chain_index, ExtendedRegister op_src_reg,
+                             ExtendedRegister op_res_reg, Program& program) {
+  program.emit({OpCode::ACTION,
+                {.x_reg_ = op_src_reg},
+                {.x_reg_ = op_res_reg},
+                {.cptr_ = program.actionInfos(chain_index)}});
 }
 
 void ActionCompiler::compile(int chain_index, Program& program) {

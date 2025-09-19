@@ -98,11 +98,12 @@ enum class OpCode {
 
   // Perform an action
   // Syntax: ACTION <src_reg>, <action_infos_pointer>
-  // @param op1 [x_reg]: Source register(the result of the previous OPERATE)
+  // @param op1 [x_reg]: Source register(the input of the previous OPERATE)
+  // @param op2 [x_reg]: Source register(the result of the previous OPERATE)
   // @param op2 [cptr]: An array of constant pointers specifying the action infos
   // (Program::ActionInfo)
   // Example:
-  // ACTION R11, 123456
+  // ACTION R8, R11, 123456
   ACTION,
 
   // Perform an uncondition action
