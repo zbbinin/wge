@@ -143,9 +143,10 @@ enum class OpCode {
   EXPAND_MACRO,
 
   // Indicate the start of chain rule execution
-  // Syntax: CHAIN
+  // Syntax: CHAIN <rule_pointer>
+  // @param op1 [cptr]: Constant pointer to the current rule instance
   // Example:
-  // CHAIN
+  // CHAIN 123456
   CHAIN,
 
 // ==================== Variable Loading Optimized Instructions ====================

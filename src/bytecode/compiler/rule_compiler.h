@@ -57,8 +57,6 @@ public:
   static std::unique_ptr<Program> compile(const Rule* rule, const Rule* default_action_rule);
 
 public:
-  // The current rule register
-  static constexpr GeneralRegister curr_rule_reg_{GeneralRegister::RCX};
   // The current variable register
   static constexpr GeneralRegister curr_variable_reg_{GeneralRegister::RDX};
   // The result register of LOAD_VAR instruction (variable value)

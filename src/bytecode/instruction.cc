@@ -158,7 +158,10 @@ std::string Instruction::toString() const {
                                 instruction.op2_.cptr_, msg_macro_name, instruction.op3_.index_,
                                 instruction.op4_.cptr_, log_macro_name);
            }},
-          {OpCode::CHAIN, [](const Instruction& instruction) { return std::string("CHAIN"); }},
+          {OpCode::CHAIN,
+           [](const Instruction& instruction) {
+             return std::format("CHAIN {}", instruction.op1_.cptr_);
+           }},
 #define TO_STRING(var_type)                                                                        \
   {OpCode::LOAD_##var_type##_CC,                                                                   \
    [](const Instruction& instruction) {                                                            \

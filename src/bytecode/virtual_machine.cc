@@ -644,8 +644,7 @@ void VirtualMachine::execOperate(const Instruction& instruction) {
   general_registers_[GeneralRegister::RFLAGS] |= matched;                                          \
   return;
 
-  const Rule* curr_rule =
-      reinterpret_cast<const Rule*>(general_registers_[Compiler::RuleCompiler::curr_rule_reg_]);
+  const Rule* curr_rule = transaction_.getCurrentEvaluateRule();
   const std::unique_ptr<Variable::VariableBase>* curr_var =
       reinterpret_cast<const std::unique_ptr<Variable::VariableBase>*>(
           general_registers_[Compiler::RuleCompiler::curr_variable_reg_]);
@@ -740,8 +739,7 @@ inline void VirtualMachine::execActionPushMatched(const Instruction& instruction
   dispatchAction(reinterpret_cast<const Action::action*>(action_info.action_), transaction_);      \
   continue;
 
-  const Rule* curr_rule =
-      reinterpret_cast<const Rule*>(general_registers_[Compiler::RuleCompiler::curr_rule_reg_]);
+  const Rule* curr_rule = transaction_.getCurrentEvaluateRule();
   const std::unique_ptr<Variable::VariableBase>* curr_var =
       reinterpret_cast<const std::unique_ptr<Variable::VariableBase>*>(
           general_registers_[Compiler::RuleCompiler::curr_variable_reg_]);
@@ -808,8 +806,7 @@ void VirtualMachine::execUncAction(const Instruction& instruction) {
 }
 
 inline void VirtualMachine::execPushMatched(const Instruction& instruction) {
-  const Rule* curr_rule =
-      reinterpret_cast<const Rule*>(general_registers_[Compiler::RuleCompiler::curr_rule_reg_]);
+  const Rule* curr_rule = transaction_.getCurrentEvaluateRule();
   const std::unique_ptr<Variable::VariableBase>* curr_var =
       reinterpret_cast<const std::unique_ptr<Variable::VariableBase>*>(
           general_registers_[Compiler::RuleCompiler::curr_variable_reg_]);
@@ -889,6 +886,10 @@ void VirtualMachine::execLogDataExpandMacro(const Instruction& instruction) {
 void VirtualMachine::execChain(const Instruction& instruction) {
   // Reset RFLAGS
   general_registers_[GeneralRegister::RFLAGS] = 0;
+
+  // Set current evaluate rule
+  const Rule* rule = reinterpret_cast<const Rule*>(instruction.op1_.cptr_);
+  transaction_.setCurrentEvaluateRule(rule);
   WGE_LOG_TRACE("start of rule chain execution");
   WGE_LOG_TRACE("↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓");
 }

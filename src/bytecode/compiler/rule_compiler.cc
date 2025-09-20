@@ -38,9 +38,6 @@ void RuleCompiler::compileRule(const Rule* rule, const Rule* default_action_rule
   const auto default_actions = default_action_rule ? &default_action_rule->actions() : nullptr;
   Compiler::ActionCompiler::initProgramActionInfo(rule->chainIndex(), default_actions,
                                                   &rule->actions(), program);
-
-  // Set current rule
-  program.emit({OpCode::MOV, {.g_reg_ = curr_rule_reg_}, {.cptr_ = rule}});
   auto& variables = rule->variables();
   for (const auto& var : variables) {
     // Set current variable
@@ -108,15 +105,12 @@ void RuleCompiler::compileRule(const Rule* rule, const Rule* default_action_rule
   std::optional<std::list<std::unique_ptr<Rule>>::const_iterator> chain_rule_iter =
       rule->chainRule(0);
   if (chain_rule_iter.has_value()) {
+    const Rule* chain_rule = (**chain_rule_iter).get();
     // Indicate the start of chain rule execution
-    program.emit({OpCode::CHAIN});
+    program.emit({OpCode::CHAIN, {.cptr_ = chain_rule}});
 
     // Compile chain rule
-    const Rule* chain_rule = (**chain_rule_iter).get();
     compileRule(chain_rule, default_action_rule, program);
-
-    // Restore current rule
-    program.emit({OpCode::MOV, {.g_reg_ = curr_rule_reg_}, {.cptr_ = rule}});
 
     // If the chained rule are matched means the rule is matched, otherwise the rule is not
     // matched
