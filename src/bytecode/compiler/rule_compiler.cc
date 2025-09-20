@@ -85,10 +85,16 @@ void RuleCompiler::compileRule(const Rule* rule, const Rule* default_action_rule
     // Compile actions
     if ((default_actions && !default_actions->empty()) || !rule->actions().empty()) {
       // Compile actions
-      Compiler::ActionCompiler::compile(rule->chainIndex(), op_src_reg, op_res_reg_, program);
+      if (program.rule()->isNeedPushMatched()) {
+        Compiler::ActionCompiler::compile(rule->chainIndex(), op_src_reg, op_res_reg_, program);
+      } else {
+        Compiler::ActionCompiler::compile(rule->chainIndex(), op_res_reg_, program);
+      }
     } else {
       // Push matched
-      program.emit({OpCode::PUSH_MATCHED, {.x_reg_ = op_src_reg}, {.x_reg_ = op_res_reg_}});
+      if (program.rule()->isNeedPushMatched()) {
+        program.emit({OpCode::PUSH_MATCHED, {.x_reg_ = op_src_reg}, {.x_reg_ = op_res_reg_}});
+      }
     }
   }
 

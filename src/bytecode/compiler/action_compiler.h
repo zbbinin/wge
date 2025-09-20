@@ -47,7 +47,9 @@ public:
   static void initProgramActionInfo(
       int chain_index, const std::vector<std::unique_ptr<Action::ActionBase>>* default_actions,
       const std::vector<std::unique_ptr<Action::ActionBase>>* actions, Program& program);
-  // For ACTION instruction
+  // For ACTION without push matched
+  static void compile(int chain_index, ExtendedRegister op_res_reg, Program& program);
+  // For ACTION_PUSH_MATCHED
   static void compile(int chain_index, ExtendedRegister op_src_reg, ExtendedRegister op_res_reg,
                       Program& program);
   // For UNC_ACTION

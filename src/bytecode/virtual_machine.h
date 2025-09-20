@@ -76,6 +76,7 @@ private:
   inline void execTransform(const Instruction& instruction);
   inline void execOperate(const Instruction& instruction);
   inline void execAction(const Instruction& instruction);
+  inline void execActionPushMatched(const Instruction& instruction);
   inline void execUncAction(const Instruction& instruction);
   inline void execPushMatched(const Instruction& instruction);
   inline void execExpandMacro(const Instruction& instruction);

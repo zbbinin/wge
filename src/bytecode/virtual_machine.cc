@@ -47,10 +47,22 @@ bool VirtualMachine::execute(const Program& program) {
   // clang-format on
 
   // Dispatch table for bytecode instructions. We use computed gotos for efficiency
-  static constexpr void* dispatch_table[] = {
-      &&MOV,        &&JMP,          &&JZ,           &&JNZ,     &&NOP,
-      &&DEBUG,      &&LOAD_VAR,     &&TRANSFORM,    &&OPERATE, &&ACTION,
-      &&UNC_ACTION, &&PUSH_MATCHED, &&EXPAND_MACRO, &&CHAIN,   TRAVEL_VARIABLES(LOAD_VAR_LABEL)};
+  static constexpr void* dispatch_table[] = {&&MOV,
+                                             &&JMP,
+                                             &&JZ,
+                                             &&JNZ,
+                                             &&NOP,
+                                             &&DEBUG,
+                                             &&LOAD_VAR,
+                                             &&TRANSFORM,
+                                             &&OPERATE,
+                                             &&ACTION,
+                                             &&ACTION_PUSH_MATCHED,
+                                             &&UNC_ACTION,
+                                             &&PUSH_MATCHED,
+                                             &&EXPAND_MACRO,
+                                             &&CHAIN,
+                                             TRAVEL_VARIABLES(LOAD_VAR_LABEL)};
 #undef LOAD_VAR_LABEL
 #define CASE(ins, proc, forward)                                                                   \
   ins:                                                                                             \
@@ -103,6 +115,7 @@ bool VirtualMachine::execute(const Program& program) {
   CASE(TRANSFORM, execTransform(*iter), ++iter);
   CASE(OPERATE, execOperate(*iter), ++iter);
   CASE(ACTION, execAction(*iter), ++iter);
+  CASE(ACTION_PUSH_MATCHED, execActionPushMatched(*iter), ++iter);
   CASE(UNC_ACTION, execUncAction(*iter), ++iter);
   CASE(PUSH_MATCHED, execPushMatched(*iter), ++iter);
   CASE(EXPAND_MACRO, execExpandMacro(*iter), ++iter);
@@ -685,6 +698,40 @@ template <class ActionType> void dispatchAction(const ActionType* action, Transa
 }
 
 void VirtualMachine::execAction(const Instruction& instruction) {
+  // Dispatch table for bytecode instructions. We use computed gotos for efficiency
+  static constexpr void* action_dispatch_table[] = {&&Ctl,    &&InitCol, &&SetEnv, &&SetRsc,
+                                                    &&SetSid, &&SetUid,  &&SetVar};
+#define CASE(action)                                                                               \
+  action:                                                                                          \
+  dispatchAction(reinterpret_cast<const Action::action*>(action_info.action_), transaction_);      \
+  continue;
+
+  auto& operate_results = extended_registers_[instruction.op1_.x_reg_];
+  const std::vector<Program::ActionInfo>& action_infos =
+      *reinterpret_cast<const std::vector<Program::ActionInfo>*>(instruction.op2_.cptr_);
+
+  size_t operate_results_size = operate_results.size();
+  for (size_t i = 0; i < operate_results_size; ++i) {
+    // Not matched
+    if (IS_INT_VARIANT(operate_results.get(i).variant_)) {
+      continue;
+    }
+
+    for (auto& action_info : action_infos) {
+      DISPATCH(action_dispatch_table[action_info.index_]);
+      CASE(Ctl);
+      CASE(InitCol);
+      CASE(SetEnv);
+      CASE(SetRsc);
+      CASE(SetSid);
+      CASE(SetUid);
+      CASE(SetVar);
+    }
+  }
+#undef CASE
+}
+
+inline void VirtualMachine::execActionPushMatched(const Instruction& instruction) {
   // Dispatch table for bytecode instructions. We use computed gotos for efficiency
   static constexpr void* action_dispatch_table[] = {&&Ctl,    &&InitCol, &&SetEnv, &&SetRsc,
                                                     &&SetSid, &&SetUid,  &&SetVar};
