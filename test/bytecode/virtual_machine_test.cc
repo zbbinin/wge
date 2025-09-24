@@ -167,32 +167,6 @@ TEST_F(VirtualMachineTest, execDebug) {
   std::remove("test_log.txt");
 }
 
-TEST_F(VirtualMachineTest, execLoadVar) {
-  Variable::Args args("", false, false, "");
-
-  // Mock the request processing to extract query parameters
-  t_->processUri("GET /?a=value1&b=value2&c=value3 HTTP/1.1");
-
-  // Create a dummy program with LOAD_VAR instruction
-  Program program;
-  Instruction instruction = {
-      OpCode::LOAD_VAR,
-      {.x_reg_ = ExtendedRegister::R8},
-      {.index_ = variable_type_info_map_.at(Variable::Args::main_name_.data()).index_},
-      {.cptr_ = &args}};
-  program.emit(instruction);
-
-  // Execute the program
-  vm_->execute(program);
-
-  // Check if the variable was loaded correctly
-  auto& dst = vm_->extendedRegisters()[ExtendedRegister::R8];
-  EXPECT_EQ(dst.size(), 3);
-  EXPECT_EQ(std::get<std::string_view>(dst.get(0).variant_), "value1");
-  EXPECT_EQ(std::get<std::string_view>(dst.get(1).variant_), "value2");
-  EXPECT_EQ(std::get<std::string_view>(dst.get(2).variant_), "value3");
-}
-
 TEST_F(VirtualMachineTest, execTransform) {
   Transformation::LowerCase lower_cast;
 
@@ -272,8 +246,6 @@ TEST_F(VirtualMachineTest, execAction) {
   Wge::Rule rule("", 0);
   std::unique_ptr<Wge::Variable::Args> var_args =
       std::make_unique<Wge::Variable::Args>("", false, false, "");
-  vm_->generalRegisters()[Compiler::RuleCompiler::curr_rule_reg_] =
-      reinterpret_cast<int64_t>(&rule);
   vm_->generalRegisters()[Compiler::RuleCompiler::curr_variable_reg_] =
       reinterpret_cast<int64_t>(&var_args);
 

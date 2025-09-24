@@ -60,16 +60,6 @@ std::string Instruction::toString() const {
            [](const Instruction& instruction) {
              return std::format("DEBUG {}", reinterpret_cast<const char*>(instruction.op1_.cptr_));
            }},
-          {OpCode::LOAD_VAR,
-           [](const Instruction& instruction) {
-             std::string var_name =
-                 reinterpret_cast<const Variable::VariableBase*>(instruction.op3_.cptr_)
-                     ->fullName()
-                     .tostring();
-             return std::format("LOAD_VAR {}, {}, {}({})",
-                                ExtendedRegister2String.at(instruction.op1_.x_reg_),
-                                instruction.op2_.index_, instruction.op3_.cptr_, var_name);
-           }},
           {OpCode::TRANSFORM,
            [](const Instruction& instruction) {
              std::string transform_name =

@@ -72,7 +72,6 @@ private:
                       const std::vector<Wge::Bytecode::Instruction>& instruction_array,
                       std::vector<Wge::Bytecode::Instruction>::const_iterator& iter);
   inline void execDebug(const Instruction& instruction);
-  inline void execLoadVar(const Instruction& instruction);
   inline void execTransform(const Instruction& instruction);
   inline void execOperate(const Instruction& instruction);
   inline void execAction(const Instruction& instruction);
