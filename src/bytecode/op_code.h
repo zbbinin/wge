@@ -117,7 +117,7 @@ enum class OpCode {
 
   // Used to push the matched variable without action
   // Syntax: PUSH_MATCHED <op_src_reg>, <op_res_reg>
-  // @param op1 [x_reg]: Source register(the input of the previous OPERATE)
+  // @param op1 [g_reg]: Source register(the input of the previous OPERATE)
   // @param op2 [x_reg]: Source register(the result of the previous OPERATE)
   // Example:
   // PUSH_MATCHED R8, R11

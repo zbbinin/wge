@@ -261,7 +261,7 @@ TEST_F(VirtualMachineTest, execActionPushMatched) {
   actions.emplace_back(
       std::make_unique<Action::SetVar>("foo", 0, 1, Action::SetVar::EvaluateType::Increase));
 
-  // Create a dummy program with ACTION instruction
+  // Create a dummy program with ACTION_PUSH_MATCHED instruction
   Program program;
   Compiler::ActionCompiler::initProgramActionInfo(-1, nullptr, &actions, program);
   Instruction instruction = {OpCode::ACTION_PUSH_MATCHED,
@@ -347,6 +347,65 @@ TEST_F(VirtualMachineTest, execUncAction) {
 
   // Check if the set_var was applied correctly
   EXPECT_EQ(std::get<int64_t>(static_cast<const Transaction&>(*t_).getVariable(0)), 3);
+}
+
+TEST_F(VirtualMachineTest, execPushMatched) {
+  // Create a dummy program with PUSH_MATCHED instruction
+  Program program;
+  Instruction instruction = {OpCode::PUSH_MATCHED,
+                             {.g_reg_ = Compiler::RuleCompiler::op_src_reg_},
+                             {.x_reg_ = Compiler::RuleCompiler::op_res_reg_}};
+  program.emit(instruction);
+
+  // Mock the current rule
+  Wge::Rule rule("", 0);
+  t_->setCurrentEvaluateRule(&rule);
+
+  // Mock the current variable
+  std::unique_ptr<Wge::Variable::Args> var_args =
+      std::make_unique<Wge::Variable::Args>("", false, false, "");
+  vm_->generalRegisters()[Compiler::RuleCompiler::curr_variable_reg_] =
+      reinterpret_cast<int64_t>(&var_args);
+
+  // Mock the original value(results of LOAD_VAR)
+  auto& original_value = vm_->extendedRegisters()[Compiler::RuleCompiler::load_var_reg_];
+  original_value.append(std::string("HELLOWORLD"));
+  original_value.append(std::string("--HELLOWORLD--"));
+  original_value.append(std::string("--HELLO--"));
+
+  // Mock the transformed value(the input of OPERATE)
+  auto& transform_value = vm_->extendedRegisters()[ExtendedRegister::R9];
+  transform_value.append(std::string("helloworld"));
+  transform_value.append(std::string("--helloworld--"));
+  transform_value.append(std::string("--hello--"));
+  vm_->generalRegisters()[Compiler::RuleCompiler::op_src_reg_] =
+      static_cast<GeneralRegisterValue>(ExtendedRegister::R9);
+
+  // Mock the results of OPERATE(capture string)
+  auto& src = vm_->extendedRegisters()[Compiler::RuleCompiler::op_res_reg_];
+  src.clear();
+  src.append(std::string("hello"));
+  src.append(std::string("hello"));
+  src.append(std::string("hello"));
+
+  vm_->execute(program);
+
+  // Check if the MATCHED_VARS were updated correctly
+  auto& matched_vars = t_->getMatchedVariables(-1);
+  EXPECT_EQ(matched_vars.size(), 3);
+  EXPECT_EQ(matched_vars[0].variable_, var_args.get());
+  EXPECT_EQ(matched_vars[1].variable_, var_args.get());
+  EXPECT_EQ(matched_vars[2].variable_, var_args.get());
+  EXPECT_EQ(std::get<std::string_view>(matched_vars[0].original_value_.variant_), "HELLOWORLD");
+  EXPECT_EQ(std::get<std::string_view>(matched_vars[1].original_value_.variant_), "--HELLOWORLD--");
+  EXPECT_EQ(std::get<std::string_view>(matched_vars[2].original_value_.variant_), "--HELLO--");
+  EXPECT_EQ(std::get<std::string_view>(matched_vars[0].transformed_value_.variant_), "helloworld");
+  EXPECT_EQ(std::get<std::string_view>(matched_vars[1].transformed_value_.variant_),
+            "--helloworld--");
+  EXPECT_EQ(std::get<std::string_view>(matched_vars[2].transformed_value_.variant_), "--hello--");
+  EXPECT_EQ(std::get<std::string_view>(matched_vars[0].captured_value_.variant_), "hello");
+  EXPECT_EQ(std::get<std::string_view>(matched_vars[1].captured_value_.variant_), "hello");
+  EXPECT_EQ(std::get<std::string_view>(matched_vars[2].captured_value_.variant_), "hello");
 }
 
 } // namespace Bytecode
