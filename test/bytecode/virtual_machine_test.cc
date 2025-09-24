@@ -242,8 +242,42 @@ TEST_F(VirtualMachineTest, execAction) {
   // Mock the transaction variables
   tx_variables_->resize(1);
 
-  // Mock the current rule and current variable
+  // Mock the results of OPERATE(capture string)
+  auto& src = vm_->extendedRegisters()[Compiler::RuleCompiler::op_res_reg_];
+  src.clear();
+  src.append(std::string("hello"));
+  src.append(std::string("hello"));
+  src.append(std::string("hello"));
+
+  vm_->execute(program);
+
+  // Check if the set_var was applied correctly
+  EXPECT_EQ(std::get<int64_t>(static_cast<const Transaction&>(*t_).getVariable(0)), 3);
+}
+
+TEST_F(VirtualMachineTest, execActionPushMatched) {
+  // Create a SetVar instance
+  std::vector<std::unique_ptr<Action::ActionBase>> actions;
+  actions.emplace_back(
+      std::make_unique<Action::SetVar>("foo", 0, 1, Action::SetVar::EvaluateType::Increase));
+
+  // Create a dummy program with ACTION instruction
+  Program program;
+  Compiler::ActionCompiler::initProgramActionInfo(-1, nullptr, &actions, program);
+  Instruction instruction = {OpCode::ACTION_PUSH_MATCHED,
+                             {.g_reg_ = Compiler::RuleCompiler::op_src_reg_},
+                             {.x_reg_ = Compiler::RuleCompiler::op_res_reg_},
+                             {.cptr_ = program.actionInfos(-1)}};
+  program.emit(instruction);
+
+  // Mock the transaction variables
+  tx_variables_->resize(1);
+
+  // Mock the current rule
   Wge::Rule rule("", 0);
+  t_->setCurrentEvaluateRule(&rule);
+
+  // Mock the current variable
   std::unique_ptr<Wge::Variable::Args> var_args =
       std::make_unique<Wge::Variable::Args>("", false, false, "");
   vm_->generalRegisters()[Compiler::RuleCompiler::curr_variable_reg_] =

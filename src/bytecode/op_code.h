@@ -99,9 +99,9 @@ enum class OpCode {
 
   // Perform an action and push the matched variable
   // Syntax: ACTION <op_src_reg>, <op_res_reg>, <action_infos_pointer>
-  // @param op1 [x_reg]: Source register(the input of the previous OPERATE)
+  // @param op1 [g_reg]: Source register(the input of the previous OPERATE)
   // @param op2 [x_reg]: Source register(the result of the previous OPERATE)
-  // @param op2 [cptr]: An array of constant pointers specifying the action infos
+  // @param op3 [cptr]: An array of constant pointers specifying the action infos
   // (Program::ActionInfo)
   // Example:
   // ACTION R8, R11, 123456
