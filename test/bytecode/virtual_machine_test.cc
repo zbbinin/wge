@@ -408,5 +408,20 @@ TEST_F(VirtualMachineTest, execPushMatched) {
   EXPECT_EQ(std::get<std::string_view>(matched_vars[2].captured_value_.variant_), "hello");
 }
 
+TEST_F(VirtualMachineTest, execChain) {
+  // Create a dummy program with CHAIN instruction
+  Program program;
+  const Rule* rule = reinterpret_cast<const Rule*>(0x123456);
+  Instruction instruction = {OpCode::CHAIN, {.cptr_ = rule}};
+  program.emit(instruction);
+
+  vm_->generalRegisters()[GeneralRegister::RFLAGS] = 1;
+
+  vm_->execute(program);
+
+  EXPECT_EQ(vm_->generalRegisters()[GeneralRegister::RFLAGS], 0);
+  EXPECT_EQ(t_->getCurrentEvaluateRule(), rule);
+}
+
 } // namespace Bytecode
 } // namespace Wge
