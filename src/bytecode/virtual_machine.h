@@ -42,7 +42,7 @@ public:
   /**
    * Execute a bytecode program
    * @param program The compiled bytecode program
-   * @return true if associated rule matched, false otherwise
+   * @return true if the request is safe, false otherwise that means need to deny the request.
    */
   bool execute(const Program& program);
 
@@ -72,6 +72,10 @@ private:
                       const std::vector<Wge::Bytecode::Instruction>& instruction_array,
                       std::vector<Wge::Bytecode::Instruction>::const_iterator& iter);
   inline void execDebug(const Instruction& instruction);
+  inline void execRuleStart(const Instruction& instruction);
+  inline void execJmpIfRemoved(const Instruction& instruction,
+                               const std::vector<Wge::Bytecode::Instruction>& instruction_array,
+                               std::vector<Wge::Bytecode::Instruction>::const_iterator& iter);
   inline void execTransform(const Instruction& instruction);
   inline void execOperate(const Instruction& instruction);
   inline void execAction(const Instruction& instruction);
@@ -82,6 +86,10 @@ private:
   inline void execMsgExpandMacro(const Instruction& instruction);
   inline void execLogDataExpandMacro(const Instruction& instruction);
   inline void execChain(const Instruction& instruction);
+  inline void execLogCallback(const Instruction& instruction);
+  inline void execExitIfDisruptive(const Instruction& instruction,
+                                   const std::vector<Wge::Bytecode::Instruction>& instruction_array,
+                                   std::vector<Wge::Bytecode::Instruction>::const_iterator& iter);
 
   // Load variable handlers
 private:
@@ -100,6 +108,7 @@ private:
   ExtendedRegisterArray extended_registers_{};
 
   Transaction& transaction_;
+  bool disruptive_;
 };
 } // namespace Bytecode
 } // namespace Wge

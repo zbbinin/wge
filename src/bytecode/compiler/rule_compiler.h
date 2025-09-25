@@ -24,6 +24,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "../../config.h"
 #include "../program.h"
 
 namespace Wge {
@@ -50,11 +51,24 @@ class RuleCompiler {
 public:
   /**
    * Compile rule into a program
-   * @param rules The rules to compile
+   * @param rule The rule to compile
    * @param default_action_rule The default action rule for the program
+   * @param rule_engine_option The rule engine option
    * @return Compiled bytecode program
    */
-  static std::unique_ptr<Program> compile(const Rule* rule, const Rule* default_action_rule);
+  static std::unique_ptr<Program> compile(const Rule* rule, const Rule* default_action_rule,
+                                          EngineConfig::Option rule_engine_option);
+
+  /**
+   * Compile a list of rules into a program
+   * @param rules The list of rules to compile
+   * @param default_action_rule The default action rule for the program
+   * @param rule_engine_option The rule engine option
+   * @return Compiled bytecode program
+   */
+  static std::unique_ptr<Program> compile(const std::vector<const Rule*>& rules,
+                                          const Rule* default_action_rule,
+                                          EngineConfig::Option rule_engine_option);
 
 public:
   // The current variable register
@@ -71,7 +85,8 @@ public:
   static constexpr ExtendedRegister transform_tmp_reg2_{ExtendedRegister::R10};
 
 private:
-  static void compileRule(const Rule* rule, const Rule* default_action, Program& program);
+  static void compileRule(const Rule* rule, const Rule* default_action,
+                          EngineConfig::Option rule_engine_option, Program& program);
 };
 
 } // namespace Compiler

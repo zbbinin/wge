@@ -13,7 +13,7 @@ void Program::relocate(size_t index, GeneralRegisterValue new_address) {
   if (index < instructions_.size()) {
     auto& instruction = instructions_[index];
     if (instruction.op_code_ != OpCode::JMP && instruction.op_code_ != OpCode::JZ &&
-        instruction.op_code_ != OpCode::JNZ) {
+        instruction.op_code_ != OpCode::JNZ && instruction.op_code_ != OpCode::JMP_IF_REMOVED) {
       WGE_LOG_ERROR(
           "relocate jump address error: instruction at index {} is not a jump instruction", index);
       return;

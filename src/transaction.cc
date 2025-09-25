@@ -488,6 +488,11 @@ void Transaction::removeRule(
   }
 }
 
+bool Transaction::isRuleRemoved(const Rule* rule) const {
+  auto& rule_remove_flag = rule_remove_flags_[rule->phase() - 1];
+  return !rule_remove_flag.empty() && rule_remove_flag[rule->index()];
+}
+
 void Transaction::removeRuleTarget(
     const std::array<std::unordered_set<const Rule*>, PHASE_TOTAL>& rules,
     const std::vector<std::shared_ptr<Variable::VariableBase>>& variables) {
@@ -581,80 +586,67 @@ template <bool enable_bytecode> bool Transaction::process(int phase) {
   if (allow_phases_.test(phase))
     [[unlikely]] { return true; }
 
-  // Get the rules in the given phase
-  auto& rules = engine_.rules(phase);
-  const Wge::Rule* default_action = engine_.defaultActions(phase);
-
-  // Get the bytecode programs
-  const std::vector<std::unique_ptr<Wge::Bytecode::Program>>* programs = nullptr;
   if constexpr (enable_bytecode) {
-    programs = &engine_.programs(phase);
-    assert(rules.size() == programs->size());
-  }
+    // Get the bytecode programs
+    const std::unique_ptr<Wge::Bytecode::Program>& program = engine_.program(phase);
+    assert(program);
+    return vm_->execute(*program);
+  } else {
+    // Get the rules in the given phase
+    auto& rules = engine_.rules(phase);
+    const Wge::Rule* default_action = engine_.defaultActions(phase);
 
-  // Traverse the rules and evaluate them
-  auto begin = rules.begin();
-  auto& rule_remove_flag = rule_remove_flags_[phase - 1];
-  for (auto iter = begin; iter != rules.end();) {
-    current_rule_ = *iter;
-
-    // Skip the rules that have been removed
-    assert(current_rule_->index() != -1);
-    if (!rule_remove_flag.empty() && rule_remove_flag[current_rule_->index()])
-      [[unlikely]] {
-        ++iter;
-        continue;
-      }
-
-    // Clean the current captured and matched, there are:
-    // TX.[0-99], MATCHED_VAR_NAME, MATCHED_VAR, MATCHED_VARS_NAMES, MATCHED_VARS
-    captured_.clear();
-    matched_variables_.clear();
-
-    bool is_matched = false;
-    if constexpr (enable_bytecode) {
-      // Execute the bytecode program
-      is_matched = vm_->execute(*(programs->at(std::distance(begin, iter))));
-      // The chain rule may change the current rule, so we need to update it here
+    // Traverse the rules and evaluate them
+    auto begin = rules.begin();
+    auto& rule_remove_flag = rule_remove_flags_[phase - 1];
+    for (auto iter = begin; iter != rules.end();) {
       current_rule_ = *iter;
-    } else {
+
+      // Skip the rules that have been removed
+      assert(current_rule_->index() != -1);
+      if (!rule_remove_flag.empty() && rule_remove_flag[current_rule_->index()])
+        [[unlikely]] {
+          ++iter;
+          continue;
+        }
+
+      // Clean the current captured and matched, there are:
+      // TX.[0-99], MATCHED_VAR_NAME, MATCHED_VAR, MATCHED_VARS_NAMES, MATCHED_VARS
+      captured_.clear();
+      matched_variables_.clear();
+
       // Evaluate the rule
-      is_matched = current_rule_->evaluate(*this);
-    }
+      bool is_matched = current_rule_->evaluate(*this);
 
-    if (!is_matched ||
-        current_rule_->getOperator() == nullptr // It's a rule that defined by SecAction
-    )
-      [[likely]] {
-        ++iter;
-        continue;
-      }
+      if (!is_matched ||
+          current_rule_->getOperator() == nullptr // It's a rule that defined by SecAction
+      )
+        [[likely]] {
+          ++iter;
+          continue;
+        }
 
-    // Log the matched rule
-    if (log_callback_)
-      [[likely]] {
-        if (default_action) {
-          if (current_rule_->log().value_or(default_action->log().value_or(true))) {
-            log_callback_(*current_rule_);
-          }
-        } else {
-          if (current_rule_->log().value_or(true)) {
-            log_callback_(*current_rule_);
+      // Log the matched rule
+      if (log_callback_)
+        [[likely]] {
+          if (default_action) {
+            if (current_rule_->log().value_or(default_action->log().value_or(true))) {
+              log_callback_(*current_rule_);
+            }
+          } else {
+            if (current_rule_->log().value_or(true)) {
+              log_callback_(*current_rule_);
+            }
           }
         }
-      }
 
-    // Do the disruptive action
-    if (engine_.config().rule_engine_option_ != EngineConfig::Option::DetectionOnly) {
-      std::optional<bool> disruptive = doDisruptive(*current_rule_, default_action);
-      if (disruptive.has_value()) {
-        if (!disruptive.value()) {
-          // Modify the response status code
-          response_line_info_.status_code_ = "403";
+      // Do the disruptive action
+      if (engine_.config().rule_engine_option_ != EngineConfig::Option::DetectionOnly) {
+        std::optional<bool> disruptive = doDisruptive(*current_rule_);
+        if (disruptive.has_value()) {
+          return !disruptive.value();
         }
-        return disruptive.value();
       }
-    }
 
     // Skip the rules if current rule that has a skip action or skipAfter action is matched
     int skip = current_rule_->skip() + 1;
@@ -678,11 +670,12 @@ template <bool enable_bytecode> bool Transaction::process(int phase) {
           }
       }
 
-    // If skip and skipAfter are not set, then continue to the next rule
-    ++iter;
-  }
+      // If skip and skipAfter are not set, then continue to the next rule
+      ++iter;
+    }
 
-  return true;
+    return true;
+  }
 }
 
 std::optional<size_t> Transaction::getLocalVariableIndex(const std::string& key,
@@ -737,7 +730,9 @@ void Transaction::initCookies() {
   }
 }
 
-std::optional<bool> Transaction::doDisruptive(const Rule& rule, const Rule* default_action) {
+std::optional<bool> Transaction::doDisruptive(const Rule& rule) {
+  std::optional<bool> disruptive_result;
+  const Wge::Rule* default_action = engine_.defaultActions(rule.phase());
   switch (rule.disruptive()) {
   case Rule::Disruptive::ALLOW: {
     // If used on its own, allow will affect the entire transaction, stopping processing of the
@@ -747,20 +742,20 @@ std::optional<bool> Transaction::doDisruptive(const Rule& rule, const Rule* defa
     allow_phases_.set(2);
     allow_phases_.set(3);
     allow_phases_.set(4);
-    return true;
+    disruptive_result = false;
   } break;
   case Rule::Disruptive::ALLOW_PHASE: {
     // If used with parameter "phase", allow will cause the engine to stop processing the current
     // phase. Other phases will continue as normal.
     allow_phases_.set(rule.phase());
-    return true;
+    disruptive_result = false;
   } break;
   case Rule::Disruptive::ALLOW_REQUEST: {
     // If used with parameter "request", allow will cause the engine to stop processing the current
     // phase. The next phase to be processed will be phase RESPONSE_HEADERS.
     allow_phases_.set(1);
     allow_phases_.set(2);
-    return true;
+    disruptive_result = false;
   } break;
     [[likely]] case Rule::Disruptive::BLOCK : {
       // Performs the disruptive action defined by the previous SecDefaultAction.
@@ -775,20 +770,20 @@ std::optional<bool> Transaction::doDisruptive(const Rule& rule, const Rule* defa
         allow_phases_.set(2);
         allow_phases_.set(3);
         allow_phases_.set(4);
-        return true;
+        disruptive_result = false;
       } break;
       case Rule::Disruptive::ALLOW_PHASE: {
         // If used with parameter "phase", allow will cause the engine to stop processing the
         // current phase. Other phases will continue as normal.
         allow_phases_.set(rule.phase());
-        return true;
+        disruptive_result = false;
       } break;
       case Rule::Disruptive::ALLOW_REQUEST: {
         // If used with parameter "request", allow will cause the engine to stop processing the
         // current phase. The next phase to be processed will be phase RESPONSE_HEADERS.
         allow_phases_.set(1);
         allow_phases_.set(2);
-        return true;
+        disruptive_result = false;
       } break;
       case Rule::Disruptive::BLOCK: {
         // Performs the disruptive action defined by the previous SecDefaultAction.
@@ -797,7 +792,7 @@ std::optional<bool> Transaction::doDisruptive(const Rule& rule, const Rule* defa
       case Rule::Disruptive::DENY:
       case Rule::Disruptive::DROP: {
         // Stops rule processing and intercepts transaction.
-        return false;
+        disruptive_result = true;
       } break;
       case Rule::Disruptive::PASS: {
         // Continues processing with the next rule in spite of a successful match.
@@ -818,7 +813,7 @@ std::optional<bool> Transaction::doDisruptive(const Rule& rule, const Rule* defa
   case Rule::Disruptive::DENY:
   case Rule::Disruptive::DROP: {
     // Stops rule processing and intercepts transaction.
-    return false;
+    disruptive_result = true;
   } break;
   case Rule::Disruptive::PASS: {
     // Continues processing with the next rule in spite of a successful match.
@@ -835,6 +830,13 @@ std::optional<bool> Transaction::doDisruptive(const Rule& rule, const Rule* defa
     break;
   }
 
-  return std::nullopt;
+  // Modify the response status code
+  if (disruptive_result.has_value()) {
+    if (disruptive_result.value()) {
+      response_line_info_.status_code_ = "403";
+    }
+  }
+
+  return disruptive_result;
 }
 } // namespace Wge

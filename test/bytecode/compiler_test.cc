@@ -163,7 +163,8 @@ TEST_F(CompilerTest, compileVariable) {
   rule.appendVariable(std::make_unique<Variable::WebAppId>("", false, false, ""));
   rule.appendVariable(std::make_unique<Variable::Xml>("", false, false, ""));
 
-  auto program = Wge::Bytecode::Compiler::RuleCompiler::compile(&rule, nullptr);
+  auto program =
+      Wge::Bytecode::Compiler::RuleCompiler::compile(&rule, nullptr, EngineConfig::Option::On);
   auto& instructions = program->instructions();
 
   size_t load_var_count = 0;
@@ -231,7 +232,8 @@ TEST_F(CompilerTest, compileTransform) {
   transforms.emplace_back(std::make_unique<Transformation::UrlEncode>());
   transforms.emplace_back(std::make_unique<Transformation::Utf8ToUnicode>());
 
-  auto program = Wge::Bytecode::Compiler::RuleCompiler::compile(&rule, &default_action);
+  auto program = Wge::Bytecode::Compiler::RuleCompiler::compile(&rule, &default_action,
+                                                                EngineConfig::Option::On);
 
   size_t count = 0;
   for (auto& instruction : program->instructions()) {
@@ -305,7 +307,8 @@ TEST_F(CompilerTest, compileOperator) {
 
   std::vector<std::unique_ptr<Program>> programs;
   for (auto& rule : rules) {
-    programs.emplace_back(Wge::Bytecode::Compiler::RuleCompiler::compile(rule.get(), nullptr));
+    programs.emplace_back(Wge::Bytecode::Compiler::RuleCompiler::compile(rule.get(), nullptr,
+                                                                         EngineConfig::Option::On));
   }
 
   size_t count = 0;
@@ -348,7 +351,8 @@ TEST_F(CompilerTest, compileAction) {
   actions.emplace_back(
       std::make_unique<Action::SetVar>("", 0, 0, Action::SetVar::EvaluateType::CreateAndInit));
 
-  auto program = Wge::Bytecode::Compiler::RuleCompiler::compile(&rule, &default_action);
+  auto program = Wge::Bytecode::Compiler::RuleCompiler::compile(&rule, &default_action,
+                                                                EngineConfig::Option::On);
 
   size_t count = 0;
   const std::vector<Bytecode::Program::ActionInfo>* action_infos = nullptr;
@@ -387,7 +391,8 @@ TEST_F(CompilerTest, compileUncAction) {
   actions.emplace_back(
       std::make_unique<Action::SetVar>("", 0, 0, Action::SetVar::EvaluateType::CreateAndInit));
 
-  auto program = Wge::Bytecode::Compiler::RuleCompiler::compile(&rule, &default_action);
+  auto program = Wge::Bytecode::Compiler::RuleCompiler::compile(&rule, &default_action,
+                                                                EngineConfig::Option::On);
 
   size_t count = 0;
   const std::vector<Bytecode::Program::ActionInfo>* action_infos = nullptr;
@@ -419,7 +424,8 @@ TEST_F(CompilerTest, compileChainRule) {
     parent_rule = chain_rule;
   }
 
-  auto program = Wge::Bytecode::Compiler::RuleCompiler::compile(&rule, nullptr);
+  auto program =
+      Wge::Bytecode::Compiler::RuleCompiler::compile(&rule, nullptr, EngineConfig::Option::On);
 
   size_t operator_count = 0;
   size_t jz_count = 0;
@@ -442,7 +448,8 @@ TEST_F(CompilerTest, compileExpandMacro) {
   rule.logData(std::make_unique<Macro::VariableMacro>(
       std::string(), std::make_shared<Variable::Args>("", false, false, "")));
 
-  auto program = Wge::Bytecode::Compiler::RuleCompiler::compile(&rule, nullptr);
+  auto program =
+      Wge::Bytecode::Compiler::RuleCompiler::compile(&rule, nullptr, EngineConfig::Option::On);
 
   size_t expand_macro_count = 0;
   for (auto& instruction : program->instructions()) {

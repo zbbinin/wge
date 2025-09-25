@@ -79,7 +79,7 @@ const std::vector<const Rule*>& Engine::rules(int phase) const {
   return rules_[phase - 1];
 }
 
-const std::vector<std::unique_ptr<Bytecode::Program>>& Engine::programs(int phase) const {
+const std::unique_ptr<Bytecode::Program>& Engine::program(int phase) const {
   assert(phase >= 1 && phase <= PHASE_TOTAL);
   return programs_[phase - 1];
 }
@@ -238,10 +238,9 @@ void Engine::compileRules() {
     }
     int phase = phase_rules[0]->phase();
     const Rule* default_action = default_actions_[phase - 1];
-    for (const Rule* rule : phase_rules) {
-      auto program = Bytecode::Compiler::RuleCompiler::compile(rule, default_action);
-      programs_[phase - 1].emplace_back(std::move(program));
-    }
+
+    programs_[phase - 1] = Bytecode::Compiler::RuleCompiler::compile(phase_rules, default_action,
+                                                                     config().rule_engine_option_);
   }
 }
 

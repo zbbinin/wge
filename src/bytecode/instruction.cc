@@ -60,6 +60,14 @@ std::string Instruction::toString() const {
            [](const Instruction& instruction) {
              return std::format("DEBUG {}", reinterpret_cast<const char*>(instruction.op1_.cptr_));
            }},
+          {OpCode::RULE_START,
+           [](const Instruction& instruction) {
+             return std::format("RULE_START {}", instruction.op1_.cptr_);
+           }},
+          {OpCode::JMP_IF_REMOVED,
+           [](const Instruction& instruction) {
+             return std::format("JMP_IF_REMOVED {}", instruction.op1_.address_);
+           }},
           {OpCode::TRANSFORM,
            [](const Instruction& instruction) {
              std::string transform_name =
@@ -152,6 +160,10 @@ std::string Instruction::toString() const {
            [](const Instruction& instruction) {
              return std::format("CHAIN {}", instruction.op1_.cptr_);
            }},
+          {OpCode::LOG_CALLBACK,
+           [](const Instruction& instruction) { return std::format("LOG_CALLBACK"); }},
+          {OpCode::EXIT_IF_DISRUPTIVE,
+           [](const Instruction& instruction) { return std::format("EXIT_IF_DISRUPTIVE"); }},
 #define TO_STRING(var_type)                                                                        \
   {OpCode::LOAD_##var_type##_CC,                                                                   \
    [](const Instruction& instruction) {                                                            \

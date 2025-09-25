@@ -95,11 +95,11 @@ public:
   const std::vector<const Rule*>& rules(int phase) const;
 
   /**
-   * Get bytecode programs
+   * Get bytecode program
    * @param phase specify the phase of the programs, the valid range is 1-5.
-   * @return vector of bytecode programs
+   * @return bytecode program
    */
-  const std::vector<std::unique_ptr<Bytecode::Program>>& programs(int phase) const;
+  const std::unique_ptr<Bytecode::Program>& program(int phase) const;
 
 public:
   /**
@@ -198,7 +198,7 @@ private:
   std::array<std::vector<const Rule*>, PHASE_TOTAL> rules_;
 
   // Bytecode programs for each rule
-  std::array<std::vector<std::unique_ptr<Bytecode::Program>>, PHASE_TOTAL> programs_;
+  std::array<std::unique_ptr<Bytecode::Program>, PHASE_TOTAL> programs_;
 
   std::unordered_map<std::string, Marker&> markers_;
   mutable PersistentStorage::Storage storage_;

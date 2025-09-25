@@ -67,14 +67,25 @@ enum class OpCode {
   // Example: DEBUG 123456
   DEBUG,
 
+  // Indicate the start of top level rule execution
+  // Syntax: RULE_START <rule_pointer>
+  // @param op1 [cptr]: Constant pointer to the current rule instance
+  // Example: RULE_START 123456
+  RULE_START,
+
+  // Jump to next RULE_START instruction if current rule was removed by ctl action
+  // Syntax: JMP_IF_REMOVED <target_addr>
+  // @param op1 [address]: Target jump address that pointer next RULE_START instruction
+  // Example: JMP_IF_REMOVED 123456
+  JMP_IF_REMOVED,
+
   // Transform variable value.
   // Syntax: TRANSFORM <dst_reg>, <src_reg>, <transform_index>, <transform_instance_pointer>
   // @param op1 [x_reg]: Destination register
   // @param op2 [x_reg]: Source register
   // @param op3 [index]: Transformation index
   // @param op4 [cptr]: Constant pointer to transformation instance
-  // Example:
-  // TRANSFORM R9, R8, 1, 123456
+  // Example: TRANSFORM R9, R8, 1, 123456
   TRANSFORM,
 
   // Match variable value with operator.
@@ -90,11 +101,11 @@ enum class OpCode {
 
   // Perform an action without pushing the matched variable
   // Syntax: ACTION <op_res_reg>, <action_infos_pointer>
-  // @param op1 [x_reg]: Source register(the result of the previous OPERATE)
+  // @param op1 [g_reg]: Source register(the result of the previous OPERATE)
   // @param op2 [cptr]: An array of constant pointers specifying the action infos
   // (Program::ActionInfo)
   // Example:
-  // ACTION 123456
+  // ACTION R11, 123456
   ACTION,
 
   // Perform an action and push the matched variable
@@ -140,6 +151,16 @@ enum class OpCode {
   // Example:
   // CHAIN 123456
   CHAIN,
+
+  // Log the current rule is matched
+  // Syntax: LOG_CALLBACK
+  // Example: LOG_CALLBACK
+  LOG_CALLBACK,
+
+  // Exit the program if the current rule is disruptive
+  // Syntax: EXIT_IF_DISRUPTIVE
+  // Example: EXIT_IF_DISRUPTIVE
+  EXIT_IF_DISRUPTIVE,
 
 // ==================== Variable Loading Optimized Instructions ====================
 // These instructions provide compile-time specialized versions of LOAD_VAR

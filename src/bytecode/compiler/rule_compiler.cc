@@ -12,15 +12,25 @@
 namespace Wge {
 namespace Bytecode {
 namespace Compiler {
-std::unique_ptr<Program> RuleCompiler::compile(const Rule* rule, const Rule* default_action) {
-  auto program = std::make_unique<Program>(rule);
-  compileRule(rule, default_action, *program);
+std::unique_ptr<Program> RuleCompiler::compile(const Rule* rule, const Rule* default_action_rule,
+                                               EngineConfig::Option rule_engine_option) {
+  auto program = std::make_unique<Program>();
+  compileRule(rule, default_action_rule, rule_engine_option, *program);
+  return program;
+}
+
+std::unique_ptr<Program> RuleCompiler::compile(const std::vector<const Rule*>& rules,
+                                               const Rule* default_action_rule,
+                                               EngineConfig::Option rule_engine_option) {
+  auto program = std::make_unique<Program>();
+  for (const Rule* rule : rules) {
+    compileRule(rule, default_action_rule, rule_engine_option, *program);
+  }
   return program;
 }
 
 void RuleCompiler::compileRule(const Rule* rule, const Rule* default_action_rule,
-                               Program& program) {
-
+                               EngineConfig::Option rule_engine_option, Program& program) {
   auto& op = rule->getOperator();
   if (op == nullptr) {
     // Initialize action infos
@@ -32,6 +42,16 @@ void RuleCompiler::compileRule(const Rule* rule, const Rule* default_action_rule
       Compiler::ActionCompiler::compile(rule->chainIndex(), program);
     }
     return;
+  }
+
+  constexpr int64_t RELOCATION = -1;
+
+  // Compile rule start
+  std::optional<size_t> jmp_if_remove_index;
+  if (rule->chainIndex() == -1) {
+    program.emit({OpCode::RULE_START, {.cptr_ = rule}});
+    jmp_if_remove_index = program.instructions().size();
+    program.emit({OpCode::JMP_IF_REMOVED, {.address_ = RELOCATION}});
   }
 
   // Initialize action infos
@@ -82,23 +102,22 @@ void RuleCompiler::compileRule(const Rule* rule, const Rule* default_action_rule
     // Compile actions
     if ((default_actions && !default_actions->empty()) || !rule->actions().empty()) {
       // Compile actions
-      if (program.rule()->isNeedPushMatched()) {
+      if (rule->isNeedPushMatched()) {
         Compiler::ActionCompiler::compile(rule->chainIndex(), op_src_reg, op_res_reg_, program);
       } else {
         Compiler::ActionCompiler::compile(rule->chainIndex(), op_res_reg_, program);
       }
     } else {
       // Push matched
-      if (program.rule()->isNeedPushMatched()) {
+      if (rule->isNeedPushMatched()) {
         program.emit({OpCode::PUSH_MATCHED, {.x_reg_ = op_src_reg}, {.x_reg_ = op_res_reg_}});
       }
     }
   }
 
   // Skip the instuctions of chain rule if the OPERATE was not matched
-  constexpr int64_t relocation = -1;
   const size_t jz_index_for_rule_matched = program.instructions().size();
-  program.emit({OpCode::JZ, {.address_ = relocation}});
+  program.emit({OpCode::JZ, {.address_ = RELOCATION}});
 
   // Compile chain rule
   std::optional<size_t> jz_index_for_chain_matched;
@@ -110,22 +129,41 @@ void RuleCompiler::compileRule(const Rule* rule, const Rule* default_action_rule
     program.emit({OpCode::CHAIN, {.cptr_ = chain_rule}});
 
     // Compile chain rule
-    compileRule(chain_rule, default_action_rule, program);
+    compileRule(chain_rule, default_action_rule, rule_engine_option, program);
 
     // If the chained rule are matched means the rule is matched, otherwise the rule is not
     // matched
     jz_index_for_chain_matched = program.instructions().size();
-    program.emit({OpCode::JZ, {.address_ = relocation}});
+    program.emit({OpCode::JZ, {.address_ = RELOCATION}});
   }
 
   // Compile expand macro
   Compiler::MacroCompiler::compile(rule->msgMacro().get(), rule->logDataMacro().get(), program);
+
+  // Compile log callback
+  if (default_action_rule) {
+    if (rule->log().value_or(default_action_rule->log().value_or(true))) {
+      program.emit({OpCode::LOG_CALLBACK});
+    }
+  } else {
+    if (rule->log().value_or(true)) {
+      program.emit({OpCode::LOG_CALLBACK});
+    }
+  }
+
+  // Compile exit if disruptive
+  if (rule_engine_option != EngineConfig::Option::DetectionOnly) {
+    program.emit({OpCode::EXIT_IF_DISRUPTIVE});
+  }
 
   // Relocate jump address
   const size_t curr_index = program.instructions().size();
   program.relocate(jz_index_for_rule_matched, curr_index);
   if (jz_index_for_chain_matched.has_value()) {
     program.relocate(jz_index_for_chain_matched.value(), curr_index);
+  }
+  if (jmp_if_remove_index.has_value()) {
+    program.relocate(jmp_if_remove_index.value(), curr_index);
   }
 }
 

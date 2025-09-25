@@ -20,6 +20,8 @@
  */
 #include "virtual_machine.h"
 
+#include <assert.h>
+
 #include "compiler/rule_compiler.h"
 #include "program.h"
 
@@ -47,10 +49,25 @@ bool VirtualMachine::execute(const Program& program) {
   // clang-format on
 
   // Dispatch table for bytecode instructions. We use computed gotos for efficiency
-  static constexpr void* dispatch_table[] = {
-      &&MOV,        &&JMP,          &&JZ,           &&JNZ,    &&NOP,
-      &&DEBUG,      &&TRANSFORM,    &&OPERATE,      &&ACTION, &&ACTION_PUSH_MATCHED,
-      &&UNC_ACTION, &&PUSH_MATCHED, &&EXPAND_MACRO, &&CHAIN,  TRAVEL_VARIABLES(LOAD_VAR_LABEL)};
+  static constexpr void* dispatch_table[] = {&&MOV,
+                                             &&JMP,
+                                             &&JZ,
+                                             &&JNZ,
+                                             &&NOP,
+                                             &&DEBUG,
+                                             &&RULE_START,
+                                             &&JMP_IF_REMOVED,
+                                             &&TRANSFORM,
+                                             &&OPERATE,
+                                             &&ACTION,
+                                             &&ACTION_PUSH_MATCHED,
+                                             &&UNC_ACTION,
+                                             &&PUSH_MATCHED,
+                                             &&EXPAND_MACRO,
+                                             &&CHAIN,
+                                             &&LOG_CALLBACK,
+                                             &&EXIT_IF_DISRUPTIVE,
+                                             TRAVEL_VARIABLES(LOAD_VAR_LABEL)};
 #undef LOAD_VAR_LABEL
 #define CASE(ins, proc, forward)                                                                   \
   ins:                                                                                             \
@@ -58,7 +75,7 @@ bool VirtualMachine::execute(const Program& program) {
   proc;                                                                                            \
   forward;                                                                                         \
   if (iter == instructions.end()) {                                                                \
-    return general_registers_[GeneralRegister::RFLAGS] != 0;                                       \
+    return !disruptive_;                                                                           \
   }                                                                                                \
   assert(static_cast<size_t>(iter->op_code_) < std::size(dispatch_table));                         \
   goto* dispatch_table[static_cast<size_t>(iter->op_code_)];
@@ -79,7 +96,7 @@ bool VirtualMachine::execute(const Program& program) {
 
   WGE_LOG_TRACE("------------------------------------");
   WGE_LOG_TRACE("{}", [&]() {
-    const Rule* rule = program.rule();
+    const Rule* rule = transaction_.getCurrentEvaluateRule();
     if (rule) {
       return std::format("executing bytecode program. rule id:{} [{}:{}]", rule->id(),
                          rule->filePath(), rule->line());
@@ -91,6 +108,8 @@ bool VirtualMachine::execute(const Program& program) {
   // Reset RFLAGS
   general_registers_[GeneralRegister::RFLAGS] = 0;
 
+  disruptive_ = false;
+
   // Dispatch instructions
   DISPATCH(dispatch_table[static_cast<size_t>(iter->op_code_)]);
   CASE(MOV, execMov(*iter), ++iter);
@@ -99,6 +118,8 @@ bool VirtualMachine::execute(const Program& program) {
   CASE(JNZ, execJnz(*iter, instructions, iter), {});
   CASE(NOP, {}, ++iter);
   CASE(DEBUG, execDebug(*iter), ++iter);
+  CASE(RULE_START, execRuleStart(*iter), ++iter);
+  CASE(JMP_IF_REMOVED, execJmpIfRemoved(*iter, instructions, iter), {});
   CASE(TRANSFORM, execTransform(*iter), ++iter);
   CASE(OPERATE, execOperate(*iter), ++iter);
   CASE(ACTION, execAction(*iter), ++iter);
@@ -107,6 +128,8 @@ bool VirtualMachine::execute(const Program& program) {
   CASE(PUSH_MATCHED, execPushMatched(*iter), ++iter);
   CASE(EXPAND_MACRO, execExpandMacro(*iter), ++iter);
   CASE(CHAIN, execChain(*iter), ++iter);
+  CASE(LOG_CALLBACK, execLogCallback(*iter), ++iter);
+  CASE(EXIT_IF_DISRUPTIVE, execExitIfDisruptive(*iter, instructions, iter), {});
   TRAVEL_VARIABLES(CASE_LOAD_VAR)
 #undef CASE
 }
@@ -156,9 +179,32 @@ void VirtualMachine::execJnz(const Instruction& instruction,
   }
 }
 
-inline void VirtualMachine::execDebug(const Instruction& instruction) {
+void VirtualMachine::execDebug(const Instruction& instruction) {
   const char* msg = reinterpret_cast<const char*>(instruction.op1_.cptr_);
   WGE_LOG_DEBUG("{}", msg);
+}
+
+void VirtualMachine::execRuleStart(const Instruction& instruction) {
+  transaction_.setCurrentEvaluateRule(reinterpret_cast<const Rule*>(instruction.op1_.cptr_));
+  transaction_.clearCapture();
+  transaction_.clearMatchedVariables();
+}
+
+void VirtualMachine::execJmpIfRemoved(
+    const Instruction& instruction,
+    const std::vector<Wge::Bytecode::Instruction>& instruction_array,
+    std::vector<Wge::Bytecode::Instruction>::const_iterator& iter) {
+  const Rule* curr_rule = transaction_.getCurrentEvaluateRule();
+  if (transaction_.isRuleRemoved(curr_rule)) {
+    const int64_t target_address = instruction.op1_.address_;
+    if (target_address < 0 || target_address >= instruction_array.size())
+      [[unlikely]] { iter = instruction_array.end(); }
+    else {
+      iter = instruction_array.begin() + target_address;
+    }
+  } else {
+    ++iter;
+  }
 }
 
 template <class TransformType>
@@ -475,7 +521,7 @@ void VirtualMachine::execAction(const Instruction& instruction) {
 #undef CASE
 }
 
-inline void VirtualMachine::execActionPushMatched(const Instruction& instruction) {
+void VirtualMachine::execActionPushMatched(const Instruction& instruction) {
   // Dispatch table for bytecode instructions. We use computed gotos for efficiency
   static constexpr void* action_dispatch_table[] = {&&Ctl,    &&InitCol, &&SetEnv, &&SetRsc,
                                                     &&SetSid, &&SetUid,  &&SetVar};
@@ -550,7 +596,7 @@ void VirtualMachine::execUncAction(const Instruction& instruction) {
 #undef CASE
 }
 
-inline void VirtualMachine::execPushMatched(const Instruction& instruction) {
+void VirtualMachine::execPushMatched(const Instruction& instruction) {
   const Rule* curr_rule = transaction_.getCurrentEvaluateRule();
   const std::unique_ptr<Variable::VariableBase>* curr_var =
       reinterpret_cast<const std::unique_ptr<Variable::VariableBase>*>(
@@ -637,6 +683,27 @@ void VirtualMachine::execChain(const Instruction& instruction) {
   transaction_.setCurrentEvaluateRule(rule);
   WGE_LOG_TRACE("start of rule chain execution");
   WGE_LOG_TRACE("↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓");
+}
+
+void VirtualMachine::execLogCallback(const Instruction& instruction) {
+  auto& log_callback = transaction_.getLogCallback();
+  if (log_callback) {
+    log_callback(*transaction_.getCurrentEvaluateRule());
+  }
+}
+
+void VirtualMachine::execExitIfDisruptive(
+    const Instruction& instruction,
+    const std::vector<Wge::Bytecode::Instruction>& instruction_array,
+    std::vector<Wge::Bytecode::Instruction>::const_iterator& iter) {
+  std::optional<bool> disruptive =
+      transaction_.doDisruptive(*transaction_.getCurrentEvaluateRule());
+  if (disruptive.has_value()) {
+    disruptive_ = disruptive.value();
+    iter = instruction_array.end();
+  } else {
+    ++iter;
+  }
 }
 
 #define IMPL(var_type, proc)                                                                       \

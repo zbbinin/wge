@@ -396,6 +396,11 @@ public:
   const Common::Variant& getCapture(size_t index) const;
 
   /**
+   * Clear all the captured strings.
+   */
+  void clearCapture() { captured_.clear(); }
+
+  /**
    * Get the HTTP extractor.
    * @return the HTTP extractor.
    */
@@ -437,12 +442,25 @@ public:
   const Engine& getEngine() const { return engine_; }
 
   /**
+   * Get the log callback.
+   * @return the log callback.
+   */
+  const std::function<void(const Rule&)>& getLogCallback() const { return log_callback_; }
+
+  /**
    * Remove the rule.
    * The rule will be removed from the transaction instance, and the rule will not be evaluated. The
    * other transaction instances running in parallel will be unaffected.
    * @param rules the rules that will be removed.
    */
   void removeRule(const std::array<std::unordered_set<const Rule*>, PHASE_TOTAL>& rules);
+
+  /**
+   * Check if the rule is removed.
+   * @param rule the rule that will be checked.
+   * @return true if the rule is removed, false otherwise.
+   */
+  bool isRuleRemoved(const Rule* rule) const;
 
   /**
    * Remove the rule's target.
@@ -526,6 +544,11 @@ public:
     static const std::vector<MatchedVariable> empty_vector;
     return empty_vector;
   }
+
+  /**
+   * Clear all the matched variables.
+   */
+  void clearMatchedVariables() { matched_variables_.clear(); }
 
   /**
    * Get the transformation cache.
@@ -620,6 +643,8 @@ public:
     return additional_cond_;
   }
 
+  std::optional<bool> doDisruptive(const Rule& rule);
+
 private:
   class RandomInitHelper {
   public:
@@ -633,8 +658,6 @@ private:
   inline std::optional<size_t> getLocalVariableIndex(const std::string& key, bool force_create);
 
   void initCookies();
-
-  inline std::optional<bool> doDisruptive(const Rule& rule, const Rule* default_action);
 
 private:
   std::string unique_id_;
