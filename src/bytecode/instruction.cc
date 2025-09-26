@@ -114,6 +114,14 @@ std::string Instruction::toString() const {
            [](const Instruction& instruction) {
              return std::format("JNOM 0x{:x}", instruction.op1_.address_);
            }},
+          {OpCode::JRM,
+           [](const Instruction& instruction) {
+             return std::format("JRM 0x{:x}", instruction.op1_.address_);
+           }},
+          {OpCode::JNRM,
+           [](const Instruction& instruction) {
+             return std::format("JNRM 0x{:x}", instruction.op1_.address_);
+           }},
           {OpCode::NOP, [](const Instruction&) { return "NOP"; }},
           {OpCode::DEBUG,
            [](const Instruction& instruction) {

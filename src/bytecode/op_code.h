@@ -83,6 +83,18 @@ enum class OpCode {
   // Example: JNOM 123
   JNOM,
 
+  // Conditional jump if rule matched
+  // Syntax: JRM <target_addr>
+  // @param op1 [address]: Target jump address (jumps if RMF set)
+  // Example: JRM 123
+  JRM,
+
+  // Conditional jump if rule not matched
+  // Syntax: JNRM <target_addr>
+  // @param op1 [address]: Target jump address (jumps if RMF not set)
+  // Example: JNRM 123
+  JNRM,
+
   // No operation
   // Syntax: NOP
   // Example: NOP

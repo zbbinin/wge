@@ -206,6 +206,42 @@ TEST_F(VirtualMachineTest, execJnom) {
   EXPECT_EQ(registers[GeneralRegister::RBX], 100);
 }
 
+TEST_F(VirtualMachineTest, execJrm) {
+  Program program;
+
+  program.emit({OpCode::JRM, {.address_ = 2}});
+  program.emit({OpCode::MOV, {.g_reg_ = GeneralRegister::RAX}, {.imm_ = 100}});
+  program.emit({OpCode::MOV, {.g_reg_ = GeneralRegister::RBX}, {.imm_ = 100}});
+
+  auto& registers = vm_->generalRegisters();
+  registers[GeneralRegister::RAX] = 0;
+  registers[GeneralRegister::RBX] = 0;
+
+  vm_->rflags().set(static_cast<size_t>(VirtualMachine::Rflags::RMF));
+  vm_->execute(program);
+
+  EXPECT_EQ(registers[GeneralRegister::RAX], 0);
+  EXPECT_EQ(registers[GeneralRegister::RBX], 100);
+}
+
+TEST_F(VirtualMachineTest, execJnrm) {
+  Program program;
+
+  program.emit({OpCode::JNRM, {.address_ = 2}});
+  program.emit({OpCode::MOV, {.g_reg_ = GeneralRegister::RAX}, {.imm_ = 100}});
+  program.emit({OpCode::MOV, {.g_reg_ = GeneralRegister::RBX}, {.imm_ = 100}});
+
+  auto& registers = vm_->generalRegisters();
+  registers[GeneralRegister::RAX] = 0;
+  registers[GeneralRegister::RBX] = 0;
+
+  vm_->rflags().set(static_cast<size_t>(VirtualMachine::Rflags::RMF));
+  vm_->execute(program);
+
+  EXPECT_EQ(registers[GeneralRegister::RAX], 100);
+  EXPECT_EQ(registers[GeneralRegister::RBX], 100);
+}
+
 TEST_F(VirtualMachineTest, execNop) {
   Program program;
 

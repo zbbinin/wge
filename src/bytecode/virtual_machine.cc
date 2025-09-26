@@ -59,6 +59,8 @@ bool VirtualMachine::execute(const Program& program) {
                                              &&JNZ,
                                              &&JOM,
                                              &&JNOM,
+                                             &&JRM,
+                                             &&JNRM,
                                              &&NOP,
                                              &&DEBUG,
                                              &&RULE_START,
@@ -120,6 +122,8 @@ bool VirtualMachine::execute(const Program& program) {
   CASE(JNZ, execJumpIfFlag(*iter, instructions, iter, Rflags::ZF, false), {});
   CASE(JOM, execJumpIfFlag(*iter, instructions, iter, Rflags::OMF, true), {});
   CASE(JNOM, execJumpIfFlag(*iter, instructions, iter, Rflags::OMF, false), {});
+  CASE(JRM, execJumpIfFlag(*iter, instructions, iter, Rflags::RMF, true), {});
+  CASE(JNRM, execJumpIfFlag(*iter, instructions, iter, Rflags::RMF, false), {});
   CASE(NOP, {}, ++iter);
   CASE(DEBUG, execDebug(*iter), ++iter);
   CASE(RULE_START, execRuleStart(*iter), ++iter);
@@ -189,6 +193,9 @@ void VirtualMachine::execDebug(const Instruction& instruction) {
 }
 
 void VirtualMachine::execRuleStart(const Instruction& instruction) {
+  // Reset RMF
+  rflags_.reset(static_cast<size_t>(Rflags::RMF));
+
   const Rule* rule = reinterpret_cast<const Rule*>(instruction.op1_.cptr_);
   transaction_.setCurrentEvaluateRule(rule);
   transaction_.clearCapture();
