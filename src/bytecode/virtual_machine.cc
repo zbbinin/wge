@@ -69,7 +69,8 @@ bool VirtualMachine::execute(const Program& program) {
                                              &&PUSH_MATCHED,
                                              &&PUSH_ALL_MATCHED,
                                              &&EXPAND_MACRO,
-                                             &&CHAIN,
+                                             &&CHAIN_START,
+                                             &&CHAIN_END,
                                              &&LOG_CALLBACK,
                                              &&EXIT_IF_DISRUPTIVE,
                                              TRAVEL_VARIABLES(LOAD_VAR_LABEL)
@@ -129,7 +130,8 @@ bool VirtualMachine::execute(const Program& program) {
   CASE(PUSH_MATCHED, execPushMatched(*iter), ++iter);
   CASE(PUSH_ALL_MATCHED, execPushAllMatched(*iter), ++iter);
   CASE(EXPAND_MACRO, execExpandMacro(*iter), ++iter);
-  CASE(CHAIN, execChain(*iter), ++iter);
+  CASE(CHAIN_START, execChainStart(*iter), ++iter);
+  CASE(CHAIN_END, execChainEnd(*iter), ++iter);
   CASE(LOG_CALLBACK, execLogCallback(*iter), ++iter);
   CASE(EXIT_IF_DISRUPTIVE, execExitIfDisruptive(*iter, instructions, iter), {});
   TRAVEL_VARIABLES(CASE_LOAD_VAR)
@@ -644,7 +646,7 @@ void VirtualMachine::execLogDataExpandMacro(const Instruction& instruction) {
 #undef CASE
 }
 
-void VirtualMachine::execChain(const Instruction& instruction) {
+void VirtualMachine::execChainStart(const Instruction& instruction) {
   // Reset RMF
   rflags_.reset(static_cast<size_t>(Rflags::RMF));
 
@@ -653,6 +655,12 @@ void VirtualMachine::execChain(const Instruction& instruction) {
   transaction_.setCurrentEvaluateRule(rule);
   WGE_LOG_TRACE("start of rule chain execution");
   WGE_LOG_TRACE("↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓");
+}
+
+void VirtualMachine::execChainEnd(const Instruction& instruction) {
+  // Set current evaluate rule
+  const Rule* rule = reinterpret_cast<const Rule*>(instruction.op1_.cptr_);
+  transaction_.setCurrentEvaluateRule(rule);
 }
 
 void VirtualMachine::execLogCallback(const Instruction& instruction) {

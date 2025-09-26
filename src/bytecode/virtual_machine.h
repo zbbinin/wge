@@ -111,7 +111,8 @@ private:
   inline void execExpandMacro(const Instruction& instruction);
   inline void execMsgExpandMacro(const Instruction& instruction);
   inline void execLogDataExpandMacro(const Instruction& instruction);
-  inline void execChain(const Instruction& instruction);
+  inline void execChainStart(const Instruction& instruction);
+  inline void execChainEnd(const Instruction& instruction);
   inline void execLogCallback(const Instruction& instruction);
   inline void execExitIfDisruptive(const Instruction& instruction,
                                    const std::vector<Wge::Bytecode::Instruction>& instruction_array,

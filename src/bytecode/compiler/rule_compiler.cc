@@ -164,10 +164,13 @@ void RuleCompiler::compileRule(const Rule* rule, const Rule* default_action_rule
   if (chain_rule_iter.has_value()) {
     const Rule* chain_rule = (**chain_rule_iter).get();
     // Indicate the start of chain rule execution
-    program.emit({OpCode::CHAIN, {.cptr_ = chain_rule}});
+    program.emit({OpCode::CHAIN_START, {.cptr_ = chain_rule}});
 
     // Compile chain rule
     compileRule(chain_rule, default_action_rule, engine, program);
+
+    // Indicate the end of chain rule execution
+    program.emit({OpCode::CHAIN_END, {.cptr_ = rule}});
 
     // If the chained rule are matched means the rule is matched, otherwise the rule is not
     // matched

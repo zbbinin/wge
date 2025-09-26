@@ -180,9 +180,13 @@ std::string Instruction::toString() const {
                                 instruction.op2_.cptr_, msg_macro_name, instruction.op3_.index_,
                                 instruction.op4_.cptr_, log_macro_name);
            }},
-          {OpCode::CHAIN,
+          {OpCode::CHAIN_START,
            [](const Instruction& instruction) {
-             return std::format("CHAIN {}", instruction.op1_.cptr_);
+             return std::format("CHAIN_START {}", instruction.op1_.cptr_);
+           }},
+          {OpCode::CHAIN_END,
+           [](const Instruction& instruction) {
+             return std::format("CHAIN_END {}", instruction.op1_.cptr_);
            }},
           {OpCode::LOG_CALLBACK,
            [](const Instruction& instruction) { return std::format("LOG_CALLBACK"); }},

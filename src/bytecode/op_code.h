@@ -160,11 +160,18 @@ enum class OpCode {
   EXPAND_MACRO,
 
   // Indicate the start of chain rule execution
-  // Syntax: CHAIN <rule_pointer>
+  // Syntax: CHAIN_START <rule_pointer>
   // @param op1 [cptr]: Constant pointer to the current rule instance
   // Example:
-  // CHAIN 123456
-  CHAIN,
+  // CHAIN_START 123456
+  CHAIN_START,
+
+  // Indicate the end of chain rule execution
+  // Syntax: CHAIN_END <rule_pointer>
+  // @param op1 [cptr]: Constant pointer to the current rule instance
+  // Example:
+  // CHAIN_END 123456
+  CHAIN_END,
 
   // Log the current rule is matched
   // Syntax: LOG_CALLBACK
