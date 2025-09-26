@@ -21,6 +21,7 @@
 #pragma once
 
 #include "compiler/action_travel_helper.h"
+#include "compiler/operator_travel_helper.h"
 #include "compiler/transform_travel_helper.h"
 #include "compiler/variable_travel_helper.h"
 
@@ -119,17 +120,6 @@ enum class OpCode {
   // Example: JMP_IF_REMOVED 123456
   JMP_IF_REMOVED,
 
-  // Match variable value with operator and set OMF flag
-  // Syntax: OPERATE <res_reg>  <src_reg>, <operator_index>, <operator_instance_pointer>
-  // @param op1 [x_reg]: Result register
-  // @param op2 [x_reg]: Source register
-  // @param op3 [index]: Operator index
-  // @param op4 [cptr]: Constant pointer to operator instance
-  // Example:
-  // OPERATE R11, R8, 1, 123456
-  // Note: The RFLAGS indicate whether the operation was matched
-  OPERATE,
-
   // Load the size of the extended register value into a general register
   // Syntax: LOAD_EXTENDED_REGISTER_VALUE_SIZE <g_reg> <x_reg>
   // @param op1 [g_reg]: Destination general register
@@ -222,6 +212,20 @@ enum class OpCode {
   TRAVEL_TRANSFORMATIONS(TRANSFORM_INSTUCTIONS)
 // clang-format on
 
+// ==================== Operator Instructions ====================
+// These instructions provide compile-time specific operator types and access patterns,
+// eliminating runtime dispatch overhead and enabling better JIT compilation optimization.
+//
+// Naming convention: OPERATOR_{OPERATOR_TYPE}
+//
+// @param op1 [x_reg]: Result register
+// @param op2 [x_reg]: Source register
+// @param op3 [cptr]: Constant pointer to operator instance
+// clang-format off
+#define OPERATOR_INSTUCTIONS(operator_type) OPERATOR_##operator_type,
+ TRAVEL_OPERATORS(OPERATOR_INSTUCTIONS)
+// clang-format on
+
 // ==================== Action Instructions ====================
 // These instructions provide compile-time specific action types and access patterns, eliminating
 // runtime dispatch overhead and enabling better JIT compilation optimization.
@@ -255,6 +259,8 @@ static constexpr OpCode LOAD_VAR_INSTRUCTIONS_START = OpCode::LOAD_ArgsCombinedS
 static constexpr OpCode LOAD_VAR_INSTRUCTIONS_END = OpCode::LOAD_Xml_TagValuePmf_VS;
 static constexpr OpCode TRANSFORM_INSTRUCTIONS_START = OpCode::TRANSFORM_Base64DecodeExt;
 static constexpr OpCode TRANSFORM_INSTRUCTIONS_END = OpCode::TRANSFORM_Utf8ToUnicode;
+static constexpr OpCode OPERATOR_INSTRUCTIONS_START = OpCode::OPERATOR_BeginsWith;
+static constexpr OpCode OPERATOR_INSTRUCTIONS_END = OpCode::OPERATOR_Within;
 static constexpr OpCode ACTION_INSTRUCTIONS_START = OpCode::ACTION_Ctl;
 static constexpr OpCode ACTION_INSTRUCTIONS_END = OpCode::ACTION_SetVar;
 static constexpr OpCode UNC_ACTION_INSTRUCTIONS_START = OpCode::UNC_ACTION_Ctl;

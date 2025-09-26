@@ -48,6 +48,7 @@ bool VirtualMachine::execute(const Program& program) {
   &&LOAD_##var_type##_VS,
 
 #define TRANSFORM_LABEL(transform_type) &&TRANSFORM_##transform_type,
+#define OPERATOR_LABEL(operator_type) &&OPERATOR_##operator_type,
 #define ACTION_LABEL(action_tyep) &&ACTION_##action_tyep,
 #define UNC_ACTION_LABEL(action_tyep) &&UNC_ACTION_##action_tyep,
 
@@ -66,7 +67,6 @@ bool VirtualMachine::execute(const Program& program) {
                                              &&DEBUG,
                                              &&RULE_START,
                                              &&JMP_IF_REMOVED,
-                                             &&OPERATE,
                                              &&SIZE,
                                              &&PUSH_MATCHED,
                                              &&PUSH_ALL_MATCHED,
@@ -77,6 +77,7 @@ bool VirtualMachine::execute(const Program& program) {
                                              &&EXIT_IF_DISRUPTIVE,
                                              TRAVEL_VARIABLES(LOAD_VAR_LABEL)
                                              TRAVEL_TRANSFORMATIONS(TRANSFORM_LABEL)
+                                             TRAVEL_OPERATORS(OPERATOR_LABEL)
                                              TRAVEL_ACTIONS(ACTION_LABEL)
                                              TRAVEL_ACTIONS(UNC_ACTION_LABEL)
                                           };
@@ -102,6 +103,8 @@ bool VirtualMachine::execute(const Program& program) {
 
 #define CASE_TRANSFORM(transform_type)                                                             \
   CASE(TRANSFORM_##transform_type, execTransform##transform_type(*iter), ++iter);
+#define CASE_OPERATOR(operator_type)                                                               \
+  CASE(OPERATOR_##operator_type, execOperator##operator_type(*iter), ++iter);
 #define CASE_ACTION(action_type) CASE(ACTION_##action_type, execAction##action_type(*iter), ++iter);
 #define CASE_UNC_ACTION(action_type)                                                               \
   CASE(UNC_ACTION_##action_type, execUncAction##action_type(*iter), ++iter);
@@ -131,7 +134,6 @@ bool VirtualMachine::execute(const Program& program) {
   CASE(DEBUG, execDebug(*iter), ++iter);
   CASE(RULE_START, execRuleStart(*iter), ++iter);
   CASE(JMP_IF_REMOVED, execJmpIfRemoved(*iter, instructions, iter), {});
-  CASE(OPERATE, execOperate(*iter), ++iter);
   CASE(SIZE, execSize(*iter), ++iter);
   CASE(PUSH_MATCHED, execPushMatched(*iter), ++iter);
   CASE(PUSH_ALL_MATCHED, execPushAllMatched(*iter), ++iter);
@@ -142,6 +144,7 @@ bool VirtualMachine::execute(const Program& program) {
   CASE(EXIT_IF_DISRUPTIVE, execExitIfDisruptive(*iter, instructions, iter), {});
   TRAVEL_VARIABLES(CASE_LOAD_VAR)
   TRAVEL_TRANSFORMATIONS(CASE_TRANSFORM)
+  TRAVEL_OPERATORS(CASE_OPERATOR)
   TRAVEL_ACTIONS(CASE_ACTION)
   TRAVEL_ACTIONS(CASE_UNC_ACTION)
 #undef CASE
@@ -223,149 +226,6 @@ void VirtualMachine::execJmpIfRemoved(
   } else {
     ++iter;
   }
-}
-
-template <class OperatorType>
-bool dispatchOperator(const OperatorType* op, Transaction& t, const Rule* curr_rule,
-                      const std::unique_ptr<Wge::Variable::VariableBase>* curr_var,
-                      const Common::EvaluateResults& input, Common::EvaluateResults& output) {
-  bool rule_matched = false;
-  size_t input_size = input.size();
-  for (size_t i = 0; i < input_size; ++i) {
-    auto& var_value = input.get(i).variant_;
-    bool variable_matched = op->OperatorType::evaluate(t, var_value);
-    variable_matched = op->OperatorType::isNot() ^ variable_matched;
-
-    // Call additional conditions if they are defined
-    if (variable_matched && t.getAdditionalCond()) {
-      if (IS_STRING_VIEW_VARIANT(var_value)) {
-        variable_matched =
-            t.getAdditionalCond()(*curr_rule, std::get<std::string_view>(var_value), *curr_var);
-        WGE_LOG_TRACE("call additional condition: {}", variable_matched);
-      }
-    }
-
-    if (variable_matched) {
-      auto merged_count = t.mergeCapture();
-      if (merged_count) {
-        std::string_view tx_0 = std::get<std::string_view>(t.getCapture(0));
-
-        // Copy the first captured value to the capture_value. The copy is necessary because
-        // the captured value may be modified later.
-        output.append(std::string(tx_0.data(), tx_0.size()));
-      } else {
-        output.append(std::string_view());
-      }
-
-      rule_matched = true;
-    } else {
-      t.clearTempCapture();
-      output.append(0);
-    }
-
-    WGE_LOG_TRACE("evaluate operator: {} {}@{} {} = {}", VISTIT_VARIANT_AS_STRING(var_value),
-                  op->OperatorType::isNot() ? "!" : "", op->OperatorType::name(),
-                  op->OperatorType::macro() ? op->OperatorType::macro()->literalValue()
-                                            : op->OperatorType::literalValue(),
-                  variable_matched);
-  }
-
-  return rule_matched;
-}
-
-void VirtualMachine::execOperate(const Instruction& instruction) {
-  // Dispatch table for bytecode instructions. We use computed gotos for efficiency
-  static constexpr void* operate_dispatch_table[] = {&&BeginsWith,
-                                                     &&ContainsWord,
-                                                     &&Contains,
-                                                     &&DetectSqli,
-                                                     &&DetectXSS,
-                                                     &&EndsWith,
-                                                     &&Eq,
-                                                     &&FuzzyHash,
-                                                     &&Ge,
-                                                     &&GeoLookup,
-                                                     &&Gt,
-                                                     &&InspectFile,
-                                                     &&IpMatchFromFile,
-                                                     &&IpMatch,
-                                                     &&Le,
-                                                     &&Lt,
-                                                     &&NoMatch,
-                                                     &&PmFromFile,
-                                                     &&Pm,
-                                                     &&Rbl,
-                                                     &&Rsub,
-                                                     &&RxGlobal,
-                                                     &&Rx,
-                                                     &&Streq,
-                                                     &&Strmatch,
-                                                     &&UnconditionalMatch,
-                                                     &&ValidateByteRange,
-                                                     &&ValidateDTD,
-                                                     &&ValidateSchema,
-                                                     &&ValidateUrlEncoding,
-                                                     &&ValidateUtf8Encoding,
-                                                     &&VerifyCC,
-                                                     &&VerifyCPF,
-                                                     &&VerifySSN,
-                                                     &&Within};
-#define CASE(operator)                                                                             \
-  operator: matched = dispatchOperator(reinterpret_cast <                                          \
-                                           const Operator::operator*>(instruction.op4_.cptr_),     \
-                                       transaction_, curr_rule, curr_var, input, output);          \
-  rflags_.set(static_cast<size_t>(Rflags::OMF), matched);                                          \
-  if (matched) {                                                                                   \
-    rflags_.set(static_cast<size_t>(Rflags::RMF));                                                 \
-  }                                                                                                \
-  return;
-
-  const Rule* curr_rule = transaction_.getCurrentEvaluateRule();
-  const std::unique_ptr<Variable::VariableBase>* curr_var =
-      reinterpret_cast<const std::unique_ptr<Variable::VariableBase>*>(
-          general_registers_[Compiler::RuleCompiler::curr_variable_reg_]);
-  const auto& input = extended_registers_[instruction.op2_.x_reg_];
-  auto& output = extended_registers_[instruction.op1_.x_reg_];
-  output.clear();
-  bool matched = false;
-
-  DISPATCH(operate_dispatch_table[instruction.op3_.index_]);
-  CASE(BeginsWith);
-  CASE(ContainsWord);
-  CASE(Contains);
-  CASE(DetectSqli);
-  CASE(DetectXSS);
-  CASE(EndsWith);
-  CASE(Eq);
-  CASE(FuzzyHash);
-  CASE(Ge);
-  CASE(GeoLookup);
-  CASE(Gt);
-  CASE(InspectFile);
-  CASE(IpMatchFromFile);
-  CASE(IpMatch);
-  CASE(Le);
-  CASE(Lt);
-  CASE(NoMatch);
-  CASE(PmFromFile);
-  CASE(Pm);
-  CASE(Rbl);
-  CASE(Rsub);
-  CASE(RxGlobal);
-  CASE(Rx);
-  CASE(Streq);
-  CASE(Strmatch);
-  CASE(UnconditionalMatch);
-  CASE(ValidateByteRange);
-  CASE(ValidateDTD);
-  CASE(ValidateSchema);
-  CASE(ValidateUrlEncoding);
-  CASE(ValidateUtf8Encoding);
-  CASE(VerifyCC);
-  CASE(VerifyCPF);
-  CASE(VerifySSN);
-  CASE(Within);
-#undef CASE
 }
 
 void VirtualMachine::execSize(const Instruction& instruction) {
@@ -924,6 +784,74 @@ void dispatchTransform(const TransformType* transform, Transaction& t,
   }
 TRAVEL_TRANSFORMATIONS(IMPL_TRANSFORM_PROC);
 #undef IMPL_TRANSFORM_PROC
+
+template <class OperatorType>
+bool dispatchOperator(const OperatorType* op, Transaction& t, const Rule* curr_rule,
+                      const std::unique_ptr<Wge::Variable::VariableBase>* curr_var,
+                      const Common::EvaluateResults& input, Common::EvaluateResults& output) {
+  bool rule_matched = false;
+  size_t input_size = input.size();
+  for (size_t i = 0; i < input_size; ++i) {
+    auto& var_value = input.get(i).variant_;
+    bool variable_matched = op->OperatorType::evaluate(t, var_value);
+    variable_matched = op->OperatorType::isNot() ^ variable_matched;
+
+    // Call additional conditions if they are defined
+    if (variable_matched && t.getAdditionalCond()) {
+      if (IS_STRING_VIEW_VARIANT(var_value)) {
+        variable_matched =
+            t.getAdditionalCond()(*curr_rule, std::get<std::string_view>(var_value), *curr_var);
+        WGE_LOG_TRACE("call additional condition: {}", variable_matched);
+      }
+    }
+
+    if (variable_matched) {
+      auto merged_count = t.mergeCapture();
+      if (merged_count) {
+        std::string_view tx_0 = std::get<std::string_view>(t.getCapture(0));
+
+        // Copy the first captured value to the capture_value. The copy is necessary because
+        // the captured value may be modified later.
+        output.append(std::string(tx_0.data(), tx_0.size()));
+      } else {
+        output.append(std::string_view());
+      }
+
+      rule_matched = true;
+    } else {
+      t.clearTempCapture();
+      output.append(0);
+    }
+
+    WGE_LOG_TRACE("evaluate operator: {} {}@{} {} = {}", VISTIT_VARIANT_AS_STRING(var_value),
+                  op->OperatorType::isNot() ? "!" : "", op->OperatorType::name(),
+                  op->OperatorType::macro() ? op->OperatorType::macro()->literalValue()
+                                            : op->OperatorType::literalValue(),
+                  variable_matched);
+  }
+
+  return rule_matched;
+}
+
+#define IMPL_OPERATOR_PROC(operator_type)                                                          \
+  void VirtualMachine::execOperator##operator_type(const Instruction& instruction) {               \
+    const Rule* curr_rule = transaction_.getCurrentEvaluateRule();                                 \
+    const std::unique_ptr<Variable::VariableBase>* curr_var =                                      \
+        reinterpret_cast<const std::unique_ptr<Variable::VariableBase>*>(                          \
+            general_registers_[Compiler::RuleCompiler::curr_variable_reg_]);                       \
+    const Operator::operator_type* op =                                                            \
+        reinterpret_cast<const Operator::operator_type*>(instruction.op3_.cptr_);                  \
+    const auto& input = extended_registers_[instruction.op2_.x_reg_];                              \
+    auto& output = extended_registers_[instruction.op1_.x_reg_];                                   \
+    output.clear();                                                                                \
+    bool matched = dispatchOperator(op, transaction_, curr_rule, curr_var, input, output);         \
+    rflags_.set(static_cast<size_t>(Rflags::OMF), matched);                                        \
+    if (matched) {                                                                                 \
+      rflags_.set(static_cast<size_t>(Rflags::RMF));                                               \
+    }                                                                                              \
+  }
+TRAVEL_OPERATORS(IMPL_OPERATOR_PROC)
+#undef IMPL_OPERATOR_PROC
 
 #define IMPL_ACTION_PROC(action_type)                                                              \
   void VirtualMachine::execAction##action_type(const Instruction& instruction) {                   \

@@ -24,6 +24,7 @@
 
 #include <stdint.h>
 
+#include "../op_code.h"
 #include "../register.h"
 
 namespace Wge {
@@ -48,7 +49,11 @@ public:
                       const Operator::OperatorBase* op, Program& program);
 
 private:
-  static const std::unordered_map<const char*, int64_t> operator_index_map_;
+  struct OperatorTypeInfo {
+    int64_t index_;
+    OpCode opcode_;
+  };
+  static const std::unordered_map<const char*, OperatorTypeInfo> operator_type_info_map_;
 };
 
 } // namespace Compiler

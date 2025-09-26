@@ -20,64 +20,26 @@
  */
 #include "operator_compiler.h"
 
+#include "operator_travel_helper.h"
+
 #include "../../operator/operator_include.h"
 #include "../program.h"
 
-#define OPERATOR_INDEX(name)                                                                       \
-  { Operator::name::name_, __COUNTER__ }
+#define OPERATOR_TYPE_INFO(operator_type)                                                          \
+  {Operator::operator_type::name_, {__COUNTER__, Wge::Bytecode::OpCode::OPERATOR_##operator_type}},
 
 namespace Wge {
 namespace Bytecode {
 namespace Compiler {
-const std::unordered_map<const char*, int64_t> OperatorCompiler::operator_index_map_ = {
-    OPERATOR_INDEX(BeginsWith),
-    OPERATOR_INDEX(ContainsWord),
-    OPERATOR_INDEX(Contains),
-    OPERATOR_INDEX(DetectSqli),
-    OPERATOR_INDEX(DetectXSS),
-    OPERATOR_INDEX(EndsWith),
-    OPERATOR_INDEX(Eq),
-    OPERATOR_INDEX(FuzzyHash),
-    OPERATOR_INDEX(Ge),
-    OPERATOR_INDEX(GeoLookup),
-    OPERATOR_INDEX(Gt),
-    OPERATOR_INDEX(InspectFile),
-    OPERATOR_INDEX(IpMatchFromFile),
-    OPERATOR_INDEX(IpMatch),
-    OPERATOR_INDEX(Le),
-    OPERATOR_INDEX(Lt),
-    OPERATOR_INDEX(NoMatch),
-    OPERATOR_INDEX(PmFromFile),
-    OPERATOR_INDEX(Pm),
-    OPERATOR_INDEX(Rbl),
-    OPERATOR_INDEX(Rsub),
-    OPERATOR_INDEX(RxGlobal),
-    OPERATOR_INDEX(Rx),
-    OPERATOR_INDEX(Streq),
-    OPERATOR_INDEX(Strmatch),
-    OPERATOR_INDEX(UnconditionalMatch),
-    OPERATOR_INDEX(ValidateByteRange),
-    OPERATOR_INDEX(ValidateDTD),
-    OPERATOR_INDEX(ValidateSchema),
-    OPERATOR_INDEX(ValidateUrlEncoding),
-    OPERATOR_INDEX(ValidateUtf8Encoding),
-    OPERATOR_INDEX(VerifyCC),
-    OPERATOR_INDEX(VerifyCPF),
-    OPERATOR_INDEX(VerifySSN),
-    OPERATOR_INDEX(Within),
-};
+const std::unordered_map<const char*, OperatorCompiler::OperatorTypeInfo>
+    OperatorCompiler::operator_type_info_map_ = {TRAVEL_OPERATORS(OPERATOR_TYPE_INFO)};
 
 void OperatorCompiler::compile(ExtendedRegister res_reg, ExtendedRegister src_reg,
                                const Operator::OperatorBase* op, Program& program) {
-  auto iter = operator_index_map_.find(op->name());
-  assert(iter != operator_index_map_.end());
-  if (iter != operator_index_map_.end()) {
-    int64_t index = iter->second;
-    program.emit({OpCode::OPERATE,
-                  {.x_reg_ = res_reg},
-                  {.x_reg_ = src_reg},
-                  {.index_ = index},
-                  {.cptr_ = op}});
+  auto iter = operator_type_info_map_.find(op->name());
+  assert(iter != operator_type_info_map_.end());
+  if (iter != operator_type_info_map_.end()) {
+    program.emit({iter->second.opcode_, {.x_reg_ = res_reg}, {.x_reg_ = src_reg}, {.cptr_ = op}});
   }
 }
 

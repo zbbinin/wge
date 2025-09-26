@@ -47,6 +47,17 @@
                         instruction.op3_.cptr_, transform_name);                                   \
    }},
 
+#define OPERATOR_TO_STRING(operator_type)                                                          \
+  {OpCode::OPERATOR_##operator_type, [](const Instruction& instruction) {                          \
+     std::string op_name = "OPERATOR_" #operator_type;                                             \
+     std::string operator_name =                                                                   \
+         reinterpret_cast<const Operator::OperatorBase*>(instruction.op3_.cptr_)->name();          \
+     return std::format("{} {}, {}, {}({})", op_name,                                              \
+                        ExtendedRegister2String.at(instruction.op1_.x_reg_),                       \
+                        ExtendedRegister2String.at(instruction.op2_.x_reg_),                       \
+                        instruction.op3_.cptr_, operator_name);                                    \
+   }},
+
 #define ACTION_TO_STRING(action_type)                                                              \
   {OpCode::ACTION_##action_type, [](const Instruction& instruction) {                              \
      std::string op_name = "ACTION_" #action_type;                                                 \
@@ -149,15 +160,6 @@ std::string Instruction::toString() const {
            [](const Instruction& instruction) {
              return std::format("JMP_IF_REMOVED 0x{:x}", instruction.op1_.address_);
            }},
-          {OpCode::OPERATE,
-           [](const Instruction& instruction) {
-             std::string operator_name =
-                 reinterpret_cast<const Operator::OperatorBase*>(instruction.op4_.cptr_)->name();
-             return std::format("OPERATE {}, {}, {}, {}({})",
-                                ExtendedRegister2String.at(instruction.op1_.x_reg_),
-                                ExtendedRegister2String.at(instruction.op2_.x_reg_),
-                                instruction.op3_.index_, instruction.op4_.cptr_, operator_name);
-           }},
           {OpCode::SIZE,
            [](const Instruction& instruction) {
              return std::format("SIZE {}, {}", GeneralRegister2String.at(instruction.op1_.g_reg_),
@@ -205,6 +207,7 @@ std::string Instruction::toString() const {
           // clang-format off
           TRAVEL_VARIABLES(LOAD_VAR_TO_STRING)
           TRAVEL_TRANSFORMATIONS(TRANSFORM_TO_STRING)
+          TRAVEL_OPERATORS(OPERATOR_TO_STRING)
           TRAVEL_ACTIONS(ACTION_TO_STRING)
           TRAVEL_ACTIONS(UNC_ACTION_TO_STRING)
           // clang-format on

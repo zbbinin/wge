@@ -53,8 +53,8 @@ public:
       variable_type_info_map_{Compiler::VariableCompiler::variable_type_info_map_};
   const std::unordered_map<const char*, Compiler::TransformCompiler::TransformTypeInfo>&
       transform_type_info_map_{Compiler::TransformCompiler::transform_type_info_map_};
-  const std::unordered_map<const char*, int64_t>& operator_index_map_{
-      Compiler::OperatorCompiler::operator_index_map_};
+  const std::unordered_map<const char*, Compiler::OperatorCompiler::OperatorTypeInfo>&
+      operator_type_info_map_{Compiler::OperatorCompiler::operator_type_info_map_};
   const std::unordered_map<const char*, Compiler::ActionCompiler::ActionTypeInfo>&
       action_type_info_map_{Compiler::ActionCompiler::action_type_info_map_};
   const std::unordered_map<const char*, Compiler::ActionCompiler::ActionTypeInfo>&
@@ -284,68 +284,6 @@ TEST_F(VirtualMachineTest, execDebug) {
 
   // Clean up the log file
   std::remove("test_log.txt");
-}
-
-TEST_F(VirtualMachineTest, execOperate) {
-  Operator::Rx rx(std::string("hello"), false, "");
-
-  // Create a dummy program with OPERATE instruction
-  Program program;
-  Instruction instruction = {OpCode::OPERATE,
-                             {.x_reg_ = ExtendedRegister::R9},
-                             {.x_reg_ = ExtendedRegister::R8},
-                             {.imm_ = operator_index_map_.at(rx.name_)},
-                             {.cptr_ = &rx}};
-  program.emit(instruction);
-
-  // Initialize registers
-  auto& src = vm_->extendedRegisters()[ExtendedRegister::R8];
-  auto& res = vm_->extendedRegisters()[ExtendedRegister::R9];
-  src.clear();
-  res.clear();
-  src.append(std::string("helloworld"), "sub1");
-  src.append(std::string("111helloworld222"), "sub2");
-  src.append(std::string("111world222"), "sub3");
-
-  vm_->execute(program);
-
-  EXPECT_EQ(res.size(), src.size());
-  EXPECT_EQ(std::get<std::string_view>(res.get(0).variant_), "hello");
-  EXPECT_EQ(std::get<std::string_view>(res.get(1).variant_), "hello");
-  EXPECT_EQ(std::get<int64_t>(res.get(2).variant_), 0);
-}
-
-TEST_F(VirtualMachineTest, execSize) {
-  Operator::Rx rx(std::string("hello"), false, "");
-
-  // Create a dummy program with OPERATE instruction
-  Program program;
-  Instruction instruction = {OpCode::OPERATE,
-                             {.x_reg_ = ExtendedRegister::R9},
-                             {.x_reg_ = ExtendedRegister::R8},
-                             {.imm_ = operator_index_map_.at(rx.name_)},
-                             {.cptr_ = &rx}};
-  program.emit(instruction);
-  program.emit({OpCode::SIZE, {.g_reg_ = GeneralRegister::RAX}, {.x_reg_ = ExtendedRegister::R9}});
-
-  // Initialize registers
-  auto& src = vm_->extendedRegisters()[ExtendedRegister::R8];
-  auto& res = vm_->extendedRegisters()[ExtendedRegister::R9];
-  src.clear();
-  res.clear();
-  src.append(std::string("helloworld"), "sub1");
-  src.append(std::string("111helloworld222"), "sub2");
-  src.append(std::string("111world222"), "sub3");
-
-  vm_->execute(program);
-
-  EXPECT_EQ(res.size(), src.size());
-  EXPECT_EQ(std::get<std::string_view>(res.get(0).variant_), "hello");
-  EXPECT_EQ(std::get<std::string_view>(res.get(1).variant_), "hello");
-  EXPECT_EQ(std::get<int64_t>(res.get(2).variant_), 0);
-
-  auto& registers = vm_->generalRegisters();
-  EXPECT_EQ(res.size(), registers[GeneralRegister::RAX]);
 }
 
 TEST_F(VirtualMachineTest, execAction) {

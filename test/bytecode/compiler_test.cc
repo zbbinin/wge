@@ -43,8 +43,8 @@ public:
       variable_type_info_map_{Compiler::VariableCompiler::variable_type_info_map_};
   const std::unordered_map<const char*, Compiler::TransformCompiler::TransformTypeInfo>&
       transform_type_info_map_{Compiler::TransformCompiler::transform_type_info_map_};
-  const std::unordered_map<const char*, int64_t>& operator_index_map_{
-      Compiler::OperatorCompiler::operator_index_map_};
+  const std::unordered_map<const char*, Compiler::OperatorCompiler::OperatorTypeInfo>&
+      operator_type_info_map_{Compiler::OperatorCompiler::operator_type_info_map_};
   const std::unordered_map<const char*, Compiler::ActionCompiler::ActionTypeInfo>&
       action_type_info_map_{Compiler::ActionCompiler::action_type_info_map_};
   const std::unordered_map<const char*, Compiler::ActionCompiler::ActionTypeInfo>&
@@ -310,13 +310,11 @@ TEST_F(CompilerTest, compileOperator) {
   size_t count = 0;
   for (auto& program : programs) {
     for (auto& instruction : program->instructions()) {
-      if (instruction.op_code_ == Bytecode::OpCode::OPERATE) {
+      if (instruction.op_code_ >= Bytecode::OPERATOR_INSTRUCTIONS_START &&
+          instruction.op_code_ <= Bytecode::OPERATOR_INSTRUCTIONS_END) {
         ++count;
         EXPECT_EQ(instruction.op1_.x_reg_, Compiler::RuleCompiler::op_res_reg_);
         EXPECT_EQ(instruction.op2_.x_reg_, Compiler::RuleCompiler::load_var_reg_);
-        const Operator::OperatorBase* var =
-            reinterpret_cast<const Operator::OperatorBase*>(instruction.op4_.cptr_);
-        EXPECT_EQ(instruction.op3_.index_, operator_index_map_.at(var->name()));
       }
     }
   }
@@ -415,7 +413,8 @@ TEST_F(CompilerTest, compileChainRule) {
   size_t operator_count = 0;
   size_t jnrm_count = 0;
   for (auto& instruction : program->instructions()) {
-    if (instruction.op_code_ == Bytecode::OpCode::OPERATE) {
+    if (instruction.op_code_ >= Bytecode::OPERATOR_INSTRUCTIONS_START &&
+        instruction.op_code_ <= Bytecode::OPERATOR_INSTRUCTIONS_END) {
       ++operator_count;
     } else if (instruction.op_code_ == Bytecode::OpCode::JNRM) {
       ++jnrm_count;
