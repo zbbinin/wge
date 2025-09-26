@@ -27,28 +27,28 @@
 #include "../program.h"
 
 // clang-format off
-#define VAR_TYPE_INFO(var_type)                                                                                       \
-  {Variable::var_type::main_name_.data(), { __COUNTER__, Wge::Bytecode::OpCode::LOAD_##var_type##_CC }},
+#define VARIABLE_OPCODE(var_type)                                                                                       \
+  {Variable::var_type::main_name_.data(), Wge::Bytecode::OpCode::LOAD_##var_type##_CC },
 // clang-format on
 
 namespace Wge {
 namespace Bytecode {
 namespace Compiler {
-const std::unordered_map<const char*, VariableCompiler::VariableTypeInfo>
-    VariableCompiler::variable_type_info_map_ = {TRAVEL_VARIABLES(VAR_TYPE_INFO)};
+const std::unordered_map<const char*, OpCode> VariableCompiler::variable_opcode_map_ = {
+    TRAVEL_VARIABLES(VARIABLE_OPCODE)};
 
 void VariableCompiler::compile(ExtendedRegister dst_reg, const Variable::VariableBase* variable,
                                Program& program) {
-  auto iter = variable_type_info_map_.find(variable->mainName().data());
-  assert(iter != variable_type_info_map_.end());
-  if (iter == variable_type_info_map_.end()) {
+  auto iter = variable_opcode_map_.find(variable->mainName().data());
+  assert(iter != variable_opcode_map_.end());
+  if (iter == variable_opcode_map_.end()) {
     UNREACHABLE();
     WGE_LOG_CRITICAL("variable compile error: unknown variable {}",
                      variable->fullName().tostring());
     return;
   }
 
-  std::optional<OpCode> op_code = calcOpCode(variable, iter->second.base_opcode_);
+  std::optional<OpCode> op_code = calcOpCode(variable, iter->second);
   if (op_code.has_value()) {
     program.emit({op_code.value(), {.x_reg_ = dst_reg}, {.cptr_ = variable}});
   } else {

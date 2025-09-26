@@ -25,21 +25,21 @@
 #include "../../operator/operator_include.h"
 #include "../program.h"
 
-#define OPERATOR_TYPE_INFO(operator_type)                                                          \
-  {Operator::operator_type::name_, {__COUNTER__, Wge::Bytecode::OpCode::OPERATOR_##operator_type}},
+#define OPERATOR_OPCODE(operator_type)                                                             \
+  {Operator::operator_type::name_, Wge::Bytecode::OpCode::OPERATOR_##operator_type},
 
 namespace Wge {
 namespace Bytecode {
 namespace Compiler {
-const std::unordered_map<const char*, OperatorCompiler::OperatorTypeInfo>
-    OperatorCompiler::operator_type_info_map_ = {TRAVEL_OPERATORS(OPERATOR_TYPE_INFO)};
+const std::unordered_map<const char*, OpCode> OperatorCompiler::operator_opcode_map_ = {
+    TRAVEL_OPERATORS(OPERATOR_OPCODE)};
 
 void OperatorCompiler::compile(ExtendedRegister res_reg, ExtendedRegister src_reg,
                                const Operator::OperatorBase* op, Program& program) {
-  auto iter = operator_type_info_map_.find(op->name());
-  assert(iter != operator_type_info_map_.end());
-  if (iter != operator_type_info_map_.end()) {
-    program.emit({iter->second.opcode_, {.x_reg_ = res_reg}, {.x_reg_ = src_reg}, {.cptr_ = op}});
+  auto iter = operator_opcode_map_.find(op->name());
+  assert(iter != operator_opcode_map_.end());
+  if (iter != operator_opcode_map_.end()) {
+    program.emit({iter->second, {.x_reg_ = res_reg}, {.x_reg_ = src_reg}, {.cptr_ = op}});
   }
 }
 

@@ -49,11 +49,7 @@ public:
                       const Operator::OperatorBase* op, Program& program);
 
 private:
-  struct OperatorTypeInfo {
-    int64_t index_;
-    OpCode opcode_;
-  };
-  static const std::unordered_map<const char*, OperatorTypeInfo> operator_type_info_map_;
+  static const std::unordered_map<const char*, OpCode> operator_opcode_map_;
 };
 
 } // namespace Compiler

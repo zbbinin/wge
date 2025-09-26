@@ -54,11 +54,7 @@ private:
                                                  OpCode base_opcode);
 
 private:
-  struct VariableTypeInfo {
-    int64_t index_;
-    OpCode base_opcode_;
-  };
-  static const std::unordered_map<const char*, VariableTypeInfo> variable_type_info_map_;
+  static const std::unordered_map<const char*, OpCode> variable_opcode_map_;
 };
 
 } // namespace Compiler

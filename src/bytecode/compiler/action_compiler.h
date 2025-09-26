@@ -50,12 +50,8 @@ public:
   static void compileUncAction(const Action::ActionBase* action, Program& program);
 
 private:
-  struct ActionTypeInfo {
-    int64_t index_;
-    OpCode opcode_;
-  };
-  static const std::unordered_map<const char*, ActionTypeInfo> action_type_info_map_;
-  static const std::unordered_map<const char*, ActionTypeInfo> unc_action_type_info_map_;
+  static const std::unordered_map<const char*, OpCode> action_opcode_map_;
+  static const std::unordered_map<const char*, OpCode> unc_action_opcode_map_;
 };
 
 } // namespace Compiler

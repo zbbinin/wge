@@ -25,23 +25,21 @@
 #include "../../transformation/transform_include.h"
 #include "../program.h"
 
-#define TRANSFORM_TYPE_INFO(transform_type)                                                        \
-  {Transformation::transform_type::name_,                                                          \
-   {__COUNTER__, Wge::Bytecode::OpCode::TRANSFORM_##transform_type}},
+#define TRANSFORM_OPCODE(transform_type)                                                           \
+  {Transformation::transform_type::name_, Wge::Bytecode::OpCode::TRANSFORM_##transform_type},
 
 namespace Wge {
 namespace Bytecode {
 namespace Compiler {
-const std::unordered_map<const char*, TransformCompiler::TransformTypeInfo>
-    TransformCompiler::transform_type_info_map_ = {TRAVEL_TRANSFORMATIONS(TRANSFORM_TYPE_INFO)};
+const std::unordered_map<const char*, OpCode> TransformCompiler::transform_opcode_map_ = {
+    TRAVEL_TRANSFORMATIONS(TRANSFORM_OPCODE)};
 
 void TransformCompiler::compile(ExtendedRegister dst_reg, ExtendedRegister src_reg,
                                 const Transformation::TransformBase* transform, Program& program) {
-  auto iter = transform_type_info_map_.find(transform->name());
-  assert(iter != transform_type_info_map_.end());
-  if (iter != transform_type_info_map_.end()) {
-    program.emit(
-        {iter->second.opcode_, {.x_reg_ = dst_reg}, {.x_reg_ = src_reg}, {.cptr_ = transform}});
+  auto iter = transform_opcode_map_.find(transform->name());
+  assert(iter != transform_opcode_map_.end());
+  if (iter != transform_opcode_map_.end()) {
+    program.emit({iter->second, {.x_reg_ = dst_reg}, {.x_reg_ = src_reg}, {.cptr_ = transform}});
   }
 }
 

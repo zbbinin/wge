@@ -39,16 +39,16 @@ namespace Wge {
 namespace Bytecode {
 class CompilerTest : public testing::Test {
 public:
-  const std::unordered_map<const char*, Compiler::VariableCompiler::VariableTypeInfo>&
-      variable_type_info_map_{Compiler::VariableCompiler::variable_type_info_map_};
-  const std::unordered_map<const char*, Compiler::TransformCompiler::TransformTypeInfo>&
-      transform_type_info_map_{Compiler::TransformCompiler::transform_type_info_map_};
-  const std::unordered_map<const char*, Compiler::OperatorCompiler::OperatorTypeInfo>&
-      operator_type_info_map_{Compiler::OperatorCompiler::operator_type_info_map_};
-  const std::unordered_map<const char*, Compiler::ActionCompiler::ActionTypeInfo>&
-      action_type_info_map_{Compiler::ActionCompiler::action_type_info_map_};
-  const std::unordered_map<const char*, Compiler::ActionCompiler::ActionTypeInfo>&
-      unc_action_type_info_map_{Compiler::ActionCompiler::unc_action_type_info_map_};
+  const std::unordered_map<const char*, OpCode>& variable_opcode_map_{
+      Compiler::VariableCompiler::variable_opcode_map_};
+  const std::unordered_map<const char*, OpCode>& transform_opcode_map_{
+      Compiler::TransformCompiler::transform_opcode_map_};
+  const std::unordered_map<const char*, OpCode>& operator_opcode_map_{
+      Compiler::OperatorCompiler::operator_opcode_map_};
+  const std::unordered_map<const char*, OpCode>& action_opcode_map_{
+      Compiler::ActionCompiler::action_opcode_map_};
+  const std::unordered_map<const char*, OpCode>& unc_action_opcode_map_{
+      Compiler::ActionCompiler::unc_action_opcode_map_};
   const std::unordered_map<const char*, int64_t>& macro_index_map_{
       Compiler::MacroCompiler::macro_index_map_};
 

@@ -49,11 +49,7 @@ public:
                       const Transformation::TransformBase* transform, Program& program);
 
 private:
-  struct TransformTypeInfo {
-    int64_t index_;
-    OpCode opcode_;
-  };
-  static const std::unordered_map<const char*, TransformTypeInfo> transform_type_info_map_;
+  static const std::unordered_map<const char*, OpCode> transform_opcode_map_;
 };
 
 } // namespace Compiler
