@@ -24,6 +24,7 @@
 
 #include <stdint.h>
 
+#include "../op_code.h"
 #include "../register.h"
 
 namespace Wge {
@@ -48,7 +49,11 @@ public:
                       const Transformation::TransformBase* transform, Program& program);
 
 private:
-  static const std::unordered_map<const char*, int64_t> transform_index_map_;
+  struct TransformTypeInfo {
+    int64_t index_;
+    OpCode opcode_;
+  };
+  static const std::unordered_map<const char*, TransformTypeInfo> transform_type_info_map_;
 };
 
 } // namespace Compiler

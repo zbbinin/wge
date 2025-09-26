@@ -47,6 +47,7 @@ bool VirtualMachine::execute(const Program& program) {
   &&LOAD_##var_type##_VR,                                                                                                                     \
   &&LOAD_##var_type##_VS,
 
+#define TRANSFORM_LABEL(transform_type) &&TRANSFORM_##transform_type,
 #define ACTION_LABEL(action_tyep) &&ACTION_##action_tyep,
 #define UNC_ACTION_LABEL(action_tyep) &&UNC_ACTION_##action_tyep,
 
@@ -65,7 +66,6 @@ bool VirtualMachine::execute(const Program& program) {
                                              &&DEBUG,
                                              &&RULE_START,
                                              &&JMP_IF_REMOVED,
-                                             &&TRANSFORM,
                                              &&OPERATE,
                                              &&SIZE,
                                              &&PUSH_MATCHED,
@@ -76,6 +76,7 @@ bool VirtualMachine::execute(const Program& program) {
                                              &&LOG_CALLBACK,
                                              &&EXIT_IF_DISRUPTIVE,
                                              TRAVEL_VARIABLES(LOAD_VAR_LABEL)
+                                             TRAVEL_TRANSFORMATIONS(TRANSFORM_LABEL)
                                              TRAVEL_ACTIONS(ACTION_LABEL)
                                              TRAVEL_ACTIONS(UNC_ACTION_LABEL)
                                           };
@@ -99,6 +100,8 @@ bool VirtualMachine::execute(const Program& program) {
   CASE(LOAD_##var_type##_VR, execLoad##var_type##_VR(*iter), ++iter);                              \
   CASE(LOAD_##var_type##_VS, execLoad##var_type##_VS(*iter), ++iter);
 
+#define CASE_TRANSFORM(transform_type)                                                             \
+  CASE(TRANSFORM_##transform_type, execTransform##transform_type(*iter), ++iter);
 #define CASE_ACTION(action_type) CASE(ACTION_##action_type, execAction##action_type(*iter), ++iter);
 #define CASE_UNC_ACTION(action_type)                                                               \
   CASE(UNC_ACTION_##action_type, execUncAction##action_type(*iter), ++iter);
@@ -128,7 +131,6 @@ bool VirtualMachine::execute(const Program& program) {
   CASE(DEBUG, execDebug(*iter), ++iter);
   CASE(RULE_START, execRuleStart(*iter), ++iter);
   CASE(JMP_IF_REMOVED, execJmpIfRemoved(*iter, instructions, iter), {});
-  CASE(TRANSFORM, execTransform(*iter), ++iter);
   CASE(OPERATE, execOperate(*iter), ++iter);
   CASE(SIZE, execSize(*iter), ++iter);
   CASE(PUSH_MATCHED, execPushMatched(*iter), ++iter);
@@ -139,6 +141,7 @@ bool VirtualMachine::execute(const Program& program) {
   CASE(LOG_CALLBACK, execLogCallback(*iter), ++iter);
   CASE(EXIT_IF_DISRUPTIVE, execExitIfDisruptive(*iter, instructions, iter), {});
   TRAVEL_VARIABLES(CASE_LOAD_VAR)
+  TRAVEL_TRANSFORMATIONS(CASE_TRANSFORM)
   TRAVEL_ACTIONS(CASE_ACTION)
   TRAVEL_ACTIONS(CASE_UNC_ACTION)
 #undef CASE
@@ -220,142 +223,6 @@ void VirtualMachine::execJmpIfRemoved(
   } else {
     ++iter;
   }
-}
-
-template <class TransformType>
-void dispatchTransform(const TransformType* transform, Transaction& t,
-                       const std::unique_ptr<Wge::Variable::VariableBase>* curr_var,
-                       const Common::EvaluateResults& input, Common::EvaluateResults& output) {
-  size_t input_size = input.size();
-  for (size_t i = 0; i < input_size; ++i) {
-    const Common::EvaluateResults::Element& input_element = input.get(i);
-    if (!IS_STRING_VIEW_VARIANT(input_element.variant_)) {
-      // Not a string, just pass it through. The OPERATE instruction use the output as the input, so
-      // we need to keep the size consistent
-      output.append(input_element.variant_);
-      continue;
-    }
-
-    /* Check the cache */
-    std::string_view input_data_view = std::get<std::string_view>(input_element.variant_);
-    Common::EvaluateResults::Element output_element;
-    std::optional<bool> cache_result = transform->TransformType::getCache(
-        t, input_element, transform->TransformType::name(), output_element);
-    if (cache_result.has_value()) {
-      WGE_LOG_TRACE(
-          "transform cache hit: {} {}",
-          [&]() {
-            if (curr_var) {
-              if (input_element.variable_sub_name_.empty()) {
-                return std::string((*curr_var)->fullName().main_name_);
-              } else {
-                return std::format("{}:{}", (*curr_var)->fullName().main_name_,
-                                   input_element.variable_sub_name_);
-              }
-            } else {
-              return std::string();
-            }
-          }(),
-          transform->TransformType::name());
-      if (!*cache_result) {
-        output_element.variant_ = input_data_view;
-        output_element.variable_sub_name_ = input_element.variable_sub_name_;
-      }
-      output.append(std::move(output_element));
-      continue;
-    }
-
-    /* Evaluate the transformation and store the result in the cache */
-    std::string output_buffer;
-    bool ret = transform->TransformType::evaluate(input_data_view, output_buffer);
-    if (ret) {
-      auto& result = transform->TransformType::setCache(
-          t, input_data_view, transform->TransformType::name(), std::move(output_buffer));
-      output_element.variant_ = result.variant_;
-    } else {
-      transform->TransformType::setEmptyCache(t, input_data_view, transform->TransformType::name());
-      output_element.variant_ = input_data_view;
-    }
-    output_element.variable_sub_name_ = input_element.variable_sub_name_;
-    output.append(std::move(output_element));
-    WGE_LOG_TRACE("evaluate action defined transformation: {} {}", transform->TransformType::name(),
-                  ret);
-  }
-}
-
-void VirtualMachine::execTransform(const Instruction& instruction) {
-  // Dispatch table for bytecode instructions. We use computed gotos for efficiency
-  static constexpr void* transform_dispatch_table[] = {&&Base64DecodeExt,    &&Base64Decode,
-                                                       &&Base64Encode,       &&CmdLine,
-                                                       &&CompressWhiteSpace, &&CssDecode,
-                                                       &&EscapeSeqDecode,    &&HexDecode,
-                                                       &&HexEncode,          &&HtmlEntityDecode,
-                                                       &&JsDecode,           &&Length,
-                                                       &&LowerCase,          &&Md5,
-                                                       &&NormalisePathWin,   &&NormalisePath,
-                                                       &&NormalizePathWin,   &&NormalizePath,
-                                                       &&ParityEven7Bit,     &&ParityOdd7Bit,
-                                                       &&ParityZero7Bit,     &&RemoveCommentsChar,
-                                                       &&RemoveComments,     &&RemoveNulls,
-                                                       &&RemoveWhitespace,   &&ReplaceComments,
-                                                       &&ReplaceNulls,       &&Sha1,
-                                                       &&SqlHexDecode,       &&TrimLeft,
-                                                       &&TrimRight,          &&Trim,
-                                                       &&UpperCase,          &&UrlDecodeUni,
-                                                       &&UrlDecode,          &&UrlEncode,
-                                                       &&Utf8ToUnicode};
-#define CASE(transform)                                                                            \
-  transform:                                                                                       \
-  dispatchTransform(reinterpret_cast<const Transformation::transform*>(instruction.op4_.cptr_),    \
-                    transaction_, curr_var, input, output);                                        \
-  return;
-
-  const std::unique_ptr<Variable::VariableBase>* curr_var =
-      reinterpret_cast<const std::unique_ptr<Variable::VariableBase>*>(
-          general_registers_[Compiler::RuleCompiler::curr_variable_reg_]);
-  const auto& input = extended_registers_[instruction.op2_.x_reg_];
-  auto& output = extended_registers_[instruction.op1_.x_reg_];
-  output.clear();
-
-  DISPATCH(transform_dispatch_table[instruction.op3_.index_]);
-  CASE(Base64DecodeExt);
-  CASE(Base64Decode);
-  CASE(Base64Encode);
-  CASE(CmdLine);
-  CASE(CompressWhiteSpace);
-  CASE(CssDecode);
-  CASE(EscapeSeqDecode);
-  CASE(HexDecode);
-  CASE(HexEncode);
-  CASE(HtmlEntityDecode);
-  CASE(JsDecode);
-  CASE(Length);
-  CASE(LowerCase);
-  CASE(Md5);
-  CASE(NormalisePathWin);
-  CASE(NormalisePath);
-  CASE(NormalizePathWin);
-  CASE(NormalizePath);
-  CASE(ParityEven7Bit);
-  CASE(ParityOdd7Bit);
-  CASE(ParityZero7Bit);
-  CASE(RemoveCommentsChar);
-  CASE(RemoveComments);
-  CASE(RemoveNulls);
-  CASE(RemoveWhitespace);
-  CASE(ReplaceComments);
-  CASE(ReplaceNulls);
-  CASE(Sha1);
-  CASE(SqlHexDecode);
-  CASE(TrimLeft);
-  CASE(TrimRight);
-  CASE(Trim);
-  CASE(UpperCase);
-  CASE(UrlDecodeUni);
-  CASE(UrlDecode);
-  CASE(UrlEncode);
-  CASE(Utf8ToUnicode);
-#undef CASE
 }
 
 template <class OperatorType>
@@ -981,6 +848,82 @@ IMPL_LOAD_VAR(
 #undef IMPL
 #undef IMPL_LOAD_VAR
 #undef IMPL_LOAD_VAR_PROC
+
+template <class TransformType>
+void dispatchTransform(const TransformType* transform, Transaction& t,
+                       const std::unique_ptr<Wge::Variable::VariableBase>* curr_var,
+                       const Common::EvaluateResults& input, Common::EvaluateResults& output) {
+  size_t input_size = input.size();
+  for (size_t i = 0; i < input_size; ++i) {
+    const Common::EvaluateResults::Element& input_element = input.get(i);
+    if (!IS_STRING_VIEW_VARIANT(input_element.variant_)) {
+      // Not a string, just pass it through. The OPERATE instruction use the output as the input, so
+      // we need to keep the size consistent
+      output.append(input_element.variant_);
+      continue;
+    }
+
+    /* Check the cache */
+    std::string_view input_data_view = std::get<std::string_view>(input_element.variant_);
+    Common::EvaluateResults::Element output_element;
+    std::optional<bool> cache_result = transform->TransformType::getCache(
+        t, input_element, transform->TransformType::name(), output_element);
+    if (cache_result.has_value()) {
+      WGE_LOG_TRACE(
+          "transform cache hit: {} {}",
+          [&]() {
+            if (curr_var) {
+              if (input_element.variable_sub_name_.empty()) {
+                return std::string((*curr_var)->fullName().main_name_);
+              } else {
+                return std::format("{}:{}", (*curr_var)->fullName().main_name_,
+                                   input_element.variable_sub_name_);
+              }
+            } else {
+              return std::string();
+            }
+          }(),
+          transform->TransformType::name());
+      if (!*cache_result) {
+        output_element.variant_ = input_data_view;
+        output_element.variable_sub_name_ = input_element.variable_sub_name_;
+      }
+      output.append(std::move(output_element));
+      continue;
+    }
+
+    /* Evaluate the transformation and store the result in the cache */
+    std::string output_buffer;
+    bool ret = transform->TransformType::evaluate(input_data_view, output_buffer);
+    if (ret) {
+      auto& result = transform->TransformType::setCache(
+          t, input_data_view, transform->TransformType::name(), std::move(output_buffer));
+      output_element.variant_ = result.variant_;
+    } else {
+      transform->TransformType::setEmptyCache(t, input_data_view, transform->TransformType::name());
+      output_element.variant_ = input_data_view;
+    }
+    output_element.variable_sub_name_ = input_element.variable_sub_name_;
+    output.append(std::move(output_element));
+    WGE_LOG_TRACE("evaluate action defined transformation: {} {}", transform->TransformType::name(),
+                  ret);
+  }
+}
+
+#define IMPL_TRANSFORM_PROC(transform_type)                                                        \
+  void VirtualMachine::execTransform##transform_type(const Instruction& instruction) {             \
+    const std::unique_ptr<Variable::VariableBase>* curr_var =                                      \
+        reinterpret_cast<const std::unique_ptr<Variable::VariableBase>*>(                          \
+            general_registers_[Compiler::RuleCompiler::curr_variable_reg_]);                       \
+    const Transformation::transform_type* transform =                                              \
+        reinterpret_cast<const Transformation::transform_type*>(instruction.op3_.cptr_);           \
+    const auto& input = extended_registers_[instruction.op2_.x_reg_];                              \
+    auto& output = extended_registers_[instruction.op1_.x_reg_];                                   \
+    output.clear();                                                                                \
+    dispatchTransform(transform, transaction_, curr_var, input, output);                           \
+  }
+TRAVEL_TRANSFORMATIONS(IMPL_TRANSFORM_PROC);
+#undef IMPL_TRANSFORM_PROC
 
 #define IMPL_ACTION_PROC(action_type)                                                              \
   void VirtualMachine::execAction##action_type(const Instruction& instruction) {                   \

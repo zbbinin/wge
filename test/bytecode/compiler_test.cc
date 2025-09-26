@@ -41,8 +41,8 @@ class CompilerTest : public testing::Test {
 public:
   const std::unordered_map<const char*, Compiler::VariableCompiler::VariableTypeInfo>&
       variable_type_info_map_{Compiler::VariableCompiler::variable_type_info_map_};
-  const std::unordered_map<const char*, int64_t>& transform_index_map_{
-      Compiler::TransformCompiler::transform_index_map_};
+  const std::unordered_map<const char*, Compiler::TransformCompiler::TransformTypeInfo>&
+      transform_type_info_map_{Compiler::TransformCompiler::transform_type_info_map_};
   const std::unordered_map<const char*, int64_t>& operator_index_map_{
       Compiler::OperatorCompiler::operator_index_map_};
   const std::unordered_map<const char*, Compiler::ActionCompiler::ActionTypeInfo>&
@@ -236,7 +236,8 @@ TEST_F(CompilerTest, compileTransform) {
 
   size_t count = 0;
   for (auto& instruction : program->instructions()) {
-    if (instruction.op_code_ == Bytecode::OpCode::TRANSFORM) {
+    if (instruction.op_code_ >= Bytecode::TRANSFORM_INSTRUCTIONS_START &&
+        instruction.op_code_ <= Bytecode::TRANSFORM_INSTRUCTIONS_END) {
       ++count;
       if (count == 1) {
         EXPECT_EQ(instruction.op1_.x_reg_, Compiler::RuleCompiler::transform_tmp_reg1_);
@@ -250,10 +251,6 @@ TEST_F(CompilerTest, compileTransform) {
           EXPECT_EQ(instruction.op2_.x_reg_, Compiler::RuleCompiler::transform_tmp_reg2_);
         }
       }
-
-      const Transformation::TransformBase* transform =
-          reinterpret_cast<const Transformation::TransformBase*>(instruction.op4_.cptr_);
-      EXPECT_EQ(instruction.op3_.index_, transform_index_map_.at(transform->name()));
     }
   }
   EXPECT_EQ(count, transforms.size() + default_action.transforms().size());

@@ -23,6 +23,7 @@
 #include <bitset>
 
 #include "compiler/action_travel_helper.h"
+#include "compiler/transform_travel_helper.h"
 #include "compiler/variable_travel_helper.h"
 #include "program.h"
 #include "register.h"
@@ -95,7 +96,6 @@ private:
   inline void execJmpIfRemoved(const Instruction& instruction,
                                const std::vector<Wge::Bytecode::Instruction>& instruction_array,
                                std::vector<Wge::Bytecode::Instruction>::const_iterator& iter);
-  inline void execTransform(const Instruction& instruction);
   inline void execOperate(const Instruction& instruction);
   inline void execSize(const Instruction& instruction);
   inline void execPushMatched(const Instruction& instruction);
@@ -121,6 +121,12 @@ private:
 
   TRAVEL_VARIABLES(DECLARE_LOAD_VAR_PROC)
 #undef DECLARE_LOAD_VAR_PROC
+
+// Transformation handlers
+#define DECLARE_TRANSFORM_PROC(transform_type)                                                     \
+  inline void execTransform##transform_type(const Instruction& instruction);
+  TRAVEL_TRANSFORMATIONS(DECLARE_TRANSFORM_PROC)
+#undef DECLARE_TRANSFORM_PROC
 
   // Action handlers
 #define DECLARE_ACTION_PROC(action_type)                                                           \

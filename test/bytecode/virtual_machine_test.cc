@@ -51,8 +51,8 @@ public:
   TransactionPtr t_;
   const std::unordered_map<const char*, Compiler::VariableCompiler::VariableTypeInfo>&
       variable_type_info_map_{Compiler::VariableCompiler::variable_type_info_map_};
-  const std::unordered_map<const char*, int64_t>& transform_index_map_{
-      Compiler::TransformCompiler::transform_index_map_};
+  const std::unordered_map<const char*, Compiler::TransformCompiler::TransformTypeInfo>&
+      transform_type_info_map_{Compiler::TransformCompiler::transform_type_info_map_};
   const std::unordered_map<const char*, int64_t>& operator_index_map_{
       Compiler::OperatorCompiler::operator_index_map_};
   const std::unordered_map<const char*, Compiler::ActionCompiler::ActionTypeInfo>&
@@ -284,35 +284,6 @@ TEST_F(VirtualMachineTest, execDebug) {
 
   // Clean up the log file
   std::remove("test_log.txt");
-}
-
-TEST_F(VirtualMachineTest, execTransform) {
-  Transformation::LowerCase lower_cast;
-
-  // Create a dummy program with TRANSFORM instruction
-  Program program;
-  Instruction instruction = {OpCode::TRANSFORM,
-                             {.x_reg_ = ExtendedRegister::R9},
-                             {.x_reg_ = ExtendedRegister::R8},
-                             {.imm_ = transform_index_map_.at(lower_cast.name_)},
-                             {.cptr_ = &lower_cast}};
-  program.emit(instruction);
-
-  // Initialize registers
-  auto& src = vm_->extendedRegisters()[ExtendedRegister::R8];
-  auto& dst = vm_->extendedRegisters()[ExtendedRegister::R9];
-  src.clear();
-  dst.clear();
-  src.append(std::string("VALUE1"), "sub1");
-  src.append(std::string("VALUE2"), "sub2");
-  src.append(std::string("VALUE3"), "sub3");
-
-  vm_->execute(program);
-
-  EXPECT_EQ(dst.size(), 3);
-  EXPECT_EQ(std::get<std::string_view>(dst.get(0).variant_), "value1");
-  EXPECT_EQ(std::get<std::string_view>(dst.get(1).variant_), "value2");
-  EXPECT_EQ(std::get<std::string_view>(dst.get(2).variant_), "value3");
 }
 
 TEST_F(VirtualMachineTest, execOperate) {

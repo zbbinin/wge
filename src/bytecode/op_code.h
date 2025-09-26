@@ -21,6 +21,7 @@
 #pragma once
 
 #include "compiler/action_travel_helper.h"
+#include "compiler/transform_travel_helper.h"
 #include "compiler/variable_travel_helper.h"
 
 namespace Wge {
@@ -118,15 +119,6 @@ enum class OpCode {
   // Example: JMP_IF_REMOVED 123456
   JMP_IF_REMOVED,
 
-  // Transform variable value.
-  // Syntax: TRANSFORM <dst_reg>, <src_reg>, <transform_index>, <transform_instance_pointer>
-  // @param op1 [x_reg]: Destination register
-  // @param op2 [x_reg]: Source register
-  // @param op3 [index]: Transformation index
-  // @param op4 [cptr]: Constant pointer to transformation instance
-  // Example: TRANSFORM R9, R8, 1, 123456
-  TRANSFORM,
-
   // Match variable value with operator and set OMF flag
   // Syntax: OPERATE <res_reg>  <src_reg>, <operator_index>, <operator_instance_pointer>
   // @param op1 [x_reg]: Result register
@@ -216,6 +208,20 @@ enum class OpCode {
   TRAVEL_VARIABLES(LOAD_VAR_INSTRUCTIONS)
 // clang-format on
 
+// ==================== Transfromation Instructions ====================
+// These instructions provide compile-time specific transformation types and access patterns,
+// eliminating runtime dispatch overhead and enabling better JIT compilation optimization.
+//
+// Naming convention: TRANSFROM_{TRANSFORM_TYPE}
+//
+// @param op1 [x_reg]: Destination register
+// @param op2 [x_reg]: Source register
+// @param op3 [cptr]: Constant pointer to transformation instance
+// clang-format off
+#define TRANSFORM_INSTUCTIONS(tansfrom_type) TRANSFORM_##tansfrom_type,
+  TRAVEL_TRANSFORMATIONS(TRANSFORM_INSTUCTIONS)
+// clang-format on
+
 // ==================== Action Instructions ====================
 // These instructions provide compile-time specific action types and access patterns, eliminating
 // runtime dispatch overhead and enabling better JIT compilation optimization.
@@ -247,6 +253,8 @@ enum class OpCode {
 
 static constexpr OpCode LOAD_VAR_INSTRUCTIONS_START = OpCode::LOAD_ArgsCombinedSize_CC;
 static constexpr OpCode LOAD_VAR_INSTRUCTIONS_END = OpCode::LOAD_Xml_TagValuePmf_VS;
+static constexpr OpCode TRANSFORM_INSTRUCTIONS_START = OpCode::TRANSFORM_Base64DecodeExt;
+static constexpr OpCode TRANSFORM_INSTRUCTIONS_END = OpCode::TRANSFORM_Utf8ToUnicode;
 static constexpr OpCode ACTION_INSTRUCTIONS_START = OpCode::ACTION_Ctl;
 static constexpr OpCode ACTION_INSTRUCTIONS_END = OpCode::ACTION_SetVar;
 static constexpr OpCode UNC_ACTION_INSTRUCTIONS_START = OpCode::UNC_ACTION_Ctl;

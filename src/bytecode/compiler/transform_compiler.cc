@@ -20,47 +20,28 @@
  */
 #include "transform_compiler.h"
 
+#include "transform_travel_helper.h"
+
 #include "../../transformation/transform_include.h"
 #include "../program.h"
 
-#define TRANSFORM_INDEX(name)                                                                      \
-  { Transformation::name::name_, __COUNTER__ }
+#define TRANSFORM_TYPE_INFO(transform_type)                                                        \
+  {Transformation::transform_type::name_,                                                          \
+   {__COUNTER__, Wge::Bytecode::OpCode::TRANSFORM_##transform_type}},
 
 namespace Wge {
 namespace Bytecode {
 namespace Compiler {
-const std::unordered_map<const char*, int64_t> TransformCompiler::transform_index_map_ = {
-    TRANSFORM_INDEX(Base64DecodeExt),    TRANSFORM_INDEX(Base64Decode),
-    TRANSFORM_INDEX(Base64Encode),       TRANSFORM_INDEX(CmdLine),
-    TRANSFORM_INDEX(CompressWhiteSpace), TRANSFORM_INDEX(CssDecode),
-    TRANSFORM_INDEX(EscapeSeqDecode),    TRANSFORM_INDEX(HexDecode),
-    TRANSFORM_INDEX(HexEncode),          TRANSFORM_INDEX(HtmlEntityDecode),
-    TRANSFORM_INDEX(JsDecode),           TRANSFORM_INDEX(Length),
-    TRANSFORM_INDEX(LowerCase),          TRANSFORM_INDEX(Md5),
-    TRANSFORM_INDEX(NormalisePathWin),   TRANSFORM_INDEX(NormalisePath),
-    TRANSFORM_INDEX(NormalizePathWin),   TRANSFORM_INDEX(NormalizePath),
-    TRANSFORM_INDEX(ParityEven7Bit),     TRANSFORM_INDEX(ParityOdd7Bit),
-    TRANSFORM_INDEX(ParityZero7Bit),     TRANSFORM_INDEX(RemoveCommentsChar),
-    TRANSFORM_INDEX(RemoveComments),     TRANSFORM_INDEX(RemoveNulls),
-    TRANSFORM_INDEX(RemoveWhitespace),   TRANSFORM_INDEX(ReplaceComments),
-    TRANSFORM_INDEX(ReplaceNulls),       TRANSFORM_INDEX(Sha1),
-    TRANSFORM_INDEX(SqlHexDecode),       TRANSFORM_INDEX(TrimLeft),
-    TRANSFORM_INDEX(TrimRight),          TRANSFORM_INDEX(Trim),
-    TRANSFORM_INDEX(UpperCase),          TRANSFORM_INDEX(UrlDecodeUni),
-    TRANSFORM_INDEX(UrlDecode),          TRANSFORM_INDEX(UrlEncode),
-    TRANSFORM_INDEX(Utf8ToUnicode)};
+const std::unordered_map<const char*, TransformCompiler::TransformTypeInfo>
+    TransformCompiler::transform_type_info_map_ = {TRAVEL_TRANSFORMATIONS(TRANSFORM_TYPE_INFO)};
 
 void TransformCompiler::compile(ExtendedRegister dst_reg, ExtendedRegister src_reg,
                                 const Transformation::TransformBase* transform, Program& program) {
-  auto iter = transform_index_map_.find(transform->name());
-  assert(iter != transform_index_map_.end());
-  if (iter != transform_index_map_.end()) {
-    int64_t index = iter->second;
-    program.emit({OpCode::TRANSFORM,
-                  {.x_reg_ = dst_reg},
-                  {.x_reg_ = src_reg},
-                  {.index_ = index},
-                  {.cptr_ = transform}});
+  auto iter = transform_type_info_map_.find(transform->name());
+  assert(iter != transform_type_info_map_.end());
+  if (iter != transform_type_info_map_.end()) {
+    program.emit(
+        {iter->second.opcode_, {.x_reg_ = dst_reg}, {.x_reg_ = src_reg}, {.cptr_ = transform}});
   }
 }
 
