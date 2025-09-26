@@ -34,7 +34,7 @@ std::unique_ptr<Program> RuleCompiler::compile(const std::vector<const Rule*>& r
   if (!skip_info_array.empty()) {
     auto end = program->instructions().size();
     for (auto& info : skip_info_array) {
-      program->relocate(info.jom_index_, end);
+      program->relocate(info.jrm_index_, end);
     }
   }
 
@@ -163,12 +163,18 @@ void RuleCompiler::compileRule(const Rule* rule, const Rule* default_action_rule
     }
   }
 
-  // Skip the instuctions of chain rule if the OPERATE was not matched
-  const size_t jnom_index_for_rule_matched = program.instructions().size();
-  program.emit({OpCode::JNOM, {.address_ = RELOCATION}});
+  // Skip the remaining instructions if the rule is not matched.
+  // The skipped instructions include:
+  // 1. The instructions for chained rules(if any)
+  // 2. The instructions for expand macro
+  // 3. The instructions for log callback(if any)
+  // 4. The instructions for exit if disruptive(if any)
+  // 5. The instructions for skip(if any)
+  const size_t jnrm_index_for_rule_matched = program.instructions().size();
+  program.emit({OpCode::JNRM, {.address_ = RELOCATION}});
 
   // Compile chain rule
-  std::optional<size_t> jnom_index_for_chain_matched;
+  std::optional<size_t> jnrm_index_for_chain_matched;
   std::optional<std::list<std::unique_ptr<Rule>>::const_iterator> chain_rule_iter =
       rule->chainRule(0);
   if (chain_rule_iter.has_value()) {
@@ -184,8 +190,8 @@ void RuleCompiler::compileRule(const Rule* rule, const Rule* default_action_rule
 
     // If the chained rule are matched means the rule is matched, otherwise the rule is not
     // matched
-    jnom_index_for_chain_matched = program.instructions().size();
-    program.emit({OpCode::JNOM, {.address_ = RELOCATION}});
+    jnrm_index_for_chain_matched = program.instructions().size();
+    program.emit({OpCode::JNRM, {.address_ = RELOCATION}});
   }
 
   // Compile expand macro
@@ -213,12 +219,12 @@ void RuleCompiler::compileRule(const Rule* rule, const Rule* default_action_rule
       if (skip_info_array == nullptr) {
         WGE_LOG_ERROR("skip compile error: no skip info");
       } else {
-        size_t jom_index = program.instructions().size();
-        program.emit({OpCode::JOM, {.address_ = RELOCATION}});
+        size_t jrm_index = program.instructions().size();
+        program.emit({OpCode::JRM, {.address_ = RELOCATION}});
         if (rule->skip() != 0) {
-          skip_info_array->emplace_back(rule, rule->skip(), jom_index);
+          skip_info_array->emplace_back(rule->skip(), jrm_index);
         } else {
-          skip_info_array->emplace_back(rule, rule->skipAfter(), jom_index);
+          skip_info_array->emplace_back(rule->skipAfter(), jrm_index);
         }
       }
     }
@@ -226,9 +232,9 @@ void RuleCompiler::compileRule(const Rule* rule, const Rule* default_action_rule
 
   // Relocate jump address
   const size_t curr_index = program.instructions().size();
-  program.relocate(jnom_index_for_rule_matched, curr_index);
-  if (jnom_index_for_chain_matched.has_value()) {
-    program.relocate(jnom_index_for_chain_matched.value(), curr_index);
+  program.relocate(jnrm_index_for_rule_matched, curr_index);
+  if (jnrm_index_for_chain_matched.has_value()) {
+    program.relocate(jnrm_index_for_chain_matched.value(), curr_index);
   }
   if (jmp_if_remove_index.has_value()) {
     program.relocate(jmp_if_remove_index.value(), curr_index);
@@ -243,7 +249,7 @@ void RuleCompiler::updateSkipInfo(Program& program, std::vector<SkipInfo>& skip_
           using T = std::decay_t<decltype(skip_info)>;
           if constexpr (std::is_same_v<T, int>) {
             if (skip_info == 0) {
-              program.relocate(iter->jom_index_, program.instructions().size());
+              program.relocate(iter->jrm_index_, program.instructions().size());
               iter = skip_info_array.erase(iter);
             } else {
               --skip_info;
@@ -252,7 +258,7 @@ void RuleCompiler::updateSkipInfo(Program& program, std::vector<SkipInfo>& skip_
           } else {
             auto next_rule_iter = engine->marker(skip_info, rule->phase());
             if (next_rule_iter.has_value() && rule == **next_rule_iter) {
-              program.relocate(iter->jom_index_, program.instructions().size());
+              program.relocate(iter->jrm_index_, program.instructions().size());
               iter = skip_info_array.erase(iter);
             } else {
               ++iter;

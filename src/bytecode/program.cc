@@ -14,7 +14,9 @@ void Program::relocate(size_t index, GeneralRegisterValue new_address) {
     auto& instruction = instructions_[index];
     if (instruction.op_code_ != OpCode::JMP && instruction.op_code_ != OpCode::JZ &&
         instruction.op_code_ != OpCode::JNZ && instruction.op_code_ != OpCode::JOM &&
-        instruction.op_code_ != OpCode::JNOM && instruction.op_code_ != OpCode::JMP_IF_REMOVED) {
+        instruction.op_code_ != OpCode::JNOM && instruction.op_code_ != OpCode::JRM &&
+        instruction.op_code_ != OpCode::JNRM && instruction.op_code_ != OpCode::JMP_IF_REMOVED) {
+      UNREACHABLE();
       WGE_LOG_ERROR(
           "relocate jump address error: instruction at index 0x{:x} is not a jump instruction",
           index);

@@ -416,16 +416,16 @@ TEST_F(CompilerTest, compileChainRule) {
   auto program = Wge::Bytecode::Compiler::RuleCompiler::compile(&rule, nullptr, &engine_);
 
   size_t operator_count = 0;
-  size_t jnom_count = 0;
+  size_t jnrm_count = 0;
   for (auto& instruction : program->instructions()) {
     if (instruction.op_code_ == Bytecode::OpCode::OPERATE) {
       ++operator_count;
-    } else if (instruction.op_code_ == Bytecode::OpCode::JNOM) {
-      ++jnom_count;
+    } else if (instruction.op_code_ == Bytecode::OpCode::JNRM) {
+      ++jnrm_count;
     }
   }
   EXPECT_EQ(operator_count, chain_rule_count + 1);
-  EXPECT_EQ(jnom_count, chain_rule_count * 2 + 1);
+  EXPECT_EQ(jnrm_count, chain_rule_count * 2 + 1);
 }
 
 TEST_F(CompilerTest, compileExpandMacro) {

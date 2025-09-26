@@ -75,9 +75,8 @@ private:
   struct SkipInfo {
     using Skip = int;
     using SkipAfter = std::string;
-    const Rule* rule_;
     std::variant<Skip, SkipAfter> target_;
-    size_t jom_index_;
+    size_t jrm_index_;
   };
 
 private:
