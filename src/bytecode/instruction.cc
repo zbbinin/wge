@@ -1,3 +1,23 @@
+/**
+ * Copyright (c) 2024-2025 Stone Rhino and contributors.
+ *
+ * MIT License (http://opensource.org/licenses/MIT)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+ * associated documentation files (the "Software"), to deal in the Software without restriction,
+ * including without limitation the rights to use, copy, modify, merge, publish, distribute,
+ * sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all copies or
+ * substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+ * NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+ * DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
 #include "instruction.h"
 
 #include <format>
@@ -98,120 +118,10 @@ std::string Instruction::toString() const {
                        ExtendedRegister2String.at(instruction.op1_.x_reg_), instruction.op2_.cptr_,
                        var_name);
   };
-  static const std::unordered_map<OpCode, std::function<std::string(const Instruction&)>>
-      to_string_map = {
-          {OpCode::MOV,
-           [](const Instruction& instruction) {
-             return std::format("MOV {}, 0x{:x}",
-                                GeneralRegister2String.at(instruction.op1_.g_reg_),
-                                instruction.op2_.imm_);
-           }},
-          {OpCode::ADD,
-           [](const Instruction& instruction) {
-             return std::format("ADD {}, 0x{:x}",
-                                GeneralRegister2String.at(instruction.op1_.g_reg_),
-                                instruction.op2_.imm_);
-           }},
-          {OpCode::CMP,
-           [](const Instruction& instruction) {
-             return std::format("CMP {}, {}", GeneralRegister2String.at(instruction.op1_.g_reg_),
-                                GeneralRegister2String.at(instruction.op2_.g_reg_));
-           }},
-          {OpCode::JMP,
-           [](const Instruction& instruction) {
-             return std::format("JMP 0x{:x}", instruction.op1_.address_);
-           }},
-          {OpCode::JZ,
-           [](const Instruction& instruction) {
-             return std::format("JZ 0x{:x}", instruction.op1_.address_);
-           }},
-          {OpCode::JNZ,
-           [](const Instruction& instruction) {
-             return std::format("JNZ 0x{:x}", instruction.op1_.address_);
-           }},
-          {OpCode::JOM,
-           [](const Instruction& instruction) {
-             return std::format("JOM 0x{:x}", instruction.op1_.address_);
-           }},
-          {OpCode::JNOM,
-           [](const Instruction& instruction) {
-             return std::format("JNOM 0x{:x}", instruction.op1_.address_);
-           }},
-          {OpCode::JRM,
-           [](const Instruction& instruction) {
-             return std::format("JRM 0x{:x}", instruction.op1_.address_);
-           }},
-          {OpCode::JNRM,
-           [](const Instruction& instruction) {
-             return std::format("JNRM 0x{:x}", instruction.op1_.address_);
-           }},
-          {OpCode::NOP, [](const Instruction&) { return "NOP"; }},
-          {OpCode::DEBUG,
-           [](const Instruction& instruction) {
-             return std::format("DEBUG {}", reinterpret_cast<const char*>(instruction.op1_.cptr_));
-           }},
-          {OpCode::RULE_START,
-           [](const Instruction& instruction) {
-             const Rule* rule = reinterpret_cast<const Rule*>(instruction.op1_.cptr_);
-             return std::format("RULE_START {}(id:{} [{}:{}])", instruction.op1_.cptr_, rule->id(),
-                                rule->filePath(), rule->line());
-           }},
-          {OpCode::JMP_IF_REMOVED,
-           [](const Instruction& instruction) {
-             return std::format("JMP_IF_REMOVED 0x{:x}", instruction.op1_.address_);
-           }},
-          {OpCode::SIZE,
-           [](const Instruction& instruction) {
-             return std::format("SIZE {}, {}", GeneralRegister2String.at(instruction.op1_.g_reg_),
-                                ExtendedRegister2String.at(instruction.op2_.x_reg_));
-           }},
-          {OpCode::PUSH_MATCHED,
-           [](const Instruction& instruction) {
-             return std::format("PUSH_MATCHED {}, {}, {}",
-                                ExtendedRegister2String.at(instruction.op1_.x_reg_),
-                                ExtendedRegister2String.at(instruction.op2_.x_reg_),
-                                GeneralRegister2String.at(instruction.op3_.g_reg_));
-           }},
-          {OpCode::PUSH_ALL_MATCHED,
-           [](const Instruction& instruction) {
-             return std::format("PUSH_ALL_MATCHED {}, {}",
-                                ExtendedRegister2String.at(instruction.op1_.x_reg_),
-                                ExtendedRegister2String.at(instruction.op2_.x_reg_));
-           }},
-          {OpCode::EXPAND_MACRO,
-           [](const Instruction& instruction) {
-             std::string msg_macro_name =
-                 instruction.op2_.cptr_
-                     ? reinterpret_cast<const Macro::MacroBase*>(instruction.op2_.cptr_)->name()
-                     : "nullptr";
-             std::string log_macro_name =
-                 instruction.op4_.cptr_
-                     ? reinterpret_cast<const Macro::MacroBase*>(instruction.op4_.cptr_)->name()
-                     : "nullptr";
-             return std::format("EXPAND_MACRO {}, {}({}), {}, {}({})", instruction.op1_.index_,
-                                instruction.op2_.cptr_, msg_macro_name, instruction.op3_.index_,
-                                instruction.op4_.cptr_, log_macro_name);
-           }},
-          {OpCode::CHAIN_START,
-           [](const Instruction& instruction) {
-             return std::format("CHAIN_START {}", instruction.op1_.cptr_);
-           }},
-          {OpCode::CHAIN_END,
-           [](const Instruction& instruction) {
-             return std::format("CHAIN_END {}", instruction.op1_.cptr_);
-           }},
-          {OpCode::LOG_CALLBACK,
-           [](const Instruction& instruction) { return std::format("LOG_CALLBACK"); }},
-          {OpCode::EXIT_IF_DISRUPTIVE,
-           [](const Instruction& instruction) { return std::format("EXIT_IF_DISRUPTIVE"); }},
-          // clang-format off
-          TRAVEL_VARIABLES(LOAD_VAR_TO_STRING)
-          TRAVEL_TRANSFORMATIONS(TRANSFORM_TO_STRING)
-          TRAVEL_OPERATORS(OPERATOR_TO_STRING)
-          TRAVEL_ACTIONS(ACTION_TO_STRING)
-          TRAVEL_ACTIONS(UNC_ACTION_TO_STRING)
-          // clang-format on
-      };
+
+  // If we write a lot of lambdas here directly, IntelliSense of VSCode will slow down a lot. So we
+  // put it in a separate file. This is a reluctant move.
+#include "instruction.inl"
 
   std::string result;
   auto iter = to_string_map.find(op_code_);
