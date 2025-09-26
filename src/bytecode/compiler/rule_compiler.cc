@@ -28,6 +28,16 @@ std::unique_ptr<Program> RuleCompiler::compile(const std::vector<const Rule*>& r
   for (const Rule* rule : rules) {
     compileRule(rule, default_action_rule, engine, *program, &skip_info_array);
   }
+
+  // Update remaining skip info
+  // The target address is the end of program
+  if (!skip_info_array.empty()) {
+    auto end = program->instructions().size();
+    for (auto& info : skip_info_array) {
+      program->relocate(info.jom_index_, end);
+    }
+  }
+
   return program;
 }
 
@@ -201,14 +211,14 @@ void RuleCompiler::compileRule(const Rule* rule, const Rule* default_action_rule
     // Compile skip
     if (rule->skip() != 0 || !rule->skipAfter().empty()) {
       if (skip_info_array == nullptr) {
-        WGE_LOG_CRITICAL("skip compile error: no skip info");
+        WGE_LOG_ERROR("skip compile error: no skip info");
       } else {
         size_t jom_index = program.instructions().size();
         program.emit({OpCode::JOM, {.address_ = RELOCATION}});
         if (rule->skip() != 0) {
-          skip_info_array->emplace_back(rule->skip(), jom_index);
+          skip_info_array->emplace_back(rule, rule->skip(), jom_index);
         } else {
-          skip_info_array->emplace_back(rule->skipAfter(), jom_index);
+          skip_info_array->emplace_back(rule, rule->skipAfter(), jom_index);
         }
       }
     }

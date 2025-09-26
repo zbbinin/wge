@@ -157,6 +157,7 @@ void VirtualMachine::execJmp(const Instruction& instruction,
                              const std::vector<Wge::Bytecode::Instruction>& instruction_array,
                              std::vector<Wge::Bytecode::Instruction>::const_iterator& iter) {
   const int64_t target_address = instruction.op1_.address_;
+  assert(target_address > 0);
   if (target_address < 0 || target_address >= instruction_array.size())
     [[unlikely]] { iter = instruction_array.end(); }
   else {
@@ -169,6 +170,7 @@ void VirtualMachine::execJz(const Instruction& instruction,
                             std::vector<Wge::Bytecode::Instruction>::const_iterator& iter) {
   if (rflags_.test(static_cast<size_t>(Rflags::ZF))) {
     const int64_t target_address = instruction.op1_.address_;
+    assert(target_address > 0);
     if (target_address < 0 || target_address >= instruction_array.size())
       [[unlikely]] { iter = instruction_array.end(); }
     else {
@@ -184,6 +186,7 @@ void VirtualMachine::execJnz(const Instruction& instruction,
                              std::vector<Wge::Bytecode::Instruction>::const_iterator& iter) {
   if (!rflags_.test(static_cast<size_t>(Rflags::ZF))) {
     const int64_t target_address = instruction.op1_.address_;
+    assert(target_address > 0);
     if (target_address < 0 || target_address >= instruction_array.size())
       [[unlikely]] { iter = instruction_array.end(); }
     else {
@@ -199,6 +202,7 @@ void VirtualMachine::execJom(const Instruction& instruction,
                              std::vector<Wge::Bytecode::Instruction>::const_iterator& iter) {
   if (rflags_.test(static_cast<size_t>(Rflags::OMF))) {
     const int64_t target_address = instruction.op1_.address_;
+    assert(target_address > 0);
     if (target_address < 0 || target_address >= instruction_array.size())
       [[unlikely]] { iter = instruction_array.end(); }
     else {
@@ -214,6 +218,7 @@ void VirtualMachine::execJnom(const Instruction& instruction,
                               std::vector<Wge::Bytecode::Instruction>::const_iterator& iter) {
   if (!rflags_.test(static_cast<size_t>(Rflags::OMF))) {
     const int64_t target_address = instruction.op1_.address_;
+    assert(target_address > 0);
     if (target_address < 0 || target_address >= instruction_array.size())
       [[unlikely]] { iter = instruction_array.end(); }
     else {
