@@ -116,10 +116,10 @@ bool VirtualMachine::execute(const Program& program) {
   CASE(ADD, execAdd(*iter), ++iter);
   CASE(CMP, execCmp(*iter), ++iter);
   CASE(JMP, execJmp(*iter, instructions, iter), {});
-  CASE(JZ, execJz(*iter, instructions, iter), {});
-  CASE(JNZ, execJnz(*iter, instructions, iter), {});
-  CASE(JOM, execJom(*iter, instructions, iter), {});
-  CASE(JNOM, execJnom(*iter, instructions, iter), {});
+  CASE(JZ, execJumpIfFlag(*iter, instructions, iter, Rflags::ZF, true), {});
+  CASE(JNZ, execJumpIfFlag(*iter, instructions, iter, Rflags::ZF, false), {});
+  CASE(JOM, execJumpIfFlag(*iter, instructions, iter, Rflags::OMF, true), {});
+  CASE(JNOM, execJumpIfFlag(*iter, instructions, iter, Rflags::OMF, false), {});
   CASE(NOP, {}, ++iter);
   CASE(DEBUG, execDebug(*iter), ++iter);
   CASE(RULE_START, execRuleStart(*iter), ++iter);
@@ -165,58 +165,12 @@ void VirtualMachine::execJmp(const Instruction& instruction,
   }
 }
 
-void VirtualMachine::execJz(const Instruction& instruction,
-                            const std::vector<Wge::Bytecode::Instruction>& instruction_array,
-                            std::vector<Wge::Bytecode::Instruction>::const_iterator& iter) {
-  if (rflags_.test(static_cast<size_t>(Rflags::ZF))) {
-    const int64_t target_address = instruction.op1_.address_;
-    assert(target_address > 0);
-    if (target_address < 0 || target_address >= instruction_array.size())
-      [[unlikely]] { iter = instruction_array.end(); }
-    else {
-      iter = instruction_array.begin() + target_address;
-    }
-  } else {
-    ++iter;
-  }
-}
-
-void VirtualMachine::execJnz(const Instruction& instruction,
-                             const std::vector<Wge::Bytecode::Instruction>& instruction_array,
-                             std::vector<Wge::Bytecode::Instruction>::const_iterator& iter) {
-  if (!rflags_.test(static_cast<size_t>(Rflags::ZF))) {
-    const int64_t target_address = instruction.op1_.address_;
-    assert(target_address > 0);
-    if (target_address < 0 || target_address >= instruction_array.size())
-      [[unlikely]] { iter = instruction_array.end(); }
-    else {
-      iter = instruction_array.begin() + target_address;
-    }
-  } else {
-    ++iter;
-  }
-}
-
-void VirtualMachine::execJom(const Instruction& instruction,
-                             const std::vector<Wge::Bytecode::Instruction>& instruction_array,
-                             std::vector<Wge::Bytecode::Instruction>::const_iterator& iter) {
-  if (rflags_.test(static_cast<size_t>(Rflags::OMF))) {
-    const int64_t target_address = instruction.op1_.address_;
-    assert(target_address > 0);
-    if (target_address < 0 || target_address >= instruction_array.size())
-      [[unlikely]] { iter = instruction_array.end(); }
-    else {
-      iter = instruction_array.begin() + target_address;
-    }
-  } else {
-    ++iter;
-  }
-}
-
-void VirtualMachine::execJnom(const Instruction& instruction,
-                              const std::vector<Wge::Bytecode::Instruction>& instruction_array,
-                              std::vector<Wge::Bytecode::Instruction>::const_iterator& iter) {
-  if (!rflags_.test(static_cast<size_t>(Rflags::OMF))) {
+void VirtualMachine::execJumpIfFlag(
+    const Instruction& instruction,
+    const std::vector<Wge::Bytecode::Instruction>& instruction_array,
+    std::vector<Wge::Bytecode::Instruction>::const_iterator& iter, VirtualMachine::Rflags flag,
+    bool is_set) {
+  if (rflags_.test(static_cast<size_t>(flag)) == is_set) {
     const int64_t target_address = instruction.op1_.address_;
     assert(target_address > 0);
     if (target_address < 0 || target_address >= instruction_array.size())

@@ -86,18 +86,10 @@ private:
   inline void execJmp(const Instruction& instruction,
                       const std::vector<Wge::Bytecode::Instruction>& instruction_array,
                       std::vector<Wge::Bytecode::Instruction>::const_iterator& iter);
-  inline void execJz(const Instruction& instruction,
-                     const std::vector<Wge::Bytecode::Instruction>& instruction_array,
-                     std::vector<Wge::Bytecode::Instruction>::const_iterator& iter);
-  inline void execJnz(const Instruction& instruction,
-                      const std::vector<Wge::Bytecode::Instruction>& instruction_array,
-                      std::vector<Wge::Bytecode::Instruction>::const_iterator& iter);
-  inline void execJom(const Instruction& instruction,
-                      const std::vector<Wge::Bytecode::Instruction>& instruction_array,
-                      std::vector<Wge::Bytecode::Instruction>::const_iterator& iter);
-  inline void execJnom(const Instruction& instruction,
-                       const std::vector<Wge::Bytecode::Instruction>& instruction_array,
-                       std::vector<Wge::Bytecode::Instruction>::const_iterator& iter);
+  inline void execJumpIfFlag(const Instruction& instruction,
+                             const std::vector<Wge::Bytecode::Instruction>& instruction_array,
+                             std::vector<Wge::Bytecode::Instruction>::const_iterator& iter,
+                             VirtualMachine::Rflags flag, bool is_set);
   inline void execDebug(const Instruction& instruction);
   inline void execRuleStart(const Instruction& instruction);
   inline void execJmpIfRemoved(const Instruction& instruction,

@@ -500,11 +500,11 @@ TEST_F(VirtualMachineTest, execPushAllMatched) {
   EXPECT_EQ(std::get<std::string_view>(matched_vars[2].captured_value_.variant_), "hello");
 }
 
-TEST_F(VirtualMachineTest, execChain) {
+TEST_F(VirtualMachineTest, execChainStart) {
   // Create a dummy program with CHAIN instruction
   Program program;
   const Rule* rule = reinterpret_cast<const Rule*>(0x123456);
-  Instruction instruction = {OpCode::CHAIN, {.cptr_ = rule}};
+  Instruction instruction = {OpCode::CHAIN_START, {.cptr_ = rule}};
   program.emit(instruction);
 
   vm_->rflags().set(static_cast<size_t>(VirtualMachine::Rflags::RMF));
