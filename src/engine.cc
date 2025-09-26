@@ -239,8 +239,8 @@ void Engine::compileRules() {
     int phase = phase_rules[0]->phase();
     const Rule* default_action = default_actions_[phase - 1];
 
-    programs_[phase - 1] = Bytecode::Compiler::RuleCompiler::compile(phase_rules, default_action,
-                                                                     config().rule_engine_option_);
+    programs_[phase - 1] =
+        Bytecode::Compiler::RuleCompiler::compile(phase_rules, default_action, this);
   }
 }
 

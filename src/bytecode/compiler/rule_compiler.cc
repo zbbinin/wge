@@ -7,30 +7,38 @@
 #include "variable_compiler.h"
 
 #include "../../common/log.h"
+#include "../../engine.h"
 #include "../../rule.h"
 
 namespace Wge {
 namespace Bytecode {
 namespace Compiler {
 std::unique_ptr<Program> RuleCompiler::compile(const Rule* rule, const Rule* default_action_rule,
-                                               EngineConfig::Option rule_engine_option) {
+                                               const Engine* engine) {
   auto program = std::make_unique<Program>();
-  compileRule(rule, default_action_rule, rule_engine_option, *program);
+  compileRule(rule, default_action_rule, engine, *program);
   return program;
 }
 
 std::unique_ptr<Program> RuleCompiler::compile(const std::vector<const Rule*>& rules,
                                                const Rule* default_action_rule,
-                                               EngineConfig::Option rule_engine_option) {
+                                               const Engine* engine) {
   auto program = std::make_unique<Program>();
+  std::vector<SkipInfo> skip_info_array;
   for (const Rule* rule : rules) {
-    compileRule(rule, default_action_rule, rule_engine_option, *program);
+    compileRule(rule, default_action_rule, engine, *program, &skip_info_array);
   }
   return program;
 }
 
 void RuleCompiler::compileRule(const Rule* rule, const Rule* default_action_rule,
-                               EngineConfig::Option rule_engine_option, Program& program) {
+                               const Engine* engine, Program& program,
+                               std::vector<SkipInfo>* skip_info_array) {
+  // Update Skip info
+  if (skip_info_array && rule->chainIndex() == -1) {
+    updateSkipInfo(program, *skip_info_array, rule, engine);
+  }
+
   auto& op = rule->getOperator();
   if (op == nullptr) {
     // Compile each uncondition action in the rule
@@ -159,7 +167,7 @@ void RuleCompiler::compileRule(const Rule* rule, const Rule* default_action_rule
     program.emit({OpCode::CHAIN, {.cptr_ = chain_rule}});
 
     // Compile chain rule
-    compileRule(chain_rule, default_action_rule, rule_engine_option, program);
+    compileRule(chain_rule, default_action_rule, engine, program);
 
     // If the chained rule are matched means the rule is matched, otherwise the rule is not
     // matched
@@ -170,20 +178,37 @@ void RuleCompiler::compileRule(const Rule* rule, const Rule* default_action_rule
   // Compile expand macro
   Compiler::MacroCompiler::compile(rule->msgMacro().get(), rule->logDataMacro().get(), program);
 
-  // Compile log callback
-  if (default_action_rule) {
-    if (rule->log().value_or(default_action_rule->log().value_or(true))) {
-      program.emit({OpCode::LOG_CALLBACK});
+  if (rule->chainIndex() == -1) {
+    // Compile log callback
+    if (default_action_rule) {
+      if (rule->log().value_or(default_action_rule->log().value_or(true))) {
+        program.emit({OpCode::LOG_CALLBACK});
+      }
+    } else {
+      if (rule->log().value_or(true)) {
+        program.emit({OpCode::LOG_CALLBACK});
+      }
     }
-  } else {
-    if (rule->log().value_or(true)) {
-      program.emit({OpCode::LOG_CALLBACK});
-    }
-  }
 
-  // Compile exit if disruptive
-  if (rule_engine_option != EngineConfig::Option::DetectionOnly) {
-    program.emit({OpCode::EXIT_IF_DISRUPTIVE});
+    // Compile exit if disruptive
+    if (engine->config().rule_engine_option_ != EngineConfig::Option::DetectionOnly) {
+      program.emit({OpCode::EXIT_IF_DISRUPTIVE});
+    }
+
+    // Compile skip
+    if (rule->skip() != 0 || !rule->skipAfter().empty()) {
+      if (skip_info_array == nullptr) {
+        WGE_LOG_CRITICAL("skip compile error: no skip info");
+      } else {
+        size_t jom_index = program.instructions().size();
+        program.emit({OpCode::JOM, {.address_ = RELOCATION}});
+        if (rule->skip() != 0) {
+          skip_info_array->emplace_back(rule->skip(), jom_index);
+        } else {
+          skip_info_array->emplace_back(rule->skipAfter(), jom_index);
+        }
+      }
+    }
   }
 
   // Relocate jump address
@@ -194,6 +219,34 @@ void RuleCompiler::compileRule(const Rule* rule, const Rule* default_action_rule
   }
   if (jmp_if_remove_index.has_value()) {
     program.relocate(jmp_if_remove_index.value(), curr_index);
+  }
+}
+
+void RuleCompiler::updateSkipInfo(Program& program, std::vector<SkipInfo>& skip_info_array,
+                                  const Rule* rule, const Engine* engine) {
+  for (auto iter = skip_info_array.begin(); iter != skip_info_array.end();) {
+    std::visit(
+        [&](auto&& skip_info) {
+          using T = std::decay_t<decltype(skip_info)>;
+          if constexpr (std::is_same_v<T, int>) {
+            if (skip_info == 0) {
+              program.relocate(iter->jom_index_, program.instructions().size());
+              iter = skip_info_array.erase(iter);
+            } else {
+              --skip_info;
+              ++iter;
+            }
+          } else {
+            auto next_rule_iter = engine->marker(skip_info, rule->phase());
+            if (next_rule_iter.has_value() && rule == **next_rule_iter) {
+              program.relocate(iter->jom_index_, program.instructions().size());
+              iter = skip_info_array.erase(iter);
+            } else {
+              ++iter;
+            }
+          }
+        },
+        iter->target_);
   }
 }
 

@@ -233,6 +233,7 @@ void VirtualMachine::execRuleStart(const Instruction& instruction) {
   transaction_.clearCapture();
   transaction_.clearMatchedVariables();
 
+  WGE_LOG_TRACE("start of rule execution");
   WGE_LOG_TRACE("------------------------------------");
 }
 

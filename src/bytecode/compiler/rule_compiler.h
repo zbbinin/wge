@@ -22,12 +22,14 @@
 
 #include <memory>
 #include <unordered_map>
+#include <variant>
 #include <vector>
 
 #include "../../config.h"
 #include "../program.h"
 
 namespace Wge {
+class Engine;
 class Rule;
 namespace Variable {
 class VariableBase;
@@ -53,22 +55,35 @@ public:
    * Compile rule into a program
    * @param rule The rule to compile
    * @param default_action_rule The default action rule for the program
-   * @param rule_engine_option The rule engine option
+   * @param engine The wge engine
    * @return Compiled bytecode program
    */
   static std::unique_ptr<Program> compile(const Rule* rule, const Rule* default_action_rule,
-                                          EngineConfig::Option rule_engine_option);
+                                          const Engine* engine);
 
   /**
    * Compile a list of rules into a program
    * @param rules The list of rules to compile
    * @param default_action_rule The default action rule for the program
-   * @param rule_engine_option The rule engine option
+   * @param engine The wge engine
    * @return Compiled bytecode program
    */
   static std::unique_ptr<Program> compile(const std::vector<const Rule*>& rules,
-                                          const Rule* default_action_rule,
-                                          EngineConfig::Option rule_engine_option);
+                                          const Rule* default_action_rule, const Engine* engine);
+
+private:
+  struct SkipInfo {
+    using Skip = int;
+    using SkipAfter = std::string;
+    std::variant<Skip, SkipAfter> target_;
+    size_t jom_index_;
+  };
+
+private:
+  static void compileRule(const Rule* rule, const Rule* default_action, const Engine* engine,
+                          Program& program, std::vector<SkipInfo>* skip_info_array = nullptr);
+  static void updateSkipInfo(Program& program, std::vector<SkipInfo>& skip_info_array,
+                             const Rule* rule,const Engine* engine);
 
 public:
   // The loop count
@@ -84,10 +99,6 @@ public:
   // Temporary register for transformation
   static constexpr ExtendedRegister transform_tmp_reg1_{ExtendedRegister::R9};
   static constexpr ExtendedRegister transform_tmp_reg2_{ExtendedRegister::R10};
-
-private:
-  static void compileRule(const Rule* rule, const Rule* default_action,
-                          EngineConfig::Option rule_engine_option, Program& program);
 };
 
 } // namespace Compiler
