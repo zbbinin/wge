@@ -20,6 +20,9 @@
  */
 #pragma once
 
+#include <bitset>
+
+#include "compiler/action_travel_helper.h"
 #include "compiler/variable_travel_helper.h"
 #include "program.h"
 #include "register.h"
@@ -37,6 +40,16 @@ namespace Bytecode {
 class VirtualMachine {
 public:
   VirtualMachine(Transaction& transaction) : transaction_(transaction) {}
+
+public:
+  enum class Rflags : uint8_t {
+    // Zero Flag: Set if the result of OpCode::CMP is zero
+    ZF = 0,
+    // Operator Matched Flag: Set if the last OPERATE instruction matched
+    OMF = 1,
+    // Rule Matched Flag: Set if the rule matched
+    RMF = 2,
+  };
 
 public:
   /**
@@ -60,8 +73,16 @@ public:
    */
   ExtendedRegisterArray& extendedRegisters() { return extended_registers_; }
 
+  /**
+   * Get the current state of the RFLAGS register
+   * @return reference to the bitset representing RFLAGS
+   */
+  std::bitset<8>& rflags() { return rflags_; }
+
 private:
   inline void execMov(const Instruction& instruction);
+  inline void execAdd(const Instruction& instruction);
+  inline void execCmp(const Instruction& instruction);
   inline void execJmp(const Instruction& instruction,
                       const std::vector<Wge::Bytecode::Instruction>& instruction_array,
                       std::vector<Wge::Bytecode::Instruction>::const_iterator& iter);
@@ -71,6 +92,12 @@ private:
   inline void execJnz(const Instruction& instruction,
                       const std::vector<Wge::Bytecode::Instruction>& instruction_array,
                       std::vector<Wge::Bytecode::Instruction>::const_iterator& iter);
+  inline void execJom(const Instruction& instruction,
+                      const std::vector<Wge::Bytecode::Instruction>& instruction_array,
+                      std::vector<Wge::Bytecode::Instruction>::const_iterator& iter);
+  inline void execJnom(const Instruction& instruction,
+                       const std::vector<Wge::Bytecode::Instruction>& instruction_array,
+                       std::vector<Wge::Bytecode::Instruction>::const_iterator& iter);
   inline void execDebug(const Instruction& instruction);
   inline void execRuleStart(const Instruction& instruction);
   inline void execJmpIfRemoved(const Instruction& instruction,
@@ -78,10 +105,9 @@ private:
                                std::vector<Wge::Bytecode::Instruction>::const_iterator& iter);
   inline void execTransform(const Instruction& instruction);
   inline void execOperate(const Instruction& instruction);
-  inline void execAction(const Instruction& instruction);
-  inline void execActionPushMatched(const Instruction& instruction);
-  inline void execUncAction(const Instruction& instruction);
+  inline void execSize(const Instruction& instruction);
   inline void execPushMatched(const Instruction& instruction);
+  inline void execPushAllMatched(const Instruction& instruction);
   inline void execExpandMacro(const Instruction& instruction);
   inline void execMsgExpandMacro(const Instruction& instruction);
   inline void execLogDataExpandMacro(const Instruction& instruction);
@@ -91,8 +117,8 @@ private:
                                    const std::vector<Wge::Bytecode::Instruction>& instruction_array,
                                    std::vector<Wge::Bytecode::Instruction>::const_iterator& iter);
 
-  // Load variable handlers
 private:
+  // Load variable handlers
 #define DECLARE_LOAD_VAR_PROC(var_tyep)                                                            \
   inline void execLoad##var_tyep##_CC(const Instruction& instruction);                             \
   inline void execLoad##var_tyep##_CS(const Instruction& instruction);                             \
@@ -102,10 +128,24 @@ private:
 
   TRAVEL_VARIABLES(DECLARE_LOAD_VAR_PROC)
 #undef DECLARE_LOAD_VAR_PROC
+
+  // Action handlers
+#define DECLARE_ACTION_PROC(action_type)                                                           \
+  inline void execAction##action_type(const Instruction& instruction);
+  TRAVEL_ACTIONS(DECLARE_ACTION_PROC)
+#undef DECLARE_ACTION_PROC
+
+  // Uncondition action handlers
+#define DECLARE_UNC_ACTION_PROC(action_type)                                                       \
+  inline void execUncAction##action_type(const Instruction& instruction);
+  TRAVEL_ACTIONS(DECLARE_UNC_ACTION_PROC)
+#undef DECLARE_UNC_ACTION_PROC
+
 private:
   // Registers
   GeneralRegisterArray general_registers_{};
   ExtendedRegisterArray extended_registers_{};
+  std::bitset<8> rflags_;
 
   Transaction& transaction_;
   bool disruptive_;

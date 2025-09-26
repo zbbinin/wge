@@ -55,8 +55,10 @@ public:
       Compiler::TransformCompiler::transform_index_map_};
   const std::unordered_map<const char*, int64_t>& operator_index_map_{
       Compiler::OperatorCompiler::operator_index_map_};
-  const std::unordered_map<const char*, int64_t>& action_index_map_{
-      Compiler::ActionCompiler::action_index_map_};
+  const std::unordered_map<const char*, Compiler::ActionCompiler::ActionTypeInfo>&
+      action_type_info_map_{Compiler::ActionCompiler::action_type_info_map_};
+  const std::unordered_map<const char*, Compiler::ActionCompiler::ActionTypeInfo>&
+      unc_action_type_info_map_{Compiler::ActionCompiler::unc_action_type_info_map_};
   std::vector<Common::EvaluateResults::Element>* tx_variables_{nullptr};
 }; // namespace Bytecode
 
@@ -69,6 +71,51 @@ TEST_F(VirtualMachineTest, execMov) {
 
   auto& registers = vm_->generalRegisters();
   EXPECT_EQ(registers[GeneralRegister::RAX], 123456);
+}
+
+TEST_F(VirtualMachineTest, execAdd) {
+  Program program;
+  Instruction instruction = {OpCode::ADD, {.g_reg_ = GeneralRegister::RAX}, {.imm_ = 1}};
+  program.emit({OpCode::MOV, {.g_reg_ = GeneralRegister::RAX}, {.imm_ = 0}});
+  program.emit(instruction);
+
+  vm_->execute(program);
+
+  auto& registers = vm_->generalRegisters();
+  EXPECT_EQ(registers[GeneralRegister::RAX], 1);
+
+  // Test add a negative number
+  {
+    Program program;
+    program.emit({OpCode::MOV, {.g_reg_ = GeneralRegister::RAX}, {.imm_ = 0}});
+    program.emit({OpCode::ADD, {.g_reg_ = GeneralRegister::RAX}, {.imm_ = -1}});
+    vm_->execute(program);
+    auto& registers = vm_->generalRegisters();
+    EXPECT_EQ(registers[GeneralRegister::RAX], -1);
+  }
+}
+
+TEST_F(VirtualMachineTest, execCmp) {
+  Program program;
+  Instruction instruction = {
+      OpCode::CMP, {.g_reg_ = GeneralRegister::RAX}, {.g_reg_ = GeneralRegister::RBX}};
+  program.emit({OpCode::MOV, {.g_reg_ = GeneralRegister::RAX}, {.imm_ = 0}});
+  program.emit({OpCode::MOV, {.g_reg_ = GeneralRegister::RBX}, {.imm_ = 0}});
+  program.emit(instruction);
+
+  vm_->execute(program);
+
+  auto& rflags = vm_->rflags();
+  EXPECT_TRUE(rflags.test(static_cast<size_t>(VirtualMachine::Rflags::ZF)));
+
+  {
+    Program program;
+    program.emit({OpCode::MOV, {.g_reg_ = GeneralRegister::RAX}, {.imm_ = 0}});
+    program.emit({OpCode::MOV, {.g_reg_ = GeneralRegister::RBX}, {.imm_ = 1}});
+    program.emit({OpCode::CMP, {.g_reg_ = GeneralRegister::RAX}, {.g_reg_ = GeneralRegister::RBX}});
+    vm_->execute(program);
+    EXPECT_FALSE(rflags.test(static_cast<size_t>(VirtualMachine::Rflags::ZF)));
+  }
 }
 
 TEST_F(VirtualMachineTest, execJmp) {
@@ -90,8 +137,7 @@ TEST_F(VirtualMachineTest, execJmp) {
 TEST_F(VirtualMachineTest, execJz) {
   Program program;
 
-  program.emit({OpCode::MOV, {.g_reg_ = GeneralRegister::RFLAGS}, {.imm_ = 1}});
-  program.emit({OpCode::JZ, {.address_ = 3}});
+  program.emit({OpCode::JZ, {.address_ = 2}});
   program.emit({OpCode::MOV, {.g_reg_ = GeneralRegister::RAX}, {.imm_ = 100}});
   program.emit({OpCode::MOV, {.g_reg_ = GeneralRegister::RBX}, {.imm_ = 100}});
 
@@ -99,17 +145,17 @@ TEST_F(VirtualMachineTest, execJz) {
   registers[GeneralRegister::RAX] = 0;
   registers[GeneralRegister::RBX] = 0;
 
+  vm_->rflags().set(static_cast<size_t>(VirtualMachine::Rflags::ZF));
   vm_->execute(program);
 
-  EXPECT_EQ(registers[GeneralRegister::RAX], 100);
+  EXPECT_EQ(registers[GeneralRegister::RAX], 0);
   EXPECT_EQ(registers[GeneralRegister::RBX], 100);
 }
 
 TEST_F(VirtualMachineTest, execJnz) {
   Program program;
 
-  program.emit({OpCode::MOV, {.g_reg_ = GeneralRegister::RFLAGS}, {.imm_ = 1}});
-  program.emit({OpCode::JNZ, {.address_ = 3}});
+  program.emit({OpCode::JNZ, {.address_ = 2}});
   program.emit({OpCode::MOV, {.g_reg_ = GeneralRegister::RAX}, {.imm_ = 100}});
   program.emit({OpCode::MOV, {.g_reg_ = GeneralRegister::RBX}, {.imm_ = 100}});
 
@@ -117,9 +163,46 @@ TEST_F(VirtualMachineTest, execJnz) {
   registers[GeneralRegister::RAX] = 0;
   registers[GeneralRegister::RBX] = 0;
 
+  vm_->rflags().set(static_cast<size_t>(VirtualMachine::Rflags::ZF));
+  vm_->execute(program);
+
+  EXPECT_EQ(registers[GeneralRegister::RAX], 100);
+  EXPECT_EQ(registers[GeneralRegister::RBX], 100);
+}
+
+TEST_F(VirtualMachineTest, execJom) {
+  Program program;
+
+  program.emit({OpCode::JOM, {.address_ = 2}});
+  program.emit({OpCode::MOV, {.g_reg_ = GeneralRegister::RAX}, {.imm_ = 100}});
+  program.emit({OpCode::MOV, {.g_reg_ = GeneralRegister::RBX}, {.imm_ = 100}});
+
+  auto& registers = vm_->generalRegisters();
+  registers[GeneralRegister::RAX] = 0;
+  registers[GeneralRegister::RBX] = 0;
+
+  vm_->rflags().set(static_cast<size_t>(VirtualMachine::Rflags::OMF));
   vm_->execute(program);
 
   EXPECT_EQ(registers[GeneralRegister::RAX], 0);
+  EXPECT_EQ(registers[GeneralRegister::RBX], 100);
+}
+
+TEST_F(VirtualMachineTest, execJnom) {
+  Program program;
+
+  program.emit({OpCode::JNOM, {.address_ = 2}});
+  program.emit({OpCode::MOV, {.g_reg_ = GeneralRegister::RAX}, {.imm_ = 100}});
+  program.emit({OpCode::MOV, {.g_reg_ = GeneralRegister::RBX}, {.imm_ = 100}});
+
+  auto& registers = vm_->generalRegisters();
+  registers[GeneralRegister::RAX] = 0;
+  registers[GeneralRegister::RBX] = 0;
+
+  vm_->rflags().set(static_cast<size_t>(VirtualMachine::Rflags::OMF));
+  vm_->execute(program);
+
+  EXPECT_EQ(registers[GeneralRegister::RAX], 100);
   EXPECT_EQ(registers[GeneralRegister::RBX], 100);
 }
 
@@ -225,18 +308,49 @@ TEST_F(VirtualMachineTest, execOperate) {
   EXPECT_EQ(std::get<int64_t>(res.get(2).variant_), 0);
 }
 
+TEST_F(VirtualMachineTest, execSize) {
+  Operator::Rx rx(std::string("hello"), false, "");
+
+  // Create a dummy program with OPERATE instruction
+  Program program;
+  Instruction instruction = {OpCode::OPERATE,
+                             {.x_reg_ = ExtendedRegister::R9},
+                             {.x_reg_ = ExtendedRegister::R8},
+                             {.imm_ = operator_index_map_.at(rx.name_)},
+                             {.cptr_ = &rx}};
+  program.emit(instruction);
+  program.emit({OpCode::SIZE, {.g_reg_ = GeneralRegister::RAX}, {.x_reg_ = ExtendedRegister::R9}});
+
+  // Initialize registers
+  auto& src = vm_->extendedRegisters()[ExtendedRegister::R8];
+  auto& res = vm_->extendedRegisters()[ExtendedRegister::R9];
+  src.clear();
+  res.clear();
+  src.append(std::string("helloworld"), "sub1");
+  src.append(std::string("111helloworld222"), "sub2");
+  src.append(std::string("111world222"), "sub3");
+
+  vm_->execute(program);
+
+  EXPECT_EQ(res.size(), src.size());
+  EXPECT_EQ(std::get<std::string_view>(res.get(0).variant_), "hello");
+  EXPECT_EQ(std::get<std::string_view>(res.get(1).variant_), "hello");
+  EXPECT_EQ(std::get<int64_t>(res.get(2).variant_), 0);
+
+  auto& registers = vm_->generalRegisters();
+  EXPECT_EQ(res.size(), registers[GeneralRegister::RAX]);
+}
+
 TEST_F(VirtualMachineTest, execAction) {
   // Create a SetVar instance
-  std::vector<std::unique_ptr<Action::ActionBase>> actions;
-  actions.emplace_back(
-      std::make_unique<Action::SetVar>("foo", 0, 1, Action::SetVar::EvaluateType::Increase));
+  Action::SetVar set_var("foo", 0, 1, Action::SetVar::EvaluateType::Increase);
 
   // Create a dummy program with ACTION instruction
   Program program;
-  Compiler::ActionCompiler::initProgramActionInfo(-1, nullptr, &actions, program);
-  Instruction instruction = {OpCode::ACTION,
-                             {.x_reg_ = Compiler::RuleCompiler::op_res_reg_},
-                             {.cptr_ = program.actionInfos(-1)}};
+  Instruction instruction = {
+      OpCode::ACTION_SetVar, {.x_reg_ = Compiler::RuleCompiler::op_res_reg_}, {.cptr_ = &set_var}};
+  program.emit(instruction);
+  program.emit(instruction);
   program.emit(instruction);
 
   // Mock the transaction variables
@@ -255,23 +369,34 @@ TEST_F(VirtualMachineTest, execAction) {
   EXPECT_EQ(std::get<int64_t>(static_cast<const Transaction&>(*t_).getVariable(0)), 3);
 }
 
-TEST_F(VirtualMachineTest, execActionPushMatched) {
+TEST_F(VirtualMachineTest, execUncAction) {
   // Create a SetVar instance
-  std::vector<std::unique_ptr<Action::ActionBase>> actions;
-  actions.emplace_back(
-      std::make_unique<Action::SetVar>("foo", 0, 1, Action::SetVar::EvaluateType::Increase));
+  Action::SetVar set_var("foo", 0, 3, Action::SetVar::EvaluateType::CreateAndInit);
 
-  // Create a dummy program with ACTION_PUSH_MATCHED instruction
+  // Create a dummy program with ACTION instruction
   Program program;
-  Compiler::ActionCompiler::initProgramActionInfo(-1, nullptr, &actions, program);
-  Instruction instruction = {OpCode::ACTION_PUSH_MATCHED,
-                             {.g_reg_ = Compiler::RuleCompiler::op_src_reg_},
-                             {.x_reg_ = Compiler::RuleCompiler::op_res_reg_},
-                             {.cptr_ = program.actionInfos(-1)}};
+  Instruction instruction = {OpCode::UNC_ACTION_SetVar, {.cptr_ = &set_var}};
   program.emit(instruction);
 
   // Mock the transaction variables
   tx_variables_->resize(1);
+  t_->setVariable(0, Common::Variant(0));
+
+  vm_->execute(program);
+
+  // Check if the set_var was applied correctly
+  EXPECT_EQ(std::get<int64_t>(static_cast<const Transaction&>(*t_).getVariable(0)), 3);
+}
+
+TEST_F(VirtualMachineTest, execPushMatched) {
+  // Create a dummy program with PUSH_MATCHED instruction
+  Program program;
+  Instruction instruction = {OpCode::PUSH_MATCHED,
+                             {.x_reg_ = ExtendedRegister::R9},
+                             {.x_reg_ = Compiler::RuleCompiler::op_res_reg_},
+                             {.g_reg_ = GeneralRegister::RAX}};
+  program.emit({OpCode::MOV, {.g_reg_ = GeneralRegister::RAX}, {.imm_ = 1}});
+  program.emit(instruction);
 
   // Mock the current rule
   Wge::Rule rule("", 0);
@@ -294,8 +419,6 @@ TEST_F(VirtualMachineTest, execActionPushMatched) {
   transform_value.append(std::string("helloworld"));
   transform_value.append(std::string("--helloworld--"));
   transform_value.append(std::string("--hello--"));
-  vm_->generalRegisters()[Compiler::RuleCompiler::op_src_reg_] =
-      static_cast<GeneralRegisterValue>(ExtendedRegister::R9);
 
   // Mock the results of OPERATE(capture string)
   auto& src = vm_->extendedRegisters()[Compiler::RuleCompiler::op_res_reg_];
@@ -306,54 +429,25 @@ TEST_F(VirtualMachineTest, execActionPushMatched) {
 
   vm_->execute(program);
 
-  // Check if the set_var was applied correctly
-  EXPECT_EQ(std::get<int64_t>(static_cast<const Transaction&>(*t_).getVariable(0)), 3);
-
   // Check if the MATCHED_VARS were updated correctly
   auto& matched_vars = t_->getMatchedVariables(-1);
-  EXPECT_EQ(matched_vars.size(), 3);
+  EXPECT_EQ(matched_vars.size(), 1);
   EXPECT_EQ(matched_vars[0].variable_, var_args.get());
-  EXPECT_EQ(matched_vars[1].variable_, var_args.get());
-  EXPECT_EQ(matched_vars[2].variable_, var_args.get());
-  EXPECT_EQ(std::get<std::string_view>(matched_vars[0].original_value_.variant_), "HELLOWORLD");
-  EXPECT_EQ(std::get<std::string_view>(matched_vars[1].original_value_.variant_), "--HELLOWORLD--");
-  EXPECT_EQ(std::get<std::string_view>(matched_vars[2].original_value_.variant_), "--HELLO--");
-  EXPECT_EQ(std::get<std::string_view>(matched_vars[0].transformed_value_.variant_), "helloworld");
-  EXPECT_EQ(std::get<std::string_view>(matched_vars[1].transformed_value_.variant_),
+
+  EXPECT_EQ(std::get<std::string_view>(matched_vars[0].original_value_.variant_), "--HELLOWORLD--");
+  EXPECT_EQ(std::get<std::string_view>(matched_vars[0].transformed_value_.variant_),
             "--helloworld--");
-  EXPECT_EQ(std::get<std::string_view>(matched_vars[2].transformed_value_.variant_), "--hello--");
   EXPECT_EQ(std::get<std::string_view>(matched_vars[0].captured_value_.variant_), "hello");
-  EXPECT_EQ(std::get<std::string_view>(matched_vars[1].captured_value_.variant_), "hello");
-  EXPECT_EQ(std::get<std::string_view>(matched_vars[2].captured_value_.variant_), "hello");
+
+  EXPECT_TRUE(IS_EMPTY_VARIANT(original_value.get(1).variant_));
+  EXPECT_TRUE(IS_EMPTY_VARIANT(transform_value.get(1).variant_));
 }
 
-TEST_F(VirtualMachineTest, execUncAction) {
-  // Create a SetVar instance
-  std::vector<std::unique_ptr<Action::ActionBase>> actions;
-  actions.emplace_back(
-      std::make_unique<Action::SetVar>("foo", 0, 3, Action::SetVar::EvaluateType::CreateAndInit));
-
-  // Create a dummy program with ACTION instruction
+TEST_F(VirtualMachineTest, execPushAllMatched) {
+  // Create a dummy program with PUSH_ALL_MATCHED instruction
   Program program;
-  Compiler::ActionCompiler::initProgramActionInfo(-1, nullptr, &actions, program);
-  Instruction instruction = {OpCode::UNC_ACTION, {.cptr_ = program.actionInfos(-1)}};
-  program.emit(instruction);
-
-  // Mock the transaction variables
-  tx_variables_->resize(1);
-  t_->setVariable(0, Common::Variant(0));
-
-  vm_->execute(program);
-
-  // Check if the set_var was applied correctly
-  EXPECT_EQ(std::get<int64_t>(static_cast<const Transaction&>(*t_).getVariable(0)), 3);
-}
-
-TEST_F(VirtualMachineTest, execPushMatched) {
-  // Create a dummy program with PUSH_MATCHED instruction
-  Program program;
-  Instruction instruction = {OpCode::PUSH_MATCHED,
-                             {.g_reg_ = Compiler::RuleCompiler::op_src_reg_},
+  Instruction instruction = {OpCode::PUSH_ALL_MATCHED,
+                             {.x_reg_ = ExtendedRegister::R9},
                              {.x_reg_ = Compiler::RuleCompiler::op_res_reg_}};
   program.emit(instruction);
 
@@ -378,8 +472,6 @@ TEST_F(VirtualMachineTest, execPushMatched) {
   transform_value.append(std::string("helloworld"));
   transform_value.append(std::string("--helloworld--"));
   transform_value.append(std::string("--hello--"));
-  vm_->generalRegisters()[Compiler::RuleCompiler::op_src_reg_] =
-      static_cast<GeneralRegisterValue>(ExtendedRegister::R9);
 
   // Mock the results of OPERATE(capture string)
   auto& src = vm_->extendedRegisters()[Compiler::RuleCompiler::op_res_reg_];
@@ -415,11 +507,11 @@ TEST_F(VirtualMachineTest, execChain) {
   Instruction instruction = {OpCode::CHAIN, {.cptr_ = rule}};
   program.emit(instruction);
 
-  vm_->generalRegisters()[GeneralRegister::RFLAGS] = 1;
+  vm_->rflags().set(static_cast<size_t>(VirtualMachine::Rflags::RMF));
 
   vm_->execute(program);
 
-  EXPECT_EQ(vm_->generalRegisters()[GeneralRegister::RFLAGS], 0);
+  EXPECT_FALSE(vm_->rflags().test(static_cast<size_t>(VirtualMachine::Rflags::RMF)));
   EXPECT_EQ(t_->getCurrentEvaluateRule(), rule);
 }
 

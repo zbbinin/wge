@@ -20,44 +20,16 @@
  */
 #pragma once
 
-#include <memory>
-#include <unordered_map>
-
-#include <stdint.h>
-
-#include "../op_code.h"
-#include "../register.h"
-
-namespace Wge {
-namespace Action {
-class ActionBase;
-}
-} // namespace Wge
-
-namespace Wge {
-namespace Bytecode {
-class CompilerTest;
-class VirtualMachineTest;
-class Program;
-namespace Compiler {
-class ActionCompiler {
-  friend class Wge::Bytecode::CompilerTest;
-  friend class Wge::Bytecode::VirtualMachineTest;
-
-public:
-  static void compileAction(const Action::ActionBase* action, ExtendedRegister op_res_reg,
-                            Program& program);
-  static void compileUncAction(const Action::ActionBase* action, Program& program);
-
-private:
-  struct ActionTypeInfo {
-    int64_t index_;
-    OpCode opcode_;
-  };
-  static const std::unordered_map<const char*, ActionTypeInfo> action_type_info_map_;
-  static const std::unordered_map<const char*, ActionTypeInfo> unc_action_type_info_map_;
-};
-
-} // namespace Compiler
-} // namespace Bytecode
-} // namespace Wge
+// Macro to travel all action types. The macro X will be expanded with each action type as
+// argument. This is used to generate code for all action types to avoid loss or duplication of
+// any action type
+// clang-format off
+#define TRAVEL_ACTIONS(X)                            \
+  X(Ctl)                                             \
+  X(InitCol)                                         \
+  X(SetEnv)                                          \
+  X(SetRsc)                                          \
+  X(SetSid)                                          \
+  X(SetUid)                                          \
+  X(SetVar)
+// clang-format on

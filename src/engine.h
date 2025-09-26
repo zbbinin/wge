@@ -26,7 +26,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "bytecode/program.h"
+#include "bytecode/virtual_machine.h"
 #include "common/log.h"
 #include "marker.h"
 #include "persistent_storage/storage.h"

@@ -20,50 +20,48 @@
  */
 #include "action_compiler.h"
 
+#include "action_travel_helper.h"
+
 #include "../../action/actions_include.h"
+#include "../../common/log.h"
 #include "../program.h"
 
-#define ACTION_INDEX(name)                                                                         \
-  { Action::name::name_, __COUNTER__ }
+#define ACTION_TYPE_INFO(action_type)                                                              \
+  {Action::action_type::name_, {__COUNTER__, Wge::Bytecode::OpCode::ACTION_##action_type}},
+
+#define UNC_ACTION_TYPE_INFO(action_type)                                                          \
+  {Action::action_type::name_, {__COUNTER__, Wge::Bytecode::OpCode::UNC_ACTION_##action_type}},
 
 namespace Wge {
 namespace Bytecode {
 namespace Compiler {
-const std::unordered_map<const char*, int64_t> ActionCompiler::action_index_map_ = {
-    ACTION_INDEX(Ctl),    ACTION_INDEX(InitCol), ACTION_INDEX(SetEnv), ACTION_INDEX(SetRsc),
-    ACTION_INDEX(SetSid), ACTION_INDEX(SetUid),  ACTION_INDEX(SetVar),
-};
+const std::unordered_map<const char*, ActionCompiler::ActionTypeInfo>
+    ActionCompiler::action_type_info_map_ = {TRAVEL_ACTIONS(ACTION_TYPE_INFO)};
+const std::unordered_map<const char*, ActionCompiler::ActionTypeInfo>
+    ActionCompiler::unc_action_type_info_map_ = {TRAVEL_ACTIONS(UNC_ACTION_TYPE_INFO)};
 
-void ActionCompiler::initProgramActionInfo(
-    int chain_index, const std::vector<std::unique_ptr<Action::ActionBase>>* default_actions,
-    const std::vector<std::unique_ptr<Action::ActionBase>>* actions, Program& program) {
-  program.initActionInfo(chain_index, default_actions, actions,
-                         [&](Action::ActionBase* action) -> int {
-                           auto iter = action_index_map_.find(action->name());
-                           assert(iter != action_index_map_.end());
-                           if (iter != action_index_map_.end()) {
-                             return iter->second;
-                           } else {
-                             return -1;
-                           }
-                         });
+void ActionCompiler::compileAction(const Action::ActionBase* action, ExtendedRegister op_res_reg,
+                                   Program& program) {
+  auto iter = action_type_info_map_.find(action->name());
+  assert(iter != action_type_info_map_.end());
+  if (iter == action_type_info_map_.end()) {
+    UNREACHABLE();
+    WGE_LOG_CRITICAL("action compile error: unknown action {}", action->name());
+    return;
+  }
+
+  program.emit({iter->second.opcode_, {.x_reg_ = op_res_reg}, {.cptr_ = action}});
 }
 
-void ActionCompiler::compile(int chain_index, ExtendedRegister op_res_reg, Program& program) {
-  program.emit(
-      {OpCode::ACTION, {.x_reg_ = op_res_reg}, {.cptr_ = program.actionInfos(chain_index)}});
-}
-
-void ActionCompiler::compile(int chain_index, ExtendedRegister op_src_reg,
-                             ExtendedRegister op_res_reg, Program& program) {
-  program.emit({OpCode::ACTION_PUSH_MATCHED,
-                {.x_reg_ = op_src_reg},
-                {.x_reg_ = op_res_reg},
-                {.cptr_ = program.actionInfos(chain_index)}});
-}
-
-void ActionCompiler::compile(int chain_index, Program& program) {
-  program.emit({OpCode::UNC_ACTION, {.cptr_ = program.actionInfos(chain_index)}});
+void ActionCompiler::compileUncAction(const Action::ActionBase* action, Program& program) {
+  auto iter = unc_action_type_info_map_.find(action->name());
+  assert(iter != unc_action_type_info_map_.end());
+  if (iter == unc_action_type_info_map_.end()) {
+    UNREACHABLE();
+    WGE_LOG_CRITICAL("unc action compile error: unknown action {}", action->name());
+    return;
+  }
+  program.emit({iter->second.opcode_, {.cptr_ = action}});
 }
 
 } // namespace Compiler

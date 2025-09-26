@@ -47,14 +47,6 @@ public:
   }
 
 public:
-  // Information about actions used in the program
-  struct ActionInfo {
-    int index_;                        // Action index in the action table
-    const Action::ActionBase* action_; // Pointer to the action instance
-    ActionInfo(int index, const Action::ActionBase* action) : index_(index), action_(action) {}
-  };
-
-public:
   /**
    * Add instruction to the program
    * @param instruction The instruction to add
@@ -74,32 +66,8 @@ public:
    */
   const std::vector<Instruction>& instructions() const { return instructions_; }
 
-  /**
-   * Initialize action info list
-   * @param chain_index The chain index of the rule
-   * @param default_actions The default actions
-   * @param actions The actions that are defined in the rule
-   */
-  void initActionInfo(int chain_index,
-                      const std::vector<std::unique_ptr<Action::ActionBase>>* default_actions,
-                      const std::vector<std::unique_ptr<Action::ActionBase>>* actions,
-                      std::function<int(Action::ActionBase*)> toIndexFunc);
-
-  /**
-   * Get the action info list
-   * @param chain_index The chain index of the rule
-   * @return The action info list
-   */
-  const std::vector<ActionInfo>* actionInfos(int chain_index) const;
-
-private:
-  void appendActionInfo(std::vector<ActionInfo>& action_info,
-                        const std::vector<std::unique_ptr<Action::ActionBase>>& actions,
-                        std::function<int(Action::ActionBase*)> toIndexFunc);
-
 private:
   std::vector<Instruction> instructions_;
-  boost::unordered_flat_map<int, std::vector<ActionInfo>> action_info_map_;
 };
 } // namespace Bytecode
 } // namespace Wge

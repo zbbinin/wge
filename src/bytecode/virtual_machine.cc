@@ -46,32 +46,41 @@ bool VirtualMachine::execute(const Program& program) {
   &&LOAD_##var_type##_VC,                                                                                                                     \
   &&LOAD_##var_type##_VR,                                                                                                                     \
   &&LOAD_##var_type##_VS,
-  // clang-format on
+
+#define ACTION_LABEL(action_tyep) &&ACTION_##action_tyep,
+#define UNC_ACTION_LABEL(action_tyep) &&UNC_ACTION_##action_tyep,
 
   // Dispatch table for bytecode instructions. We use computed gotos for efficiency
   static constexpr void* dispatch_table[] = {&&MOV,
+                                             &&ADD,
+                                             &&CMP,
                                              &&JMP,
                                              &&JZ,
                                              &&JNZ,
+                                             &&JOM,
+                                             &&JNOM,
                                              &&NOP,
                                              &&DEBUG,
                                              &&RULE_START,
                                              &&JMP_IF_REMOVED,
                                              &&TRANSFORM,
                                              &&OPERATE,
-                                             &&ACTION,
-                                             &&ACTION_PUSH_MATCHED,
-                                             &&UNC_ACTION,
+                                             &&SIZE,
                                              &&PUSH_MATCHED,
+                                             &&PUSH_ALL_MATCHED,
                                              &&EXPAND_MACRO,
                                              &&CHAIN,
                                              &&LOG_CALLBACK,
                                              &&EXIT_IF_DISRUPTIVE,
-                                             TRAVEL_VARIABLES(LOAD_VAR_LABEL)};
-#undef LOAD_VAR_LABEL
+                                             TRAVEL_VARIABLES(LOAD_VAR_LABEL)
+                                             TRAVEL_ACTIONS(ACTION_LABEL)
+                                             TRAVEL_ACTIONS(UNC_ACTION_LABEL)
+                                          };
+  // clang-format on
+
 #define CASE(ins, proc, forward)                                                                   \
   ins:                                                                                             \
-  WGE_LOG_TRACE("exec[{}]: {}", std::distance(begin, iter), iter->toString());                     \
+  WGE_LOG_TRACE("exec[0x{:x}]: {}", std::distance(begin, iter), iter->toString());                 \
   proc;                                                                                            \
   forward;                                                                                         \
   if (iter == instructions.end()) {                                                                \
@@ -87,55 +96,59 @@ bool VirtualMachine::execute(const Program& program) {
   CASE(LOAD_##var_type##_VR, execLoad##var_type##_VR(*iter), ++iter);                              \
   CASE(LOAD_##var_type##_VS, execLoad##var_type##_VS(*iter), ++iter);
 
+#define CASE_ACTION(action_type) CASE(ACTION_##action_type, execAction##action_type(*iter), ++iter);
+#define CASE_UNC_ACTION(action_type)                                                               \
+  CASE(UNC_ACTION_##action_type, execUncAction##action_type(*iter), ++iter);
+
   // Get instruction iterator
   auto& instructions = program.instructions();
   auto begin = instructions.begin();
   auto iter = begin;
   if (iter == instructions.end())
-    [[unlikely]] { return general_registers_[GeneralRegister::RFLAGS] != 0; }
-
-  WGE_LOG_TRACE("------------------------------------");
-  WGE_LOG_TRACE("{}", [&]() {
-    const Rule* rule = transaction_.getCurrentEvaluateRule();
-    if (rule) {
-      return std::format("executing bytecode program. rule id:{} [{}:{}]", rule->id(),
-                         rule->filePath(), rule->line());
-    } else {
-      return std::format("executing bytecode program without rule.", instructions.size());
-    }
-  }());
-
-  // Reset RFLAGS
-  general_registers_[GeneralRegister::RFLAGS] = 0;
+    [[unlikely]] { return rflags_.test(static_cast<size_t>(Rflags::RMF)); }
 
   disruptive_ = false;
 
   // Dispatch instructions
   DISPATCH(dispatch_table[static_cast<size_t>(iter->op_code_)]);
   CASE(MOV, execMov(*iter), ++iter);
+  CASE(ADD, execAdd(*iter), ++iter);
+  CASE(CMP, execCmp(*iter), ++iter);
   CASE(JMP, execJmp(*iter, instructions, iter), {});
   CASE(JZ, execJz(*iter, instructions, iter), {});
   CASE(JNZ, execJnz(*iter, instructions, iter), {});
+  CASE(JOM, execJom(*iter, instructions, iter), {});
+  CASE(JNOM, execJnom(*iter, instructions, iter), {});
   CASE(NOP, {}, ++iter);
   CASE(DEBUG, execDebug(*iter), ++iter);
   CASE(RULE_START, execRuleStart(*iter), ++iter);
   CASE(JMP_IF_REMOVED, execJmpIfRemoved(*iter, instructions, iter), {});
   CASE(TRANSFORM, execTransform(*iter), ++iter);
   CASE(OPERATE, execOperate(*iter), ++iter);
-  CASE(ACTION, execAction(*iter), ++iter);
-  CASE(ACTION_PUSH_MATCHED, execActionPushMatched(*iter), ++iter);
-  CASE(UNC_ACTION, execUncAction(*iter), ++iter);
+  CASE(SIZE, execSize(*iter), ++iter);
   CASE(PUSH_MATCHED, execPushMatched(*iter), ++iter);
+  CASE(PUSH_ALL_MATCHED, execPushAllMatched(*iter), ++iter);
   CASE(EXPAND_MACRO, execExpandMacro(*iter), ++iter);
   CASE(CHAIN, execChain(*iter), ++iter);
   CASE(LOG_CALLBACK, execLogCallback(*iter), ++iter);
   CASE(EXIT_IF_DISRUPTIVE, execExitIfDisruptive(*iter, instructions, iter), {});
   TRAVEL_VARIABLES(CASE_LOAD_VAR)
+  TRAVEL_ACTIONS(CASE_ACTION)
+  TRAVEL_ACTIONS(CASE_UNC_ACTION)
 #undef CASE
 }
 
 void VirtualMachine::execMov(const Instruction& instruction) {
   general_registers_[instruction.op1_.g_reg_] = instruction.op2_.imm_;
+}
+
+void VirtualMachine::execAdd(const Instruction& instruction) {
+  general_registers_[instruction.op1_.g_reg_] += instruction.op2_.imm_;
+}
+
+void VirtualMachine::execCmp(const Instruction& instruction) {
+  rflags_.set(static_cast<size_t>(Rflags::ZF), general_registers_[instruction.op1_.g_reg_] ==
+                                                   general_registers_[instruction.op2_.g_reg_]);
 }
 
 void VirtualMachine::execJmp(const Instruction& instruction,
@@ -152,7 +165,7 @@ void VirtualMachine::execJmp(const Instruction& instruction,
 void VirtualMachine::execJz(const Instruction& instruction,
                             const std::vector<Wge::Bytecode::Instruction>& instruction_array,
                             std::vector<Wge::Bytecode::Instruction>::const_iterator& iter) {
-  if (!general_registers_[GeneralRegister::RFLAGS]) {
+  if (rflags_.test(static_cast<size_t>(Rflags::ZF))) {
     const int64_t target_address = instruction.op1_.address_;
     if (target_address < 0 || target_address >= instruction_array.size())
       [[unlikely]] { iter = instruction_array.end(); }
@@ -167,7 +180,37 @@ void VirtualMachine::execJz(const Instruction& instruction,
 void VirtualMachine::execJnz(const Instruction& instruction,
                              const std::vector<Wge::Bytecode::Instruction>& instruction_array,
                              std::vector<Wge::Bytecode::Instruction>::const_iterator& iter) {
-  if (general_registers_[GeneralRegister::RFLAGS]) {
+  if (!rflags_.test(static_cast<size_t>(Rflags::ZF))) {
+    const int64_t target_address = instruction.op1_.address_;
+    if (target_address < 0 || target_address >= instruction_array.size())
+      [[unlikely]] { iter = instruction_array.end(); }
+    else {
+      iter = instruction_array.begin() + target_address;
+    }
+  } else {
+    ++iter;
+  }
+}
+
+void VirtualMachine::execJom(const Instruction& instruction,
+                             const std::vector<Wge::Bytecode::Instruction>& instruction_array,
+                             std::vector<Wge::Bytecode::Instruction>::const_iterator& iter) {
+  if (rflags_.test(static_cast<size_t>(Rflags::OMF))) {
+    const int64_t target_address = instruction.op1_.address_;
+    if (target_address < 0 || target_address >= instruction_array.size())
+      [[unlikely]] { iter = instruction_array.end(); }
+    else {
+      iter = instruction_array.begin() + target_address;
+    }
+  } else {
+    ++iter;
+  }
+}
+
+void VirtualMachine::execJnom(const Instruction& instruction,
+                              const std::vector<Wge::Bytecode::Instruction>& instruction_array,
+                              std::vector<Wge::Bytecode::Instruction>::const_iterator& iter) {
+  if (!rflags_.test(static_cast<size_t>(Rflags::OMF))) {
     const int64_t target_address = instruction.op1_.address_;
     if (target_address < 0 || target_address >= instruction_array.size())
       [[unlikely]] { iter = instruction_array.end(); }
@@ -185,9 +228,12 @@ void VirtualMachine::execDebug(const Instruction& instruction) {
 }
 
 void VirtualMachine::execRuleStart(const Instruction& instruction) {
-  transaction_.setCurrentEvaluateRule(reinterpret_cast<const Rule*>(instruction.op1_.cptr_));
+  const Rule* rule = reinterpret_cast<const Rule*>(instruction.op1_.cptr_);
+  transaction_.setCurrentEvaluateRule(rule);
   transaction_.clearCapture();
   transaction_.clearMatchedVariables();
+
+  WGE_LOG_TRACE("------------------------------------");
 }
 
 void VirtualMachine::execJmpIfRemoved(
@@ -432,7 +478,10 @@ void VirtualMachine::execOperate(const Instruction& instruction) {
   operator: matched = dispatchOperator(reinterpret_cast <                                          \
                                            const Operator::operator*>(instruction.op4_.cptr_),     \
                                        transaction_, curr_rule, curr_var, input, output);          \
-  general_registers_[GeneralRegister::RFLAGS] |= matched;                                          \
+  rflags_.set(static_cast<size_t>(Rflags::OMF), matched);                                          \
+  if (matched) {                                                                                   \
+    rflags_.set(static_cast<size_t>(Rflags::RMF));                                                 \
+  }                                                                                                \
   return;
 
   const Rule* curr_rule = transaction_.getCurrentEvaluateRule();
@@ -483,53 +532,12 @@ void VirtualMachine::execOperate(const Instruction& instruction) {
 #undef CASE
 }
 
-template <class ActionType> void dispatchAction(const ActionType* action, Transaction& t) {
-  action->ActionType::evaluate(t);
+void VirtualMachine::execSize(const Instruction& instruction) {
+  auto& results = extended_registers_[instruction.op2_.x_reg_];
+  general_registers_[instruction.op1_.g_reg_] = results.size();
 }
 
-void VirtualMachine::execAction(const Instruction& instruction) {
-  // Dispatch table for bytecode instructions. We use computed gotos for efficiency
-  static constexpr void* action_dispatch_table[] = {&&Ctl,    &&InitCol, &&SetEnv, &&SetRsc,
-                                                    &&SetSid, &&SetUid,  &&SetVar};
-#define CASE(action)                                                                               \
-  action:                                                                                          \
-  dispatchAction(reinterpret_cast<const Action::action*>(action_info.action_), transaction_);      \
-  continue;
-
-  auto& operate_results = extended_registers_[instruction.op1_.x_reg_];
-  const std::vector<Program::ActionInfo>& action_infos =
-      *reinterpret_cast<const std::vector<Program::ActionInfo>*>(instruction.op2_.cptr_);
-
-  size_t operate_results_size = operate_results.size();
-  for (size_t i = 0; i < operate_results_size; ++i) {
-    // Not matched
-    if (IS_INT_VARIANT(operate_results.get(i).variant_)) {
-      continue;
-    }
-
-    for (auto& action_info : action_infos) {
-      DISPATCH(action_dispatch_table[action_info.index_]);
-      CASE(Ctl);
-      CASE(InitCol);
-      CASE(SetEnv);
-      CASE(SetRsc);
-      CASE(SetSid);
-      CASE(SetUid);
-      CASE(SetVar);
-    }
-  }
-#undef CASE
-}
-
-void VirtualMachine::execActionPushMatched(const Instruction& instruction) {
-  // Dispatch table for bytecode instructions. We use computed gotos for efficiency
-  static constexpr void* action_dispatch_table[] = {&&Ctl,    &&InitCol, &&SetEnv, &&SetRsc,
-                                                    &&SetSid, &&SetUid,  &&SetVar};
-#define CASE(action)                                                                               \
-  action:                                                                                          \
-  dispatchAction(reinterpret_cast<const Action::action*>(action_info.action_), transaction_);      \
-  continue;
-
+void VirtualMachine::execPushMatched(const Instruction& instruction) {
   const Rule* curr_rule = transaction_.getCurrentEvaluateRule();
   const std::unique_ptr<Variable::VariableBase>* curr_var =
       reinterpret_cast<const std::unique_ptr<Variable::VariableBase>*>(
@@ -537,66 +545,27 @@ void VirtualMachine::execActionPushMatched(const Instruction& instruction) {
   auto& transformed_value = extended_registers_[instruction.op1_.x_reg_];
   auto& operate_results = extended_registers_[instruction.op2_.x_reg_];
   auto& original_value = extended_registers_[Compiler::RuleCompiler::load_var_reg_];
-  const std::vector<Program::ActionInfo>& action_infos =
-      *reinterpret_cast<const std::vector<Program::ActionInfo>*>(instruction.op3_.cptr_);
 
   assert(operate_results.size() == original_value.size());
   assert(original_value.size() == transformed_value.size());
 
   size_t operate_results_size = operate_results.size();
-  for (size_t i = 0; i < operate_results_size; ++i) {
-    // Not matched
-    if (IS_INT_VARIANT(operate_results.get(i).variant_)) {
-      continue;
-    }
+  size_t i = general_registers_[instruction.op3_.g_reg_];
 
-    // TODO(zhouyu 2025-09-02): fix the transformation list
-    std::list<const Transformation::TransformBase*> transform_list;
-
-    transaction_.pushMatchedVariable((*curr_var).get(), curr_rule->chainIndex(),
-                                     original_value.move(i), transformed_value.move(i),
-                                     operate_results.move(i), std::move(transform_list));
-
-    for (auto& action_info : action_infos) {
-      DISPATCH(action_dispatch_table[action_info.index_]);
-      CASE(Ctl);
-      CASE(InitCol);
-      CASE(SetEnv);
-      CASE(SetRsc);
-      CASE(SetSid);
-      CASE(SetUid);
-      CASE(SetVar);
-    }
+  // Not matched
+  if (IS_INT_VARIANT(operate_results.get(i).variant_)) {
+    return;
   }
-#undef CASE
+
+  // TODO(zhouyu 2025-09-02): fix the transformation list
+  std::list<const Transformation::TransformBase*> transform_list;
+
+  transaction_.pushMatchedVariable((*curr_var).get(), curr_rule->chainIndex(),
+                                   original_value.move(i), transformed_value.move(i),
+                                   operate_results.move(i), std::move(transform_list));
 }
 
-void VirtualMachine::execUncAction(const Instruction& instruction) {
-  // Dispatch table for bytecode instructions. We use computed gotos for efficiency
-  static constexpr void* action_dispatch_table[] = {&&Ctl,    &&InitCol, &&SetEnv, &&SetRsc,
-                                                    &&SetSid, &&SetUid,  &&SetVar};
-
-#define CASE(action)                                                                               \
-  action:                                                                                          \
-  dispatchAction(reinterpret_cast<const Action::action*>(action_info.action_), transaction_);      \
-  continue;
-
-  const std::vector<Program::ActionInfo>& action_infos =
-      *reinterpret_cast<const std::vector<Program::ActionInfo>*>(instruction.op1_.cptr_);
-  for (auto& action_info : action_infos) {
-    DISPATCH(action_dispatch_table[action_info.index_]);
-    CASE(Ctl);
-    CASE(InitCol);
-    CASE(SetEnv);
-    CASE(SetRsc);
-    CASE(SetSid);
-    CASE(SetUid);
-    CASE(SetVar);
-  }
-#undef CASE
-}
-
-void VirtualMachine::execPushMatched(const Instruction& instruction) {
+void VirtualMachine::execPushAllMatched(const Instruction& instruction) {
   const Rule* curr_rule = transaction_.getCurrentEvaluateRule();
   const std::unique_ptr<Variable::VariableBase>* curr_var =
       reinterpret_cast<const std::unique_ptr<Variable::VariableBase>*>(
@@ -675,8 +644,8 @@ void VirtualMachine::execLogDataExpandMacro(const Instruction& instruction) {
 }
 
 void VirtualMachine::execChain(const Instruction& instruction) {
-  // Reset RFLAGS
-  general_registers_[GeneralRegister::RFLAGS] = 0;
+  // Reset RMF
+  rflags_.reset(static_cast<size_t>(Rflags::RMF));
 
   // Set current evaluate rule
   const Rule* rule = reinterpret_cast<const Rule*>(instruction.op1_.cptr_);
@@ -708,7 +677,7 @@ void VirtualMachine::execExitIfDisruptive(
 
 #define IMPL(var_type, proc)                                                                       \
   const Variable::var_type* v =                                                                    \
-      reinterpret_cast<const Variable::var_type*>(instruction.op3_.cptr_);                         \
+      reinterpret_cast<const Variable::var_type*>(instruction.op2_.cptr_);                         \
   auto& output = extended_registers_[instruction.op1_.x_reg_];                                     \
   output.clear();                                                                                  \
   proc;
@@ -1037,8 +1006,30 @@ IMPL_LOAD_VAR(
 #undef IMPL
 #undef IMPL_LOAD_VAR
 #undef IMPL_LOAD_VAR_PROC
-#undef IMPL_LOAD_VAR_PROCESSOR
-#undef IMPL_LOAD_VAR_PROCESSOR_PROC
+
+#define IMPL_ACTION_PROC(action_type)                                                              \
+  void VirtualMachine::execAction##action_type(const Instruction& instruction) {                   \
+    auto& results = extended_registers_[instruction.op1_.x_reg_];                                  \
+    size_t i = general_registers_[Compiler::RuleCompiler::loop_cursor_];                           \
+    auto& element = results.get(i);                                                                \
+    if (!IS_INT_VARIANT(element.variant_)) {                                                       \
+      const Action::action_type* action =                                                          \
+          reinterpret_cast<const Action::action_type*>(instruction.op2_.cptr_);                    \
+      action->evaluate(transaction_);                                                              \
+    }                                                                                              \
+  }
+TRAVEL_ACTIONS(IMPL_ACTION_PROC);
+#undef IMPL_ACTION_PROC
+
+#define IMPL_UNC_ACTION_PROC(action_type)                                                          \
+  void VirtualMachine::execUncAction##action_type(const Instruction& instruction) {                \
+    const Action::action_type* action =                                                            \
+        reinterpret_cast<const Action::action_type*>(instruction.op1_.cptr_);                      \
+    action->evaluate(transaction_);                                                                \
+  }
+TRAVEL_ACTIONS(IMPL_UNC_ACTION_PROC);
+#undef IMPL_UNC_ACTION_PROC
+
 } // namespace Bytecode
 } // namespace Wge
 

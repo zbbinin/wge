@@ -50,10 +50,7 @@ void VariableCompiler::compile(ExtendedRegister dst_reg, const Variable::Variabl
 
   std::optional<OpCode> op_code = calcOpCode(variable, iter->second.base_opcode_);
   if (op_code.has_value()) {
-    program.emit({op_code.value(),
-                  {.x_reg_ = dst_reg},
-                  {.index_ = iter->second.index_},
-                  {.cptr_ = variable}});
+    program.emit({op_code.value(), {.x_reg_ = dst_reg}, {.cptr_ = variable}});
   } else {
     UNREACHABLE();
     WGE_LOG_CRITICAL("variable compile error: unknown opreator code {}",

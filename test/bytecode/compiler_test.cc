@@ -45,8 +45,10 @@ public:
       Compiler::TransformCompiler::transform_index_map_};
   const std::unordered_map<const char*, int64_t>& operator_index_map_{
       Compiler::OperatorCompiler::operator_index_map_};
-  const std::unordered_map<const char*, int64_t>& action_index_map_{
-      Compiler::ActionCompiler::action_index_map_};
+  const std::unordered_map<const char*, Compiler::ActionCompiler::ActionTypeInfo>&
+      action_type_info_map_{Compiler::ActionCompiler::action_type_info_map_};
+  const std::unordered_map<const char*, Compiler::ActionCompiler::ActionTypeInfo>&
+      unc_action_type_info_map_{Compiler::ActionCompiler::unc_action_type_info_map_};
   const std::unordered_map<const char*, int64_t>& macro_index_map_{
       Compiler::MacroCompiler::macro_index_map_};
 
@@ -174,8 +176,7 @@ TEST_F(CompilerTest, compileVariable) {
       ++load_var_count;
       EXPECT_EQ(instruction.op1_.x_reg_, Compiler::RuleCompiler::load_var_reg_);
       const Variable::VariableBase* var =
-          reinterpret_cast<const Variable::VariableBase*>(instruction.op3_.cptr_);
-      EXPECT_EQ(instruction.op2_.index_, variable_type_info_map_.at(var->mainName().data()).index_);
+          reinterpret_cast<const Variable::VariableBase*>(instruction.op2_.cptr_);
     }
   }
   EXPECT_EQ(load_var_count, rule.variables().size());
@@ -355,18 +356,14 @@ TEST_F(CompilerTest, compileAction) {
                                                                 EngineConfig::Option::On);
 
   size_t count = 0;
-  const std::vector<Bytecode::Program::ActionInfo>* action_infos = nullptr;
   for (auto& instruction : program->instructions()) {
-    if (instruction.op_code_ == Bytecode::OpCode::ACTION) {
+    if (instruction.op_code_ >= Bytecode::ACTION_INSTRUCTIONS_START &&
+        instruction.op_code_ <= Bytecode::ACTION_INSTRUCTIONS_END) {
       ++count;
       EXPECT_EQ(instruction.op1_.x_reg_, Compiler::RuleCompiler::op_res_reg_);
-      action_infos = reinterpret_cast<const std::vector<Bytecode::Program::ActionInfo>*>(
-          instruction.op2_.cptr_);
     }
   }
-  EXPECT_EQ(count, 1);
-  EXPECT_EQ(action_infos, program->actionInfos(-1));
-  EXPECT_EQ(action_infos->size(), default_action.actions().size() + actions.size());
+  EXPECT_EQ(count, default_action.actions().size() + actions.size());
 }
 
 TEST_F(CompilerTest, compileUncAction) {
@@ -395,17 +392,13 @@ TEST_F(CompilerTest, compileUncAction) {
                                                                 EngineConfig::Option::On);
 
   size_t count = 0;
-  const std::vector<Bytecode::Program::ActionInfo>* action_infos = nullptr;
   for (auto& instruction : program->instructions()) {
-    if (instruction.op_code_ == Bytecode::OpCode::UNC_ACTION) {
+    if (instruction.op_code_ >= Bytecode::UNC_ACTION_INSTRUCTIONS_START &&
+        instruction.op_code_ <= Bytecode::UNC_ACTION_INSTRUCTIONS_END) {
       ++count;
-      action_infos = reinterpret_cast<const std::vector<Bytecode::Program::ActionInfo>*>(
-          instruction.op1_.cptr_);
     }
   }
-  EXPECT_EQ(count, 1);
-  EXPECT_EQ(action_infos, program->actionInfos(-1));
-  EXPECT_EQ(action_infos->size(), actions.size());
+  EXPECT_EQ(count, actions.size());
 }
 
 TEST_F(CompilerTest, compileChainRule) {
@@ -428,16 +421,16 @@ TEST_F(CompilerTest, compileChainRule) {
       Wge::Bytecode::Compiler::RuleCompiler::compile(&rule, nullptr, EngineConfig::Option::On);
 
   size_t operator_count = 0;
-  size_t jz_count = 0;
+  size_t jnom_count = 0;
   for (auto& instruction : program->instructions()) {
     if (instruction.op_code_ == Bytecode::OpCode::OPERATE) {
       ++operator_count;
-    } else if (instruction.op_code_ == Bytecode::OpCode::JZ) {
-      ++jz_count;
+    } else if (instruction.op_code_ == Bytecode::OpCode::JNOM) {
+      ++jnom_count;
     }
   }
   EXPECT_EQ(operator_count, chain_rule_count + 1);
-  EXPECT_EQ(jz_count, chain_rule_count * 2 + 1);
+  EXPECT_EQ(jnom_count, chain_rule_count * 2 + 1);
 }
 
 TEST_F(CompilerTest, compileExpandMacro) {

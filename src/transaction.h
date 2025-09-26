@@ -31,7 +31,6 @@
 
 #include <boost/unordered/unordered_flat_map.hpp>
 
-#include "bytecode/virtual_machine.h"
 #include "common/evaluate_result.h"
 #include "common/ragel/json.h"
 #include "common/ragel/multi_part.h"
@@ -58,6 +57,7 @@ class TransformBase;
 } // namespace Transformation
 
 namespace Bytecode {
+class VirtualMachine;
 class VirtualMachineTest;
 } // namespace Bytecode
 

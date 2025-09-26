@@ -20,6 +20,7 @@
  */
 #pragma once
 
+#include "compiler/action_travel_helper.h"
 #include "compiler/variable_travel_helper.h"
 
 namespace Wge {
@@ -38,6 +39,20 @@ enum class OpCode {
   // Example: MOV RAX, 1
   MOV,
 
+  // Add immediate value to destination register
+  // Syntax: ADD <dst_reg>, <imm_value>
+  // @param op1 [g_reg]: Destination register
+  // @param op2 [imm]: Immediate value to add
+  // Example: ADD RAX, 1
+  ADD,
+
+  // Compare register value with another register value and set ZF flag if equal
+  // Syntax: CMP <reg1>, <reg2>
+  // @param op1 [g_reg]: Register to compare
+  // @param op2 [g_reg]: Register to compare with
+  // Example: CMP RAX, 0
+  CMP,
+
   // Unconditional jump
   // Syntax: JMP <target_addr>
   // @param op1 [address]: Target jump address
@@ -46,15 +61,27 @@ enum class OpCode {
 
   // Conditional jump if zero
   // Syntax: JZ <target_addr>
-  // @param op1 [address]: Target jump address (jumps if RFLAGS == 0)
+  // @param op1 [address]: Target jump address (jumps if ZF set)
   // Example: JZ 123
   JZ,
 
   // Conditional jump if not zero
   // Syntax: JNZ <target_addr>
-  // @param op1 [address]: Target jump address (jumps if RFLAGS != 0)
+  // @param op1 [address]: Target jump address (jumps if ZF not set)
   // Example: JNZ 123
   JNZ,
+
+  // Conditional jump if operator matched
+  // Syntax: JOM <target_addr>
+  // @param op1 [address]: Target jump address (jumps if OMF set)
+  // Example: JOM 123
+  JOM,
+
+  // Conditional jump if operator not matched
+  // Syntax: JNOM <target_addr>
+  // @param op1 [address]: Target jump address (jumps if OMF not set)
+  // Example: JNOM 123
+  JNOM,
 
   // No operation
   // Syntax: NOP
@@ -88,7 +115,7 @@ enum class OpCode {
   // Example: TRANSFORM R9, R8, 1, 123456
   TRANSFORM,
 
-  // Match variable value with operator.
+  // Match variable value with operator and set OMF flag
   // Syntax: OPERATE <res_reg>  <src_reg>, <operator_index>, <operator_instance_pointer>
   // @param op1 [x_reg]: Result register
   // @param op2 [x_reg]: Source register
@@ -99,40 +126,27 @@ enum class OpCode {
   // Note: The RFLAGS indicate whether the operation was matched
   OPERATE,
 
-  // Perform an action without pushing the matched variable
-  // Syntax: ACTION <op_res_reg>, <action_infos_pointer>
-  // @param op1 [g_reg]: Source register(the result of the previous OPERATE)
-  // @param op2 [cptr]: An array of constant pointers specifying the action infos
-  // (Program::ActionInfo)
-  // Example:
-  // ACTION R11, 123456
-  ACTION,
+  // Load the size of the extended register value into a general register
+  // Syntax: LOAD_EXTENDED_REGISTER_VALUE_SIZE <g_reg> <x_reg>
+  // @param op1 [g_reg]: Destination general register
+  // @param op2 [x_reg]: Source extended register
+  // Example: LOAD_EXTENDED_REGISTER_VALUE_SIZE RAX, R11
+  SIZE,
 
-  // Perform an action and push the matched variable
-  // Syntax: ACTION <op_src_reg>, <op_res_reg>, <action_infos_pointer>
-  // @param op1 [g_reg]: Source register(the input of the previous OPERATE)
-  // @param op2 [x_reg]: Source register(the result of the previous OPERATE)
-  // @param op3 [cptr]: An array of constant pointers specifying the action infos
-  // (Program::ActionInfo)
-  // Example:
-  // ACTION R8, R11, 123456
-  ACTION_PUSH_MATCHED,
-
-  // Perform an uncondition action
-  // Syntax: UNC_ACTION <action_infos_pointer>
-  // @param op1 [cptr]: An array of constant pointers specifying the action infos
-  // (Program::ActionInfo)
-  // Example:
-  // UNC_ACTION 123456
-  UNC_ACTION,
-
-  // Used to push the matched variable without action
-  // Syntax: PUSH_MATCHED <op_src_reg>, <op_res_reg>
-  // @param op1 [g_reg]: Source register(the input of the previous OPERATE)
-  // @param op2 [x_reg]: Source register(the result of the previous OPERATE)
-  // Example:
-  // PUSH_MATCHED R8, R11
+  // Used to push a matched variable
+  // Syntax: PUSH_MATCHED <op_src_reg>, <op_res_reg> <op_res_index_reg>
+  // @param op1 [x_reg]: Source register(the input of the previous OPERATE)
+  // @param op2 [x_reg]: Source register(the result array of the previous OPERATE)
+  // @param op3 [g_reg]: Source register(the index of the result array of the previous OPERATE)
+  // Example: PUSH_ALL_MATCHED R8, R11, RAX
   PUSH_MATCHED,
+
+  // Used to push all matched variables
+  // Syntax: PUSH_ALL_MATCHED <op_src_reg>, <op_res_reg>
+  // @param op1 [x_reg]: Source register(the input of the previous OPERATE)
+  // @param op2 [x_reg]: Source register(the result of the previous OPERATE)
+  // Example: PUSH_ALL_MATCHED R8, R11
+  PUSH_ALL_MATCHED,
 
   // Expand msg macro and log macro
   // Syntax: EXPAND_MACRO <msg_macro_index> <msg_macro_instance_pointer> <log_macro_index>
@@ -162,20 +176,17 @@ enum class OpCode {
   // Example: EXIT_IF_DISRUPTIVE
   EXIT_IF_DISRUPTIVE,
 
-// ==================== Variable Loading Optimized Instructions ====================
-// These instructions provide compile-time specialized versions of LOAD_VAR
-// for specific variable types and access patterns, eliminating runtime dispatch
-// overhead and enabling better JIT compilation optimization.
+// ==================== Load Variable Instructions ====================
+// These instructions provide compile-time specific variable types and access patterns, eliminating
+// runtime dispatch overhead and enabling better JIT compilation optimization.
 //
 // Naming convention: LOAD_{VARIABLE_TYPE}_{C|V}{C|S|R}
 // - C/V: Counter or Value mode
 // - C/S/R: Collection, Specific subname, or Regex collection
 //
-// Parameters follow same convention as LOAD_VAR:
+// Parameters:
 // @param op1 [x_reg]: Destination register
-// @param op2 [index]: Variable index (for compatibility, may be unused)
-// @param op3 [cptr]: Constant pointer to variable instance
-
+// @param op2 [cptr]: Constant pointer to variable instance
 // clang-format off
 #define LOAD_VAR_INSTRUCTIONS(var_type)                      \
   LOAD_##var_type##_CC, /* Counter Collection */             \
@@ -183,14 +194,44 @@ enum class OpCode {
   LOAD_##var_type##_VC, /* Value Collection */               \
   LOAD_##var_type##_VR, /* Value Regex Collection */         \
   LOAD_##var_type##_VS, /* Value Specific */
-  // clang-format on
-
-  // Variable loading instructions for different types
   TRAVEL_VARIABLES(LOAD_VAR_INSTRUCTIONS)
+// clang-format on
+
+// ==================== Action Instructions ====================
+// These instructions provide compile-time specific action types and access patterns, eliminating
+// runtime dispatch overhead and enabling better JIT compilation optimization.
+//
+// Naming convention: ACTION_{ACTION_TYPE}
+//
+// Parameters:
+// @param op1 [g_reg]: Source register(the result array of the previous OPERATE). Use
+// RuleCompiler::loop_cursor_ to indicate the result index of result array
+// @param op2 [cptr]: Constant pointer to action instance
+// clang-format off
+#define ACTION_INSTRUCTIONS(action_type) ACTION_##action_type,
+  TRAVEL_ACTIONS(ACTION_INSTRUCTIONS)
+// clang-format on
+
+// ==================== Uncondition Action Instructions ====================
+// These instructions provide compile-time specific action types and access patterns, eliminating
+// runtime dispatch overhead and enabling better JIT compilation optimization.
+//
+// Naming convention: UNC_ACTION_{ACTION_TYPE}
+//
+// Parameters:
+// @param op1 [cptr]: Constant pointer to action instance
+// clang-format off
+#define UNC_ACTION_INSTRUCTIONS(action_type) UNC_ACTION_##action_type,
+  TRAVEL_ACTIONS(UNC_ACTION_INSTRUCTIONS)
+  // clang-format on
 };
 
 static constexpr OpCode LOAD_VAR_INSTRUCTIONS_START = OpCode::LOAD_ArgsCombinedSize_CC;
 static constexpr OpCode LOAD_VAR_INSTRUCTIONS_END = OpCode::LOAD_Xml_TagValuePmf_VS;
+static constexpr OpCode ACTION_INSTRUCTIONS_START = OpCode::ACTION_Ctl;
+static constexpr OpCode ACTION_INSTRUCTIONS_END = OpCode::ACTION_SetVar;
+static constexpr OpCode UNC_ACTION_INSTRUCTIONS_START = OpCode::UNC_ACTION_Ctl;
+static constexpr OpCode UNC_ACTION_INSTRUCTIONS_END = OpCode::UNC_ACTION_SetVar;
 
 inline OpCode operator+(OpCode lhs, int rhs) {
   return static_cast<OpCode>(static_cast<int>(lhs) + rhs);

@@ -33,13 +33,10 @@ void RuleCompiler::compileRule(const Rule* rule, const Rule* default_action_rule
                                EngineConfig::Option rule_engine_option, Program& program) {
   auto& op = rule->getOperator();
   if (op == nullptr) {
-    // Initialize action infos
-    Compiler::ActionCompiler::initProgramActionInfo(rule->chainIndex(), nullptr, &rule->actions(),
-                                                    program);
-
     // Compile each uncondition action in the rule
-    if (!rule->actions().empty()) {
-      Compiler::ActionCompiler::compile(rule->chainIndex(), program);
+    auto& actions = rule->actions();
+    for (auto& action : actions) {
+      Compiler::ActionCompiler::compileUncAction(action.get(), program);
     }
     return;
   }
@@ -56,8 +53,6 @@ void RuleCompiler::compileRule(const Rule* rule, const Rule* default_action_rule
 
   // Initialize action infos
   const auto default_actions = default_action_rule ? &default_action_rule->actions() : nullptr;
-  Compiler::ActionCompiler::initProgramActionInfo(rule->chainIndex(), default_actions,
-                                                  &rule->actions(), program);
   auto& variables = rule->variables();
   for (const auto& var : variables) {
     // Set current variable
@@ -102,25 +97,60 @@ void RuleCompiler::compileRule(const Rule* rule, const Rule* default_action_rule
     // Compile actions
     if ((default_actions && !default_actions->empty()) || !rule->actions().empty()) {
       // Compile actions
+      // Traverse the results of operator and do action
+      // The run-time dummy code:
+      // size_t i = 0;
+      // LABEL:
+      // if(i < results.size()) {
+      //   pushMatched(results[i]);
+      //
+      //   action1->evaluate();
+      //   action2->evaluate();
+      //   ...
+      //
+      //   ++i;
+      //   goto LABEL;
+      // }
+      program.emit({OpCode::SIZE, {.g_reg_ = loop_count_}, {.x_reg_ = op_res_reg_}});
+      program.emit({OpCode::MOV, {.g_reg_ = loop_cursor_}, {.imm_ = 0}});
+      size_t loop_start_label = program.instructions().size();
+      program.emit({OpCode::CMP, {.g_reg_ = loop_cursor_}, {.g_reg_ = loop_count_}});
+      size_t jz_index = program.instructions().size();
+      program.emit({OpCode::JZ, {.address_ = RELOCATION}});
+
       if (rule->isNeedPushMatched()) {
-        Compiler::ActionCompiler::compile(rule->chainIndex(), op_src_reg, op_res_reg_, program);
-      } else {
-        Compiler::ActionCompiler::compile(rule->chainIndex(), op_res_reg_, program);
+        program.emit({OpCode::PUSH_MATCHED,
+                      {.x_reg_ = op_src_reg},
+                      {.x_reg_ = op_res_reg_},
+                      {.g_reg_ = loop_cursor_}});
       }
+
+      if (default_actions) {
+        for (auto& action : *default_actions) {
+          Compiler::ActionCompiler::compileAction(action.get(), op_res_reg_, program);
+        }
+      }
+      for (auto& action : rule->actions()) {
+        Compiler::ActionCompiler::compileAction(action.get(), op_res_reg_, program);
+      }
+
+      program.emit({OpCode::ADD, {.g_reg_ = loop_cursor_}, {.imm_ = 1}});
+      program.emit({OpCode::JMP, {.address_ = static_cast<int64_t>(loop_start_label)}});
+      program.relocate(jz_index, program.instructions().size());
     } else {
-      // Push matched
+      // Push all matched
       if (rule->isNeedPushMatched()) {
-        program.emit({OpCode::PUSH_MATCHED, {.x_reg_ = op_src_reg}, {.x_reg_ = op_res_reg_}});
+        program.emit({OpCode::PUSH_ALL_MATCHED, {.x_reg_ = op_src_reg}, {.x_reg_ = op_res_reg_}});
       }
     }
   }
 
   // Skip the instuctions of chain rule if the OPERATE was not matched
-  const size_t jz_index_for_rule_matched = program.instructions().size();
-  program.emit({OpCode::JZ, {.address_ = RELOCATION}});
+  const size_t jnom_index_for_rule_matched = program.instructions().size();
+  program.emit({OpCode::JNOM, {.address_ = RELOCATION}});
 
   // Compile chain rule
-  std::optional<size_t> jz_index_for_chain_matched;
+  std::optional<size_t> jnom_index_for_chain_matched;
   std::optional<std::list<std::unique_ptr<Rule>>::const_iterator> chain_rule_iter =
       rule->chainRule(0);
   if (chain_rule_iter.has_value()) {
@@ -133,8 +163,8 @@ void RuleCompiler::compileRule(const Rule* rule, const Rule* default_action_rule
 
     // If the chained rule are matched means the rule is matched, otherwise the rule is not
     // matched
-    jz_index_for_chain_matched = program.instructions().size();
-    program.emit({OpCode::JZ, {.address_ = RELOCATION}});
+    jnom_index_for_chain_matched = program.instructions().size();
+    program.emit({OpCode::JNOM, {.address_ = RELOCATION}});
   }
 
   // Compile expand macro
@@ -158,9 +188,9 @@ void RuleCompiler::compileRule(const Rule* rule, const Rule* default_action_rule
 
   // Relocate jump address
   const size_t curr_index = program.instructions().size();
-  program.relocate(jz_index_for_rule_matched, curr_index);
-  if (jz_index_for_chain_matched.has_value()) {
-    program.relocate(jz_index_for_chain_matched.value(), curr_index);
+  program.relocate(jnom_index_for_rule_matched, curr_index);
+  if (jnom_index_for_chain_matched.has_value()) {
+    program.relocate(jnom_index_for_chain_matched.value(), curr_index);
   }
   if (jmp_if_remove_index.has_value()) {
     program.relocate(jmp_if_remove_index.value(), curr_index);
