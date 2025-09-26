@@ -648,27 +648,27 @@ template <bool enable_bytecode> bool Transaction::process(int phase) {
         }
       }
 
-    // Skip the rules if current rule that has a skip action or skipAfter action is matched
-    int skip = current_rule_->skip() + 1;
-    if (skip > 0)
-      [[unlikely]] {
-        if (std::distance(iter, rules.end()) > skip) {
-          iter += skip;
-        } else {
-          iter = rules.end();
-        }
-        continue;
-      }
-    const std::string& skip_after = current_rule_->skipAfter();
-    if (!skip_after.empty())
-      [[unlikely]] {
-        auto next_rule_iter = engine_.marker(skip_after, current_rule_->phase());
-        if (next_rule_iter.has_value())
-          [[likely]] {
-            iter = next_rule_iter.value();
-            continue;
+      // Skip the rules if current rule that has a skip action or skipAfter action is matched
+      int skip = current_rule_->skip() + 1;
+      if (skip > 0)
+        [[unlikely]] {
+          if (std::distance(iter, rules.end()) > skip) {
+            iter += skip;
+          } else {
+            iter = rules.end();
           }
-      }
+          continue;
+        }
+      const std::string& skip_after = current_rule_->skipAfter();
+      if (!skip_after.empty())
+        [[unlikely]] {
+          auto next_rule_iter = engine_.marker(skip_after, current_rule_->phase());
+          if (next_rule_iter.has_value())
+            [[likely]] {
+              iter = next_rule_iter.value();
+              continue;
+            }
+        }
 
       // If skip and skipAfter are not set, then continue to the next rule
       ++iter;

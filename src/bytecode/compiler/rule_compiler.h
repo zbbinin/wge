@@ -84,7 +84,7 @@ private:
   static void compileRule(const Rule* rule, const Rule* default_action, const Engine* engine,
                           Program& program, std::vector<SkipInfo>* skip_info_array = nullptr);
   static void updateSkipInfo(Program& program, std::vector<SkipInfo>& skip_info_array,
-                             const Rule* rule,const Engine* engine);
+                             const Rule* rule, const Engine* engine);
 
 public:
   // The loop count
