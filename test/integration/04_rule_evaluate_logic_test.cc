@@ -32,7 +32,7 @@ TEST(RuleEvaluateLogicTest, evluateLogic) {
   {
     const std::string directive = R"(
         SecRuleEngine On
-        SecAction "phase:1,setvar:tx.foo1=%42ar,setvar:tx.foo2=bar123,setvar:tx.foo3=bar,setvar:tx.foo4=BAR"
+        SecAction "phase:1,setvar:tx.foo1=%42ar,setvar:tx.foo2=bar,setvar:tx.foo3=BAR,setvar:tx.foo4=bar123"
         SecRule TX:foo1|TX:foo2|TX:foo3|TX:foo4 "@streq bar" \
         "id:1, \
         phase:1, \
@@ -55,7 +55,7 @@ TEST(RuleEvaluateLogicTest, evluateLogic) {
     EXPECT_EQ(std::get<int64_t>(t->getVariable("test")), 3);
     EXPECT_TRUE(matched);
     EXPECT_EQ(t->getMsgMacroExpanded(), "tx.test=3");
-    EXPECT_EQ(t->getLogDataMacroExpanded(), "TX:foo4=bar TX:foo1=bar");
+    EXPECT_EQ(t->getLogDataMacroExpanded(), "TX:foo3=bar TX:foo1=bar");
   }
 
   // Test that chained rule is matched, and starter rule is matched.
