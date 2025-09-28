@@ -867,7 +867,26 @@ TRAVEL_OPERATORS(IMPL_OPERATOR_PROC)
 
 #define IMPL_ACTION_PROC(action_type) IMPL_ACTION(action_type, action->evaluate(transaction_))
 
-IMPL_ACTION_PROC(Ctl);
+IMPL_ACTION(Ctl_AuditEngine, (action->evaluate<Action::Ctl::CtlType::AuditEngine>(transaction_)));
+IMPL_ACTION(Ctl_AuditLogParts,
+            (action->evaluate<Action::Ctl::CtlType::AuditLogParts>(transaction_)));
+IMPL_ACTION(Ctl_ParseXmlIntoArgs,
+            (action->evaluate<Action::Ctl::CtlType::ParseXmlIntoArgs>(transaction_)));
+IMPL_ACTION(Ctl_RequestBodyAccess,
+            (action->evaluate<Action::Ctl::CtlType::RequestBodyAccess>(transaction_)));
+IMPL_ACTION(Ctl_RequestBodyProcessor,
+            (action->evaluate<Action::Ctl::CtlType::RequestBodyProcessor>(transaction_)));
+IMPL_ACTION(Ctl_RuleEngine, (action->evaluate<Action::Ctl::CtlType::RuleEngine>(transaction_)));
+IMPL_ACTION(Ctl_RuleRemoveById,
+            (action->evaluate<Action::Ctl::CtlType::RuleRemoveById>(transaction_)));
+IMPL_ACTION(Ctl_RuleRemoveByIdRange,
+            (action->evaluate<Action::Ctl::CtlType::RuleRemoveByIdRange>(transaction_)));
+IMPL_ACTION(Ctl_RuleRemoveByTag,
+            (action->evaluate<Action::Ctl::CtlType::RuleRemoveByTag>(transaction_)));
+IMPL_ACTION(Ctl_RuleRemoveTargetById,
+            (action->evaluate<Action::Ctl::CtlType::RuleRemoveTargetById>(transaction_)));
+IMPL_ACTION(Ctl_RuleRemoveTargetByTag,
+            (action->evaluate<Action::Ctl::CtlType::RuleRemoveTargetByTag>(transaction_)));
 IMPL_ACTION_PROC(InitCol);
 IMPL_ACTION_PROC(SetEnv);
 IMPL_ACTION_PROC(SetRsc);

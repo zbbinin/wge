@@ -261,9 +261,9 @@ static constexpr OpCode TRANSFORM_INSTRUCTIONS_START = OpCode::TRANSFORM_Base64D
 static constexpr OpCode TRANSFORM_INSTRUCTIONS_END = OpCode::TRANSFORM_Utf8ToUnicode;
 static constexpr OpCode OPERATOR_INSTRUCTIONS_START = OpCode::OPERATOR_BeginsWith;
 static constexpr OpCode OPERATOR_INSTRUCTIONS_END = OpCode::OPERATOR_Within;
-static constexpr OpCode ACTION_INSTRUCTIONS_START = OpCode::ACTION_Ctl;
+static constexpr OpCode ACTION_INSTRUCTIONS_START = OpCode::ACTION_Ctl_AuditEngine;
 static constexpr OpCode ACTION_INSTRUCTIONS_END = OpCode::ACTION_SetVar_Decrease_FF;
-static constexpr OpCode UNC_ACTION_INSTRUCTIONS_START = OpCode::UNC_ACTION_Ctl;
+static constexpr OpCode UNC_ACTION_INSTRUCTIONS_START = OpCode::UNC_ACTION_Ctl_AuditEngine;
 static constexpr OpCode UNC_ACTION_INSTRUCTIONS_END = OpCode::UNC_ACTION_SetVar_Decrease_FF;
 
 inline OpCode operator+(OpCode lhs, int rhs) {

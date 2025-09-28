@@ -61,7 +61,7 @@ public:
   Ctl(CtlType type, std::any&& value);
 
 public:
-  void evaluate(Transaction& t) const override { evaluate_func_(t); }
+  void evaluate(Transaction& t) const override;
 
 public:
   /**
@@ -76,6 +76,37 @@ public:
    * @param engin the engine instance
    */
   void initRules(const Engine& engin);
+
+  CtlType type() const { return type_; }
+
+public:
+  template <CtlType type> void evaluate(Transaction& t) const {
+    if constexpr (type == CtlType::AuditEngine) {
+      evaluate_audit_engine(t);
+    } else if constexpr (type == CtlType::AuditLogParts) {
+      evaluate_audit_log_parts(t);
+    } else if constexpr (type == CtlType::ParseXmlIntoArgs) {
+      evaluate_parse_xml_into_args(t);
+    } else if constexpr (type == CtlType::RequestBodyAccess) {
+      evaluate_request_body_access(t);
+    } else if constexpr (type == CtlType::RequestBodyProcessor) {
+      evaluate_request_body_processor(t);
+    } else if constexpr (type == CtlType::RuleEngine) {
+      evaluate_rule_engine(t);
+    } else if constexpr (type == CtlType::RuleRemoveById) {
+      evaluate_rule_remove_by_id(t);
+    } else if constexpr (type == CtlType::RuleRemoveByIdRange) {
+      evaluate_rule_remove_by_id_range(t);
+    } else if constexpr (type == CtlType::RuleRemoveByTag) {
+      evaluate_rule_remove_by_tag(t);
+    } else if constexpr (type == CtlType::RuleRemoveTargetById) {
+      evaluate_rule_remove_target_by_id(t);
+    } else if constexpr (type == CtlType::RuleRemoveTargetByTag) {
+      evaluate_rule_remove_target_by_tag(t);
+    } else {
+      UNREACHABLE();
+    }
+  }
 
 private:
   void evaluate_audit_engine(Transaction& t) const;
@@ -93,7 +124,6 @@ private:
 private:
   CtlType type_;
   std::any value_;
-  std::function<void(Transaction&)> evaluate_func_;
   std::array<std::unordered_set<const Rule*>, PHASE_TOTAL> rules_;
 };
 } // namespace Action

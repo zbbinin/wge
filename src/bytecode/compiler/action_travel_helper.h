@@ -24,7 +24,17 @@
 // argument. This is used to generate code for all action types to avoid loss or duplication of
 // any action type
 #define TRAVEL_ACTIONS(X)                                                                          \
-  X(Ctl)                                                                                           \
+  X(Ctl_AuditEngine)                                                                               \
+  X(Ctl_AuditLogParts)                                                                             \
+  X(Ctl_ParseXmlIntoArgs)                                                                          \
+  X(Ctl_RequestBodyAccess)                                                                         \
+  X(Ctl_RequestBodyProcessor)                                                                      \
+  X(Ctl_RuleEngine)                                                                                \
+  X(Ctl_RuleRemoveById)                                                                            \
+  X(Ctl_RuleRemoveByIdRange)                                                                       \
+  X(Ctl_RuleRemoveByTag)                                                                           \
+  X(Ctl_RuleRemoveTargetById)                                                                      \
+  X(Ctl_RuleRemoveTargetByTag)                                                                     \
   X(InitCol)                                                                                       \
   X(SetEnv)                                                                                        \
   X(SetRsc)                                                                                        \
@@ -50,7 +60,21 @@
 // Action Alias
 namespace Wge {
 namespace Action {
+class Ctl;
 class SetVar;
+
+// Naming convention: Ctl_{CtlType}
+using Ctl_AuditEngine = Ctl;
+using Ctl_AuditLogParts = Ctl;
+using Ctl_ParseXmlIntoArgs = Ctl;
+using Ctl_RequestBodyAccess = Ctl;
+using Ctl_RequestBodyProcessor = Ctl;
+using Ctl_RuleEngine = Ctl;
+using Ctl_RuleRemoveById = Ctl;
+using Ctl_RuleRemoveByIdRange = Ctl;
+using Ctl_RuleRemoveByTag = Ctl;
+using Ctl_RuleRemoveTargetById = Ctl;
+using Ctl_RuleRemoveTargetByTag = Ctl;
 
 // Naming convention: SetVar_{EvaluateType}_{IsKeyMacro(T|F)}_{IsValueMacro(T|F)}
 using SetVar_Create_TF = SetVar;

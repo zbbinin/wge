@@ -83,6 +83,47 @@ std::optional<OpCode> ActionCompiler::calcOpCode(const Action::ActionBase* actio
                                                  OpCode base_opcode) {
   std::optional<OpCode> real_opcode;
   switch (base_opcode) {
+  case OpCode::ACTION_Ctl_AuditEngine: {
+    auto p = dynamic_cast<const Action::Ctl*>(action);
+    switch (p->type()) {
+    case Action::Ctl::CtlType::AuditEngine: {
+      real_opcode = OpCode::ACTION_Ctl_AuditEngine;
+    } break;
+    case Action::Ctl::CtlType::AuditLogParts: {
+      real_opcode = OpCode::ACTION_Ctl_AuditLogParts;
+    } break;
+    case Action::Ctl::CtlType::ParseXmlIntoArgs: {
+      real_opcode = OpCode::ACTION_Ctl_ParseXmlIntoArgs;
+    } break;
+    case Action::Ctl::CtlType::RequestBodyAccess: {
+      real_opcode = OpCode::ACTION_Ctl_RequestBodyAccess;
+    } break;
+    case Action::Ctl::CtlType::RequestBodyProcessor: {
+      real_opcode = OpCode::ACTION_Ctl_RequestBodyProcessor;
+    } break;
+    case Action::Ctl::CtlType::RuleEngine: {
+      real_opcode = OpCode::ACTION_Ctl_RuleEngine;
+    } break;
+    case Action::Ctl::CtlType::RuleRemoveById: {
+      real_opcode = OpCode::ACTION_Ctl_RuleRemoveById;
+    } break;
+    case Action::Ctl::CtlType::RuleRemoveByIdRange: {
+      real_opcode = OpCode::ACTION_Ctl_RuleRemoveByIdRange;
+    } break;
+    case Action::Ctl::CtlType::RuleRemoveByTag: {
+      real_opcode = OpCode::ACTION_Ctl_RuleRemoveByTag;
+    } break;
+    case Action::Ctl::CtlType::RuleRemoveTargetById: {
+      real_opcode = OpCode::ACTION_Ctl_RuleRemoveTargetById;
+    } break;
+    case Action::Ctl::CtlType::RuleRemoveTargetByTag: {
+      real_opcode = OpCode::ACTION_Ctl_RuleRemoveTargetByTag;
+    } break;
+    default:
+      UNREACHABLE();
+      break;
+    }
+  } break;
   case OpCode::ACTION_SetVar_Create_TF: {
     auto p = dynamic_cast<const Action::SetVar*>(action);
     bool is_key_macro = p->isKeyMacro();

@@ -27,42 +27,42 @@
 
 namespace Wge {
 namespace Action {
-Ctl::Ctl(CtlType type, std::any&& value) : type_(type), value_(std::move(value)) {
+Ctl::Ctl(CtlType type, std::any&& value) : type_(type), value_(std::move(value)) {}
+
+void Ctl::evaluate(Transaction& t) const {
   switch (type_) {
   case CtlType::AuditEngine:
-    evaluate_func_ = std::bind(&Ctl::evaluate_audit_engine, this, std::placeholders::_1);
+    evaluate<CtlType::AuditEngine>(t);
     break;
   case CtlType::AuditLogParts:
-    evaluate_func_ = std::bind(&Ctl::evaluate_audit_log_parts, this, std::placeholders::_1);
+    evaluate<CtlType::AuditLogParts>(t);
     break;
   case CtlType::ParseXmlIntoArgs:
-    evaluate_func_ = std::bind(&Ctl::evaluate_parse_xml_into_args, this, std::placeholders::_1);
+    evaluate<CtlType::ParseXmlIntoArgs>(t);
     break;
   case CtlType::RequestBodyAccess:
-    evaluate_func_ = std::bind(&Ctl::evaluate_request_body_access, this, std::placeholders::_1);
+    evaluate<CtlType::RequestBodyAccess>(t);
     break;
   case CtlType::RequestBodyProcessor:
-    evaluate_func_ = std::bind(&Ctl::evaluate_request_body_processor, this, std::placeholders::_1);
+    evaluate<CtlType::RequestBodyProcessor>(t);
     break;
   case CtlType::RuleEngine:
-    evaluate_func_ = std::bind(&Ctl::evaluate_rule_engine, this, std::placeholders::_1);
+    evaluate<CtlType::RuleEngine>(t);
     break;
   case CtlType::RuleRemoveById:
-    evaluate_func_ = std::bind(&Ctl::evaluate_rule_remove_by_id, this, std::placeholders::_1);
+    evaluate<CtlType::RuleRemoveById>(t);
     break;
   case CtlType::RuleRemoveByIdRange:
-    evaluate_func_ = std::bind(&Ctl::evaluate_rule_remove_by_id_range, this, std::placeholders::_1);
+    evaluate<CtlType::RuleRemoveByIdRange>(t);
     break;
   case CtlType::RuleRemoveByTag:
-    evaluate_func_ = std::bind(&Ctl::evaluate_rule_remove_by_tag, this, std::placeholders::_1);
+    evaluate<CtlType::RuleRemoveByTag>(t);
     break;
   case CtlType::RuleRemoveTargetById:
-    evaluate_func_ =
-        std::bind(&Ctl::evaluate_rule_remove_target_by_id, this, std::placeholders::_1);
+    evaluate<CtlType::RuleRemoveTargetById>(t);
     break;
   case CtlType::RuleRemoveTargetByTag:
-    evaluate_func_ =
-        std::bind(&Ctl::evaluate_rule_remove_target_by_tag, this, std::placeholders::_1);
+    evaluate<CtlType::RuleRemoveTargetByTag>(t);
     break;
   default:
     UNREACHABLE();
