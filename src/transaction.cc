@@ -589,8 +589,11 @@ template <bool enable_bytecode> bool Transaction::process(int phase) {
   if constexpr (enable_bytecode) {
     // Get the bytecode programs
     const std::unique_ptr<Wge::Bytecode::Program>& program = engine_.program(phase);
-    assert(program);
-    return vm_->execute(*program);
+    if (program)
+      [[likely]] { return vm_->execute(*program); }
+    else {
+      return true;
+    }
   } else {
     // Get the rules in the given phase
     auto& rules = engine_.rules(phase);
