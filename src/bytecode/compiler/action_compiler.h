@@ -21,6 +21,7 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 #include <unordered_map>
 
 #include <stdint.h>
@@ -48,6 +49,10 @@ public:
   static void compileAction(const Action::ActionBase* action, ExtendedRegister op_res_reg,
                             Program& program);
   static void compileUncAction(const Action::ActionBase* action, Program& program);
+
+private:
+  inline static std::optional<OpCode> calcOpCode(const Action::ActionBase* action,
+                                                 OpCode base_opcode);
 
 private:
   static const std::unordered_map<const char*, OpCode> action_opcode_map_;

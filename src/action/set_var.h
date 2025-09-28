@@ -27,8 +27,11 @@
 
 #include "action_base.h"
 
+#include "../common/assert.h"
+#include "../common/log.h"
 #include "../common/variant.h"
 #include "../macro/macro_base.h"
+#include "../transaction.h"
 
 namespace Wge {
 namespace Action {
@@ -63,6 +66,121 @@ public:
   const std::string& key() const { return key_; }
   const Common::Variant& value() const { return value_; }
   size_t index() const { return index_; }
+  EvaluateType type() const { return type_; }
+  bool isKeyMacro() const { return key_macro_ != nullptr; }
+  bool isValueMacro() const { return value_macro_ != nullptr; }
+
+public:
+  template <EvaluateType type, bool is_key_macro, bool is_value_macro>
+  void evaluate(Transaction& t) const {
+    if constexpr (type == EvaluateType::Create) {
+      if constexpr (is_key_macro) {
+        Common::EvaluateResults result;
+        key_macro_->evaluate(t, result);
+        std::string_view key = std::get<std::string_view>(result.front().variant_);
+        WGE_LOG_TRACE("setvar(Create): tx.{}=1", key);
+        t.setVariable({key.data(), key.size()}, 1);
+      } else {
+        WGE_LOG_TRACE("setvar(Create): tx.{}[{}]=1", key_, index_);
+        t.setVariable(index_, 1);
+      }
+    } else if constexpr (type == EvaluateType::CreateAndInit) {
+      if constexpr (is_key_macro) {
+        Common::EvaluateResults result;
+        key_macro_->evaluate(t, result);
+        std::string_view key = std::get<std::string_view>(result.front().variant_);
+        if constexpr (is_value_macro) {
+          Common::EvaluateResults result;
+          value_macro_->evaluate(t, result);
+          WGE_LOG_TRACE("setvar(CreateAndInit): tx.{}={}", key,
+                        VISTIT_VARIANT_AS_STRING(result.front().variant_));
+          t.setVariable({key.data(), key.size()}, result.front().variant_);
+        } else {
+          WGE_LOG_TRACE("setvar(CreateAndInit): tx.{}={}", key, VISTIT_VARIANT_AS_STRING(value_));
+          t.setVariable({key.data(), key.size()}, Common::Variant(value_));
+        }
+      } else {
+        if constexpr (is_value_macro) {
+          Common::EvaluateResults result;
+          value_macro_->evaluate(t, result);
+          WGE_LOG_TRACE("setvar(CreateAndInit): tx.{}[{}]={}", key_, index_,
+                        VISTIT_VARIANT_AS_STRING(result.front().variant_));
+          t.setVariable(index_, result.front().variant_);
+        } else {
+          WGE_LOG_TRACE("setvar(CreateAndInit): tx.{}[{}]={}", key_, index_,
+                        VISTIT_VARIANT_AS_STRING(value_));
+          t.setVariable(index_, value_);
+        }
+      }
+    } else if constexpr (type == EvaluateType::Remove) {
+      if constexpr (is_key_macro) {
+        Common::EvaluateResults result;
+        key_macro_->evaluate(t, result);
+        std::string_view key = std::get<std::string_view>(result.front().variant_);
+        WGE_LOG_TRACE("setvar(Remove): tx.{}", key);
+        t.removeVariable({key.data(), key.size()});
+      } else {
+        WGE_LOG_TRACE("setvar(Remove): tx.{}[{}]", key_, index_);
+        t.removeVariable(index_);
+      }
+    } else if constexpr (type == EvaluateType::Increase) {
+      if constexpr (is_key_macro) {
+        Common::EvaluateResults result;
+        key_macro_->evaluate(t, result);
+        std::string_view key = std::get<std::string_view>(result.front().variant_);
+        if constexpr (is_value_macro) {
+          Common::EvaluateResults result;
+          value_macro_->evaluate(t, result);
+          int64_t value = std::get<int64_t>(result.front().variant_);
+          WGE_LOG_TRACE("setvar(Increase): tx.{}+={}", key, value);
+          t.increaseVariable({key.data(), key.size()}, value);
+        } else {
+          WGE_LOG_TRACE("setvar(Increase): tx.{}+={}", key, std::get<int64_t>(value_));
+          t.increaseVariable({key.data(), key.size()}, std::get<int64_t>(value_));
+        }
+      } else {
+        if constexpr (is_value_macro) {
+          Common::EvaluateResults result;
+          value_macro_->evaluate(t, result);
+          int64_t value = std::get<int64_t>(result.front().variant_);
+          WGE_LOG_TRACE("setvar(Increase): tx.{}[{}]+={}", key_, index_, value);
+          t.increaseVariable(index_, value);
+        } else {
+          WGE_LOG_TRACE("setvar(Increase): tx.{}[{}]+={}", key_, index_, std::get<int64_t>(value_));
+          t.increaseVariable(index_, std::get<int64_t>(value_));
+        }
+      }
+    } else if constexpr (type == EvaluateType::Decrease) {
+      if constexpr (is_key_macro) {
+        Common::EvaluateResults result;
+        key_macro_->evaluate(t, result);
+        std::string_view key = std::get<std::string_view>(result.front().variant_);
+        if constexpr (is_value_macro) {
+          Common::EvaluateResults result;
+          value_macro_->evaluate(t, result);
+          int64_t value = std::get<int64_t>(result.front().variant_);
+          WGE_LOG_TRACE("setvar(Decrease): tx.{}-={}", key, value);
+          t.increaseVariable({key.data(), key.size()}, -value);
+        } else {
+          WGE_LOG_TRACE("setvar(Decrease): tx.{}-={}", key, std::get<int64_t>(value_));
+          t.increaseVariable({key.data(), key.size()}, -std::get<int64_t>(value_));
+        }
+      } else {
+        if constexpr (is_value_macro) {
+          Common::EvaluateResults result;
+          value_macro_->evaluate(t, result);
+          int64_t value = std::get<int64_t>(result.front().variant_);
+          WGE_LOG_TRACE("setvar(Decrease): tx.{}[{}]-={}", key_, index_, value);
+          t.increaseVariable(index_, -value);
+        } else {
+          WGE_LOG_TRACE("setvar(Decrease): tx.{}[{}]-={}", key_, index_, std::get<int64_t>(value_));
+          t.increaseVariable(index_, -std::get<int64_t>(value_));
+        }
+      }
+    } else {
+      UNREACHABLE();
+    }
+  }
 
 private:
   std::string key_;

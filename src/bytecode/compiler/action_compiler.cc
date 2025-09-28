@@ -50,7 +50,14 @@ void ActionCompiler::compileAction(const Action::ActionBase* action, ExtendedReg
     return;
   }
 
-  program.emit({iter->second, {.x_reg_ = op_res_reg}, {.cptr_ = action}});
+  std::optional<OpCode> op_code = calcOpCode(action, iter->second);
+  if (op_code.has_value()) {
+    program.emit({op_code.value(), {.x_reg_ = op_res_reg}, {.cptr_ = action}});
+  } else {
+    UNREACHABLE();
+    WGE_LOG_CRITICAL("action compile error: unknown opreator code {}", action->name());
+    return;
+  }
 }
 
 void ActionCompiler::compileUncAction(const Action::ActionBase* action, Program& program) {
@@ -61,7 +68,96 @@ void ActionCompiler::compileUncAction(const Action::ActionBase* action, Program&
     WGE_LOG_CRITICAL("unc action compile error: unknown action {}", action->name());
     return;
   }
-  program.emit({iter->second, {.cptr_ = action}});
+
+  std::optional<OpCode> op_code = calcOpCode(action, iter->second);
+  if (op_code.has_value()) {
+    program.emit({op_code.value(), {.cptr_ = action}});
+  } else {
+    UNREACHABLE();
+    WGE_LOG_CRITICAL("action compile error: unknown opreator code {}", action->name());
+    return;
+  }
+}
+
+std::optional<OpCode> ActionCompiler::calcOpCode(const Action::ActionBase* action,
+                                                 OpCode base_opcode) {
+  std::optional<OpCode> real_opcode;
+  switch (base_opcode) {
+  case OpCode::ACTION_SetVar_Create_TF: {
+    auto p = dynamic_cast<const Action::SetVar*>(action);
+    bool is_key_macro = p->isKeyMacro();
+    bool is_value_macro = p->isValueMacro();
+    switch (p->type()) {
+    case Action::SetVar::EvaluateType::Create: {
+      if (is_key_macro) {
+        real_opcode = OpCode::ACTION_SetVar_Create_TF;
+      } else {
+        real_opcode = OpCode::ACTION_SetVar_Create_FF;
+      }
+    } break;
+    case Action::SetVar::EvaluateType::CreateAndInit: {
+      if (is_key_macro) {
+        if (is_value_macro) {
+          real_opcode = OpCode::ACTION_SetVar_CreateAndInit_TT;
+        } else {
+          real_opcode = OpCode::ACTION_SetVar_CreateAndInit_TF;
+        }
+      } else {
+        if (is_value_macro) {
+          real_opcode = OpCode::ACTION_SetVar_CreateAndInit_FT;
+        } else {
+          real_opcode = OpCode::ACTION_SetVar_CreateAndInit_FF;
+        }
+      }
+    } break;
+    case Action::SetVar::EvaluateType::Remove: {
+      if (is_key_macro) {
+        real_opcode = OpCode::ACTION_SetVar_Remove_TF;
+      } else {
+        real_opcode = OpCode::ACTION_SetVar_Remove_FF;
+      }
+    } break;
+    case Action::SetVar::EvaluateType::Increase: {
+      if (is_key_macro) {
+        if (is_value_macro) {
+          real_opcode = OpCode::ACTION_SetVar_Increase_TT;
+        } else {
+          real_opcode = OpCode::ACTION_SetVar_Increase_TF;
+        }
+      } else {
+        if (is_value_macro) {
+          real_opcode = OpCode::ACTION_SetVar_Increase_FT;
+        } else {
+          real_opcode = OpCode::ACTION_SetVar_Increase_FF;
+        }
+      }
+    } break;
+    case Action::SetVar::EvaluateType::Decrease: {
+      if (is_key_macro) {
+        if (is_value_macro) {
+          real_opcode = OpCode::ACTION_SetVar_Decrease_TT;
+        } else {
+          real_opcode = OpCode::ACTION_SetVar_Decrease_TF;
+        }
+      } else {
+        if (is_value_macro) {
+          real_opcode = OpCode::ACTION_SetVar_Decrease_FT;
+        } else {
+          real_opcode = OpCode::ACTION_SetVar_Decrease_FF;
+        }
+      }
+    } break;
+    default:
+      UNREACHABLE();
+      break;
+    }
+  } break;
+  default:
+    real_opcode = base_opcode;
+    break;
+  }
+
+  return real_opcode;
 }
 
 } // namespace Compiler

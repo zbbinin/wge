@@ -292,8 +292,9 @@ TEST_F(VirtualMachineTest, execAction) {
 
   // Create a dummy program with ACTION instruction
   Program program;
-  Instruction instruction = {
-      OpCode::ACTION_SetVar, {.x_reg_ = Compiler::RuleCompiler::op_res_reg_}, {.cptr_ = &set_var}};
+  Instruction instruction = {OpCode::ACTION_SetVar_Increase_FF,
+                             {.x_reg_ = Compiler::RuleCompiler::op_res_reg_},
+                             {.cptr_ = &set_var}};
   program.emit(instruction);
   program.emit(instruction);
   program.emit(instruction);
@@ -320,7 +321,7 @@ TEST_F(VirtualMachineTest, execUncAction) {
 
   // Create a dummy program with ACTION instruction
   Program program;
-  Instruction instruction = {OpCode::UNC_ACTION_SetVar, {.cptr_ = &set_var}};
+  Instruction instruction = {OpCode::UNC_ACTION_SetVar_CreateAndInit_FF, {.cptr_ = &set_var}};
   program.emit(instruction);
 
   // Mock the transaction variables

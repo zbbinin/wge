@@ -853,7 +853,7 @@ bool dispatchOperator(const OperatorType* op, Transaction& t, const Rule* curr_r
 TRAVEL_OPERATORS(IMPL_OPERATOR_PROC)
 #undef IMPL_OPERATOR_PROC
 
-#define IMPL_ACTION_PROC(action_type)                                                              \
+#define IMPL_ACTION(action_type, proc)                                                             \
   void VirtualMachine::execAction##action_type(const Instruction& instruction) {                   \
     auto& results = extended_registers_[instruction.op1_.x_reg_];                                  \
     size_t i = general_registers_[Compiler::RuleCompiler::loop_cursor_];                           \
@@ -861,10 +861,56 @@ TRAVEL_OPERATORS(IMPL_OPERATOR_PROC)
     if (!IS_INT_VARIANT(element.variant_)) {                                                       \
       const Action::action_type* action =                                                          \
           reinterpret_cast<const Action::action_type*>(instruction.op2_.cptr_);                    \
-      action->evaluate(transaction_);                                                              \
+      proc;                                                                                        \
     }                                                                                              \
   }
-TRAVEL_ACTIONS(IMPL_ACTION_PROC);
+
+#define IMPL_ACTION_PROC(action_type) IMPL_ACTION(action_type, action->evaluate(transaction_))
+
+IMPL_ACTION_PROC(Ctl);
+IMPL_ACTION_PROC(InitCol);
+IMPL_ACTION_PROC(SetEnv);
+IMPL_ACTION_PROC(SetRsc);
+IMPL_ACTION_PROC(SetSid);
+IMPL_ACTION_PROC(SetUid);
+IMPL_ACTION(SetVar_Create_TF,
+            (action->evaluate<Action::SetVar::EvaluateType::Create, true, false>(transaction_)));
+IMPL_ACTION(SetVar_Create_FF,
+            (action->evaluate<Action::SetVar::EvaluateType::Create, false, false>(transaction_)));
+IMPL_ACTION(
+    SetVar_CreateAndInit_TT,
+    (action->evaluate<Action::SetVar::EvaluateType::CreateAndInit, true, true>(transaction_)));
+IMPL_ACTION(
+    SetVar_CreateAndInit_TF,
+    (action->evaluate<Action::SetVar::EvaluateType::CreateAndInit, true, false>(transaction_)));
+IMPL_ACTION(
+    SetVar_CreateAndInit_FT,
+    (action->evaluate<Action::SetVar::EvaluateType::CreateAndInit, false, true>(transaction_)));
+IMPL_ACTION(
+    SetVar_CreateAndInit_FF,
+    (action->evaluate<Action::SetVar::EvaluateType::CreateAndInit, false, false>(transaction_)));
+IMPL_ACTION(SetVar_Remove_TF,
+            (action->evaluate<Action::SetVar::EvaluateType::Remove, true, false>(transaction_)));
+IMPL_ACTION(SetVar_Remove_FF,
+            (action->evaluate<Action::SetVar::EvaluateType::Remove, false, false>(transaction_)));
+IMPL_ACTION(SetVar_Increase_TT,
+            (action->evaluate<Action::SetVar::EvaluateType::Increase, true, true>(transaction_)));
+IMPL_ACTION(SetVar_Increase_TF,
+            (action->evaluate<Action::SetVar::EvaluateType::Increase, true, false>(transaction_)));
+IMPL_ACTION(SetVar_Increase_FT,
+            (action->evaluate<Action::SetVar::EvaluateType::Increase, false, true>(transaction_)));
+IMPL_ACTION(SetVar_Increase_FF,
+            (action->evaluate<Action::SetVar::EvaluateType::Increase, false, false>(transaction_)));
+IMPL_ACTION(SetVar_Decrease_TT,
+            (action->evaluate<Action::SetVar::EvaluateType::Decrease, true, true>(transaction_)));
+IMPL_ACTION(SetVar_Decrease_TF,
+            (action->evaluate<Action::SetVar::EvaluateType::Decrease, true, false>(transaction_)));
+IMPL_ACTION(SetVar_Decrease_FT,
+            (action->evaluate<Action::SetVar::EvaluateType::Decrease, false, true>(transaction_)));
+IMPL_ACTION(SetVar_Decrease_FF,
+            (action->evaluate<Action::SetVar::EvaluateType::Decrease, false, false>(transaction_)));
+
+#undef IMPL_ACTION
 #undef IMPL_ACTION_PROC
 
 #define IMPL_UNC_ACTION_PROC(action_type)                                                          \
