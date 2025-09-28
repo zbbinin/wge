@@ -79,12 +79,20 @@ void RuleCompiler::compileRule(const Rule* rule, const Rule* default_action_rule
     // Compile variable
     Compiler::VariableCompiler::compile(load_var_reg_, var.get(), program);
 
-    // Compile transformations
+    // Compile default transformations
     ExtendedRegister transform_dst_reg = transform_tmp_reg1_;
     ExtendedRegister transform_src_reg = load_var_reg_;
+    bool compiled_transform_start = false;
     if (!rule->isIgnoreDefaultTransform() && default_action_rule) {
       // Get the default transformation
       auto& transforms = default_action_rule->transforms();
+
+      // Compile transform start
+      if (!transforms.empty()) {
+        compiled_transform_start = true;
+        program.emit({OpCode::TRANSFORM_START, {.x_reg_ = load_var_reg_}});
+      }
+
       for (auto& transform : transforms) {
         Compiler::TransformCompiler::compile(transform_dst_reg, transform_src_reg, transform.get(),
                                              program);
@@ -96,6 +104,14 @@ void RuleCompiler::compileRule(const Rule* rule, const Rule* default_action_rule
         }
       }
     }
+
+    // Compile transform start
+    if (!compiled_transform_start) {
+      compiled_transform_start = true;
+      program.emit({OpCode::TRANSFORM_START, {.x_reg_ = load_var_reg_}});
+    }
+
+    // Compile transformations defined in action
     auto& transforms = rule->transforms();
     for (auto& transform : transforms) {
       Compiler::TransformCompiler::compile(transform_dst_reg, transform_src_reg, transform.get(),

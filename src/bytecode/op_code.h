@@ -120,11 +120,17 @@ enum class OpCode {
   // Example: JMP_IF_REMOVED 123456
   JMP_IF_REMOVED,
 
+  // Indicate the start of transformation
+  // Syntax: TRANSFORM_START <src_reg>
+  // @param op1 [x_reg] Source register(the result array of the previous LOAD_VAR)
+  // Example: TRANSFORM_START
+  TRANSFORM_START,
+
   // Load the size of the extended register value into a general register
-  // Syntax: LOAD_EXTENDED_REGISTER_VALUE_SIZE <g_reg> <x_reg>
+  // Syntax: SIZE <dst_reg> <src_reg>
   // @param op1 [g_reg]: Destination general register
   // @param op2 [x_reg]: Source extended register
-  // Example: LOAD_EXTENDED_REGISTER_VALUE_SIZE RAX, R11
+  // Example: SIZE RAX, R11
   SIZE,
 
   // Used to push a matched variable

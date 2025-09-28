@@ -645,6 +645,10 @@ public:
 
   std::optional<bool> doDisruptive(const Rule& rule);
 
+  std::vector<std::list<const Transformation::TransformBase*>>& trasnformListBuffer() {
+    return transform_list_buffer_;
+  }
+
 private:
   class RandomInitHelper {
   public:
@@ -733,6 +737,7 @@ private:
   // bytecode
 private:
   std::unique_ptr<Bytecode::VirtualMachine> vm_;
+  std::vector<std::list<const Transformation::TransformBase*>> transform_list_buffer_;
 };
 
 using TransactionPtr = std::unique_ptr<Transaction>;

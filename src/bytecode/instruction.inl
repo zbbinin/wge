@@ -59,6 +59,10 @@ static const std::unordered_map<OpCode, std::function<std::string(const Instruct
          [](const Instruction& instruction) {
            return std::format("JMP_IF_REMOVED 0x{:x}", instruction.op1_.address_);
          }},
+         {OpCode::TRANSFORM_START,
+         [](const Instruction& instruction) {
+           return std::format("TRANSFORM_START {}", ExtendedRegister2String.at(instruction.op1_.x_reg_));
+         }},
         {OpCode::SIZE,
          [](const Instruction& instruction) {
            return std::format("SIZE {}, {}", GeneralRegister2String.at(instruction.op1_.g_reg_),

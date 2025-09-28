@@ -54,6 +54,7 @@ Transaction::Transaction(const Engine& engin, size_t literal_key_size)
   assert(tx_variables_.capacity() == literal_key_size + variable_key_with_macro_size);
   if (engin.enableBytecode()) {
     vm_ = std::make_unique<Bytecode::VirtualMachine>(*this);
+    transform_list_buffer_.reserve(4);
   }
 }
 

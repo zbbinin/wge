@@ -97,6 +97,7 @@ private:
   inline void execJmpIfRemoved(const Instruction& instruction,
                                const std::vector<Wge::Bytecode::Instruction>& instruction_array,
                                std::vector<Wge::Bytecode::Instruction>::const_iterator& iter);
+  inline void execTransformStart(const Instruction& instruction);
   inline void execSize(const Instruction& instruction);
   inline void execPushMatched(const Instruction& instruction);
   inline void execPushAllMatched(const Instruction& instruction);

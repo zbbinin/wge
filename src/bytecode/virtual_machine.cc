@@ -67,6 +67,7 @@ bool VirtualMachine::execute(const Program& program) {
                                              &&DEBUG,
                                              &&RULE_START,
                                              &&JMP_IF_REMOVED,
+                                             &&TRANSFORM_START,
                                              &&SIZE,
                                              &&PUSH_MATCHED,
                                              &&PUSH_ALL_MATCHED,
@@ -134,6 +135,7 @@ bool VirtualMachine::execute(const Program& program) {
   CASE(DEBUG, execDebug(*iter), ++iter);
   CASE(RULE_START, execRuleStart(*iter), ++iter);
   CASE(JMP_IF_REMOVED, execJmpIfRemoved(*iter, instructions, iter), {});
+  CASE(TRANSFORM_START, execTransformStart(*iter), ++iter);
   CASE(SIZE, execSize(*iter), ++iter);
   CASE(PUSH_MATCHED, execPushMatched(*iter), ++iter);
   CASE(PUSH_ALL_MATCHED, execPushAllMatched(*iter), ++iter);
@@ -228,6 +230,12 @@ void VirtualMachine::execJmpIfRemoved(
   }
 }
 
+void VirtualMachine::execTransformStart(const Instruction& instruction) {
+  auto& results = extended_registers_[instruction.op1_.x_reg_];
+  transaction_.trasnformListBuffer().clear();
+  transaction_.trasnformListBuffer().resize(results.size());
+}
+
 void VirtualMachine::execSize(const Instruction& instruction) {
   auto& results = extended_registers_[instruction.op2_.x_reg_];
   general_registers_[instruction.op1_.g_reg_] = results.size();
@@ -253,8 +261,9 @@ void VirtualMachine::execPushMatched(const Instruction& instruction) {
     return;
   }
 
-  // TODO(zhouyu 2025-09-02): fix the transformation list
-  std::list<const Transformation::TransformBase*> transform_list;
+  auto& transform_list_buffer = transaction_.trasnformListBuffer();
+  assert(transform_list_buffer.size() > i);
+  std::list<const Transformation::TransformBase*>& transform_list = transform_list_buffer[i];
 
   transaction_.pushMatchedVariable((*curr_var).get(), curr_rule->chainIndex(),
                                    original_value.move(i), transformed_value.move(i),
@@ -274,14 +283,15 @@ void VirtualMachine::execPushAllMatched(const Instruction& instruction) {
   assert(original_value.size() == transformed_value.size());
 
   size_t operate_results_size = operate_results.size();
+  auto& transform_list_buffer = transaction_.trasnformListBuffer();
+  assert(transform_list_buffer.size() == operate_results_size);
   for (size_t i = 0; i < operate_results_size; ++i) {
     // Not matched
     if (IS_INT_VARIANT(operate_results.get(i).variant_)) {
       continue;
     }
 
-    // TODO(zhouyu 2025-09-02): fix the transformation list
-    std::list<const Transformation::TransformBase*> transform_list;
+    std::list<const Transformation::TransformBase*>& transform_list = transform_list_buffer[i];
 
     transaction_.pushMatchedVariable((*curr_var).get(), curr_rule->chainIndex(),
                                      original_value.move(i), transformed_value.move(i),
@@ -713,7 +723,10 @@ template <class TransformType>
 void dispatchTransform(const TransformType* transform, Transaction& t,
                        const std::unique_ptr<Wge::Variable::VariableBase>* curr_var,
                        const Common::EvaluateResults& input, Common::EvaluateResults& output) {
+  std::vector<std::list<const Transformation::TransformBase*>>& transform_list_buffer =
+      t.trasnformListBuffer();
   size_t input_size = input.size();
+  assert(input_size == transform_list_buffer.size());
   for (size_t i = 0; i < input_size; ++i) {
     const Common::EvaluateResults::Element& input_element = input.get(i);
     if (!IS_STRING_VIEW_VARIANT(input_element.variant_)) {
@@ -747,6 +760,8 @@ void dispatchTransform(const TransformType* transform, Transaction& t,
       if (!*cache_result) {
         output_element.variant_ = input_data_view;
         output_element.variable_sub_name_ = input_element.variable_sub_name_;
+      } else {
+        transform_list_buffer[i].emplace_back(transform);
       }
       output.append(std::move(output_element));
       continue;
@@ -759,6 +774,7 @@ void dispatchTransform(const TransformType* transform, Transaction& t,
       auto& result = transform->TransformType::setCache(
           t, input_data_view, transform->TransformType::name(), std::move(output_buffer));
       output_element.variant_ = result.variant_;
+      transform_list_buffer[i].emplace_back(transform);
     } else {
       transform->TransformType::setEmptyCache(t, input_data_view, transform->TransformType::name());
       output_element.variant_ = input_data_view;

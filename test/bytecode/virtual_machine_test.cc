@@ -373,6 +373,10 @@ TEST_F(VirtualMachineTest, execPushMatched) {
   src.append(std::string("hello"));
   src.append(std::string("hello"));
 
+  // Mock the transform list
+  auto& transform_list_buffer = t_->trasnformListBuffer();
+  transform_list_buffer.resize(src.size());
+
   vm_->execute(program);
 
   // Check if the MATCHED_VARS were updated correctly
@@ -425,6 +429,10 @@ TEST_F(VirtualMachineTest, execPushAllMatched) {
   src.append(std::string("hello"));
   src.append(std::string("hello"));
   src.append(std::string("hello"));
+
+  // Mock the transform list
+  auto& transform_list_buffer = t_->trasnformListBuffer();
+  transform_list_buffer.resize(src.size());
 
   vm_->execute(program);
 
