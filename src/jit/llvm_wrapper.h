@@ -20,6 +20,7 @@
  */
 #pragma once
 
+// Suppress warnings from LLVM headers
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 
@@ -41,11 +42,11 @@ public:
 
 public:
   /**
-   * Create a call to a function or member function.
+   * Register a function to be callable from LLVM JITed code.
    * @tparam func_ptr Function or member function pointer.
    * @name Name of the function in LLVM module.
    */
-  template <auto func_ptr> void createCall(std::string_view name) {
+  template <auto func_ptr> void registerFunction(std::string_view name) {
     using FuncType = decltype(func_ptr);
 
     static_assert(std::is_pointer_v<FuncType> || std::is_member_function_pointer_v<FuncType>,
@@ -77,6 +78,29 @@ public:
           std::make_index_sequence<function_traits<FuncType>::arity>{});
       engine_->addGlobalMapping(func, reinterpret_cast<void*>(wrapper));
     }
+  }
+
+  /**
+   * Create a call to a registered function
+
+   * @tparam ArgTypes Argument types
+   * @param name Name of the function to call
+   * @param args Arguments to pass to the function
+   * @return Function call instruction
+   */
+  template <class... ArgTypes> void createCall(std::string_view name, ArgTypes... args) {
+    // Get the function from the module
+    llvm::Function* func = module_->getFunction(name);
+    if (!func) {
+      assert(false && "Function not found in module");
+      return;
+    }
+
+    std::vector<llvm::Value*> arg_values;
+    (arg_values.emplace_back(createPointerConstant(args)), ...);
+
+    // Call the function
+    builder_.CreateCall(func, arg_values);
   }
 
 private:
@@ -126,6 +150,7 @@ private:
   };
 
 private:
+  // Get LLVM type from C++ type
   template <class T> llvm::Type* getType() const {
     using DecayT = std::decay_t<T>;
     if constexpr (std::is_same_v<DecayT, void>) {
@@ -141,11 +166,13 @@ private:
     }
   }
 
+  // Fold expression to add argument types
   template <class FuncType, size_t... Is>
   void addArgs(std::vector<llvm::Type*>& args, std::index_sequence<Is...>) const {
     (args.emplace_back(getType<typename function_traits<FuncType>::template arg_type<Is>>()), ...);
   }
 
+  // Create a wrapper function for member function calls
   template <auto func_ptr, typename FuncType, size_t... Is>
   auto createWrapper(std::index_sequence<Is...>) const {
     using ClassType = typename function_traits<FuncType>::class_type;
@@ -160,6 +187,12 @@ private:
         return (obj->*func_ptr)(args...);
       }
     };
+  }
+
+  // Create pointer constant from C++ object pointer
+  template <typename T> llvm::Value* createPointerConstant(T* ptr) {
+    return llvm::ConstantInt::get(llvm::Type::getInt64Ty(context_),
+                                  reinterpret_cast<uintptr_t>(ptr));
   }
 
 private:

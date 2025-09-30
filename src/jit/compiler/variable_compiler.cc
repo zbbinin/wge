@@ -23,22 +23,44 @@
 #include "../../bytecode/compiler/variable_travel_helper.h"
 #include "../../bytecode/virtual_machine.h"
 
+// Dispatch instruction with index
+#define DISPATCH(opcode) goto* opcode
+
 namespace Wge {
 namespace Jit {
 namespace Compiler {
-VariableCompiler::VariableCompiler(LlvmWrapper& llvm) : llvm_(llvm) {
+VariableCompiler::VariableCompiler(const Bytecode::VirtualMachine& vm, LlvmWrapper& llvm)
+    : vm_(vm), llvm_(llvm) {
   using VM = Bytecode::VirtualMachine;
 #define ASSIGN_LOAD_VARIABLE_FUNC(var_type)                                                        \
-  llvm_.createCall<&VM::execLoad##var_type##_CC>("load_" #var_type "_cc");                         \
-  llvm_.createCall<&VM::execLoad##var_type##_CS>("load_" #var_type "_cs");                         \
-  llvm_.createCall<&VM::execLoad##var_type##_VC>("load_" #var_type "_vc");                         \
-  llvm_.createCall<&VM::execLoad##var_type##_VR>("load_" #var_type "_vr");                         \
-  llvm_.createCall<&VM::execLoad##var_type##_VS>("load_" #var_type "_vs");
+  llvm_.registerFunction<&VM::execLoad##var_type##_CC>("execLoad" #var_type "_CC");                \
+  llvm_.registerFunction<&VM::execLoad##var_type##_CS>("execLoad" #var_type "_CS");                \
+  llvm_.registerFunction<&VM::execLoad##var_type##_VC>("execLoad" #var_type "_VC");                \
+  llvm_.registerFunction<&VM::execLoad##var_type##_VR>("execLoad" #var_type "_VR");                \
+  llvm_.registerFunction<&VM::execLoad##var_type##_VS>("execLoad" #var_type "_VS");
   TRAVEL_VARIABLES(ASSIGN_LOAD_VARIABLE_FUNC)
-#undef ASSIGN_LOAD_VARIABLE_FUNC
 }
 
-void VariableCompiler::compile(const Bytecode::Instruction& instruction) {}
+void VariableCompiler::compile(const Bytecode::Instruction& instruction) {
+#define LABEL(variable_type)                                                                       \
+  &&LOAD_##variable_type##_CC, &&LOAD_##variable_type##_CS, &&LOAD_##variable_type##_VC,           \
+      &&LOAD_##variable_type##_VR, &&LOAD_##variable_type##_VS,
+  static constexpr void* dispatch_table[] = {TRAVEL_VARIABLES(LABEL)};
+
+#define CASE(label, func_name)                                                                     \
+  label:                                                                                           \
+  llvm_.createCall(func_name, &vm_, &instruction);                                                 \
+  return;
+#define CASE_LOAD_VAR(var_type)                                                                    \
+  CASE(LOAD_##var_type##_CC, "execLoad" #var_type "_CC");                                          \
+  CASE(LOAD_##var_type##_CS, "execLoad" #var_type "_CS");                                          \
+  CASE(LOAD_##var_type##_VC, "execLoad" #var_type "_VC");                                          \
+  CASE(LOAD_##var_type##_VR, "execLoad" #var_type "_VR");                                          \
+  CASE(LOAD_##var_type##_VS, "execLoad" #var_type "_VS");
+
+  DISPATCH(dispatch_table[static_cast<size_t>(instruction.op_code_)]);
+  TRAVEL_VARIABLES(CASE_LOAD_VAR)
+}
 
 } // namespace Compiler
 } // namespace Jit
