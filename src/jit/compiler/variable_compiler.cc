@@ -29,11 +29,11 @@ namespace Compiler {
 VariableCompiler::VariableCompiler(LlvmWrapper& llvm) : llvm_(llvm) {
   using VM = Bytecode::VirtualMachine;
 #define ASSIGN_LOAD_VARIABLE_FUNC(var_type)                                                        \
-  llvm_.createMemberCall<&VM::execLoad##var_type##_CC>("load_" #var_type "_cc");                   \
-  llvm_.createMemberCall<&VM::execLoad##var_type##_CS>("load_" #var_type "_cs");                   \
-  llvm_.createMemberCall<&VM::execLoad##var_type##_VC>("load_" #var_type "_vc");                   \
-  llvm_.createMemberCall<&VM::execLoad##var_type##_VR>("load_" #var_type "_vr");                   \
-  llvm_.createMemberCall<&VM::execLoad##var_type##_VS>("load_" #var_type "_vs");
+  llvm_.createCall<&VM::execLoad##var_type##_CC>("load_" #var_type "_cc");                         \
+  llvm_.createCall<&VM::execLoad##var_type##_CS>("load_" #var_type "_cs");                         \
+  llvm_.createCall<&VM::execLoad##var_type##_VC>("load_" #var_type "_vc");                         \
+  llvm_.createCall<&VM::execLoad##var_type##_VR>("load_" #var_type "_vr");                         \
+  llvm_.createCall<&VM::execLoad##var_type##_VS>("load_" #var_type "_vs");
   TRAVEL_VARIABLES(ASSIGN_LOAD_VARIABLE_FUNC)
 #undef ASSIGN_LOAD_VARIABLE_FUNC
 }

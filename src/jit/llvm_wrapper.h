@@ -39,37 +39,43 @@ public:
   LlvmWrapper();
 
 public:
-  template <class RetType, class... ArgTypes>
-  void createCall(std::string_view name, void* func_ptr) const {
+  /**
+   * Create a call to a function or member function.
+   * @tparam func_ptr Function or member function pointer.
+   * @name Name of the function in LLVM module.
+   */
+  template <auto func_ptr> void createCall(std::string_view name) const {
+    using FuncType = decltype(func_ptr);
+
+    static_assert(std::is_pointer_v<FuncType> || std::is_member_function_pointer_v<FuncType>,
+                  "Template parameter must be a function pointer, or member function pointer");
+
+    // Trait to extract class type and return type
+    using ClassType = typename function_traits<FuncType>::class_type;
+    using RetType = typename function_traits<FuncType>::return_type;
+
+    // If it's a member function, the first argument is the 'this' pointer.
     std::vector<llvm::Type*> args;
-    (args.emplace_back(getType<ArgTypes>()), ...);
+    if constexpr (!std::is_same_v<ClassType, void>) {
+      args.emplace_back(getType<ClassType*>());
+    }
 
-    llvm::Type* ret_type = getType<RetType>();
-    llvm::Function* func = llvm::Function::Create(llvm::FunctionType::get(ret_type, args, false),
-                                                  llvm::Function::ExternalLinkage, name, *module_);
-    engine_->addGlobalMapping(func, func_ptr);
-  }
+    addArgs<FuncType>(args, std::make_index_sequence<function_traits<FuncType>::arity>{});
 
-  template <auto MemberFunc> void createMemberCall(std::string_view name) {
-    using MemberFuncType = decltype(MemberFunc);
-
-    static_assert(std::is_member_function_pointer_v<MemberFuncType>,
-                  "Template parameter must be a member function pointer");
-
-    using ClassType = typename function_traits<MemberFuncType>::class_type;
-    using RetType = typename function_traits<MemberFuncType>::return_type;
-    std::vector<llvm::Type*> args = {getType<ClassType*>()};
-    addMemberArgs<MemberFuncType>(
-        args, std::make_index_sequence<function_traits<MemberFuncType>::arity>{});
-
-    auto wrapper = createWrapper<MemberFunc, MemberFuncType>(
-        std::make_index_sequence<function_traits<MemberFuncType>::arity>{});
-
+    // Create the function in the LLVM module.
     llvm::Type* ret_type = getType<RetType>();
     llvm::Function* func = llvm::Function::Create(llvm::FunctionType::get(ret_type, args, false),
                                                   llvm::Function::ExternalLinkage, name, *module_);
 
-    engine_->addGlobalMapping(func, reinterpret_cast<void*>(wrapper));
+    // Add the function mapping to the execution engine.
+    if constexpr (std::is_pointer_v<FuncType>) {
+      engine_->addGlobalMapping(func, func_ptr);
+    } else {
+      // If it's a member function, we need to create a wrapper function.
+      auto wrapper = createWrapper<func_ptr, FuncType>(
+          std::make_index_sequence<function_traits<FuncType>::arity>{});
+      engine_->addGlobalMapping(func, reinterpret_cast<void*>(wrapper));
+    }
   }
 
 private:
@@ -94,7 +100,19 @@ private:
     }
   };
 
+  // Helper to extract function traits
+private:
   template <typename T> struct function_traits;
+
+  template <typename RetType, typename... ArgTypes>
+  struct function_traits<RetType (*)(ArgTypes...)> {
+    using return_type = RetType;
+    using class_type = void;
+    using args_tuple = std::tuple<ArgTypes...>;
+    static constexpr size_t arity = sizeof...(ArgTypes);
+
+    template <size_t N> using arg_type = typename std::tuple_element<N, args_tuple>::type;
+  };
 
   template <typename RetType, typename ClassType, typename... ArgTypes>
   struct function_traits<RetType (ClassType::*)(ArgTypes...)> {
@@ -122,24 +140,23 @@ private:
     }
   }
 
-  template <class MemberFuncType, size_t... Is>
-  void addMemberArgs(std::vector<llvm::Type*>& args, std::index_sequence<Is...>) {
-    (args.emplace_back(getType<typename function_traits<MemberFuncType>::template arg_type<Is>>()),
-     ...);
+  template <class FuncType, size_t... Is>
+  void addArgs(std::vector<llvm::Type*>& args, std::index_sequence<Is...>) const {
+    (args.emplace_back(getType<typename function_traits<FuncType>::template arg_type<Is>>()), ...);
   }
 
-  template <auto MemberFunc, typename MemberFuncType, size_t... Is>
-  auto createWrapper(std::index_sequence<Is...>) {
-    using ClassType = typename function_traits<MemberFuncType>::class_type;
-    using RetType = typename function_traits<MemberFuncType>::return_type;
+  template <auto func_ptr, typename FuncType, size_t... Is>
+  auto createWrapper(std::index_sequence<Is...>) const {
+    using ClassType = typename function_traits<FuncType>::class_type;
+    using RetType = typename function_traits<FuncType>::return_type;
 
     return +[](void* this_ptr,
-               typename function_traits<MemberFuncType>::template arg_type<Is>... args) -> RetType {
+               typename function_traits<FuncType>::template arg_type<Is>... args) -> RetType {
       auto* obj = static_cast<ClassType*>(this_ptr);
       if constexpr (std::is_void_v<RetType>) {
-        (obj->*MemberFunc)(args...);
+        (obj->*func_ptr)(args...);
       } else {
-        return (obj->*MemberFunc)(args...);
+        return (obj->*func_ptr)(args...);
       }
     };
   }
