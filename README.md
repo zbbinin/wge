@@ -25,6 +25,14 @@ The benchmark results show that WGE is significantly faster than ModSecurity, wi
 ```shell
 apt install ragel
 ```
+* LLVM 18
+```shell
+apt install llvm-18
+```
+* libcurl4-openssl-dev
+```shell
+apt install libcurl4-openssl-dev
+```
 * JDK 21 or higher
 ```shell
 apt install openjdk-21-jdk-headless

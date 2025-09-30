@@ -66,8 +66,20 @@ public:
    */
   const std::vector<Instruction>& instructions() const { return instructions_; }
 
+  /**
+   * Set the JIT compiled function for the program
+   */
+  void jitFunc(std::function<bool(void*)> func) { jit_func_ = func; }
+
+  /**
+   * Get the JIT compiled function for the program
+   * @return The JIT compiled function
+   */
+  std::function<bool(void*)> jitFunc() const { return jit_func_; }
+
 private:
   std::vector<Instruction> instructions_;
+  std::function<bool(void*)> jit_func_;
 };
 } // namespace Bytecode
 } // namespace Wge

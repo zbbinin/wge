@@ -6,6 +6,7 @@ file(GLOB local_source
 add_subdirectory(action)
 add_subdirectory(antlr4)
 add_subdirectory(bytecode)
+add_subdirectory(jit)
 add_subdirectory(common)
 add_subdirectory(macro)
 add_subdirectory(operator)
@@ -20,6 +21,8 @@ add_library(wge
   $<TARGET_OBJECTS:antlr4>
   $<TARGET_OBJECTS:bytecode>
   $<TARGET_OBJECTS:compiler>
+  $<TARGET_OBJECTS:jit>
+  $<TARGET_OBJECTS:jit_compiler>
   $<TARGET_OBJECTS:common>
   $<TARGET_OBJECTS:common_ragel>
   $<TARGET_OBJECTS:macro>

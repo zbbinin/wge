@@ -39,6 +39,12 @@
 namespace Wge {
 namespace Bytecode {
 bool VirtualMachine::execute(const Program& program) {
+  // If the program is JIT compiled, execute the JIT function
+  auto jit_func = program.jitFunc();
+  if (jit_func != nullptr) {
+    return jit_func(static_cast<void*>(&transaction_));
+  }
+
 // clang-format off
 #define LOAD_VAR_LABEL(var_type)                                                                                                              \
   &&LOAD_##var_type##_CC,                                                                                                                     \
