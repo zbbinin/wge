@@ -34,6 +34,7 @@
 
 namespace Wge {
 namespace Jit {
+// A simple wrapper around LLVM to facilitate JIT compilation and function calls.
 class LlvmWrapper {
 public:
   LlvmWrapper();
@@ -44,7 +45,7 @@ public:
    * @tparam func_ptr Function or member function pointer.
    * @name Name of the function in LLVM module.
    */
-  template <auto func_ptr> void createCall(std::string_view name) const {
+  template <auto func_ptr> void createCall(std::string_view name) {
     using FuncType = decltype(func_ptr);
 
     static_assert(std::is_pointer_v<FuncType> || std::is_member_function_pointer_v<FuncType>,
@@ -163,12 +164,12 @@ private:
 
 private:
   static InitHelper init_helper_;
-  std::unique_ptr<llvm::LLVMContext> context_;
-  std::unique_ptr<llvm::Module> module_;
-  std::unique_ptr<llvm::IRBuilder<>> builder_;
-  std::unique_ptr<llvm::ExecutionEngine> engine_;
+  llvm::LLVMContext context_;
+  llvm::IRBuilder<> builder_;
   llvm::DataLayout data_layout_;
-  Types types_{*context_};
+  std::unique_ptr<llvm::Module> module_;
+  std::unique_ptr<llvm::ExecutionEngine> engine_;
+  Types types_;
 };
 } // namespace Jit
 } // namespace Wge

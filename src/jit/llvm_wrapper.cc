@@ -29,15 +29,13 @@ namespace Jit {
 LlvmWrapper::InitHelper LlvmWrapper::init_helper_;
 
 LlvmWrapper::LlvmWrapper()
-    : data_layout_(llvm::orc::JITTargetMachineBuilder::detectHost()
-                       .get()
-                       .getDefaultDataLayoutForTarget()
-                       .get()) {
+    : builder_(context_), data_layout_(llvm::orc::JITTargetMachineBuilder::detectHost()
+                                           .get()
+                                           .getDefaultDataLayoutForTarget()
+                                           .get()),
+      module_(std::make_unique<llvm::Module>("WGE_JIT_Module", context_)), types_(context_) {
   std::string error_str;
-  context_ = std::make_unique<llvm::LLVMContext>();
-  module_ = std::make_unique<llvm::Module>("WGE_JIT_Module", *context_);
   module_->setDataLayout(data_layout_);
-  builder_ = std::make_unique<llvm::IRBuilder<>>(*context_);
   engine_ = std::unique_ptr<llvm::ExecutionEngine>(llvm::EngineBuilder(std::move(module_))
                                                        .setErrorStr(&error_str)
                                                        .setEngineKind(llvm::EngineKind::JIT)
