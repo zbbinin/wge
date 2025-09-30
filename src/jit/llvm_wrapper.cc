@@ -22,8 +22,6 @@
 
 #include <llvm/ExecutionEngine/Orc/JITTargetMachineBuilder.h>
 
-#include "../common/log.h"
-
 namespace Wge {
 namespace Jit {
 LlvmWrapper::InitHelper LlvmWrapper::init_helper_;
@@ -34,16 +32,12 @@ LlvmWrapper::LlvmWrapper()
                                            .getDefaultDataLayoutForTarget()
                                            .get()),
       module_(std::make_unique<llvm::Module>("WGE_JIT_Module", context_)), types_(context_) {
-  std::string error_str;
   module_->setDataLayout(data_layout_);
   engine_ = std::unique_ptr<llvm::ExecutionEngine>(llvm::EngineBuilder(std::move(module_))
-                                                       .setErrorStr(&error_str)
+                                                       .setErrorStr(&error_)
                                                        .setEngineKind(llvm::EngineKind::JIT)
                                                        .setOptLevel(llvm::CodeGenOptLevel::Default)
                                                        .create());
-  if (!engine_) {
-    WGE_LOG_ERROR("Failed to create LLVM ExecutionEngine: {}", error_str);
-  }
 }
 } // namespace Jit
 } // namespace Wge
