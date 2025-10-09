@@ -42,7 +42,8 @@ bool VirtualMachine::execute(const Program& program) {
   // If the program is JIT compiled, execute the JIT function
   auto jit_func = program.jitFunc();
   if (jit_func != nullptr) {
-    return jit_func(static_cast<void*>(&transaction_));
+    jit_func(*this);
+    return !disruptive_;
   }
 
 // clang-format off

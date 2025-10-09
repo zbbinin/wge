@@ -21,7 +21,6 @@
 #pragma once
 
 #include "../../bytecode/instruction.h"
-#include "../../bytecode/virtual_machine.h"
 #include "../llvm_wrapper.h"
 
 namespace Wge {
@@ -29,13 +28,12 @@ namespace Jit {
 namespace Compiler {
 class VariableCompiler {
 public:
-  VariableCompiler(const Bytecode::VirtualMachine& vm, LlvmWrapper& llvm);
+  VariableCompiler(LlvmWrapper& llvm);
 
 public:
   void compile(const Bytecode::Instruction& instruction);
 
 private:
-  const Bytecode::VirtualMachine& vm_;
   LlvmWrapper& llvm_;
 };
 } // namespace Compiler

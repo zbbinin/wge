@@ -32,6 +32,7 @@
 namespace Wge {
 class Transaction;
 namespace Jit {
+class CodeGenerator;
 namespace Compiler {
 class VariableCompiler;
 }
@@ -45,6 +46,7 @@ namespace Bytecode {
  * Executes compiled bytecode programs for rule evaluation
  */
 class VirtualMachine {
+  friend class Wge::Jit::CodeGenerator;
   friend class Wge::Jit::Compiler::VariableCompiler;
 
 public:
@@ -121,11 +123,11 @@ private:
 private:
   // Load variable handlers
 #define DECLARE_LOAD_VAR_PROC(var_tyep)                                                            \
-   void execLoad##var_tyep##_CC(const Instruction& instruction);                             \
-   void execLoad##var_tyep##_CS(const Instruction& instruction);                             \
-   void execLoad##var_tyep##_VC(const Instruction& instruction);                             \
-   void execLoad##var_tyep##_VR(const Instruction& instruction);                             \
-   void execLoad##var_tyep##_VS(const Instruction& instruction);
+  void execLoad##var_tyep##_CC(const Instruction& instruction);                                    \
+  void execLoad##var_tyep##_CS(const Instruction& instruction);                                    \
+  void execLoad##var_tyep##_VC(const Instruction& instruction);                                    \
+  void execLoad##var_tyep##_VR(const Instruction& instruction);                                    \
+  void execLoad##var_tyep##_VS(const Instruction& instruction);
 
   TRAVEL_VARIABLES(DECLARE_LOAD_VAR_PROC)
 #undef DECLARE_LOAD_VAR_PROC

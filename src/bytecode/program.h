@@ -36,6 +36,7 @@ class ActionBase;
 
 namespace Wge {
 namespace Bytecode {
+class VirtualMachine;
 /**
  * Bytecode program represents a compiled rule or set of rules
  */
@@ -69,17 +70,17 @@ public:
   /**
    * Set the JIT compiled function for the program
    */
-  void jitFunc(std::function<bool(void*)> func) { jit_func_ = func; }
+  void jitFunc(std::function<void(VirtualMachine&)> func) { jit_func_ = func; }
 
   /**
    * Get the JIT compiled function for the program
    * @return The JIT compiled function
    */
-  std::function<bool(void*)> jitFunc() const { return jit_func_; }
+  std::function<void(VirtualMachine&)> jitFunc() const { return jit_func_; }
 
 private:
   std::vector<Instruction> instructions_;
-  std::function<bool(void*)> jit_func_;
+  std::function<void(VirtualMachine&)> jit_func_;
 };
 } // namespace Bytecode
 } // namespace Wge

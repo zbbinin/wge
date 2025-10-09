@@ -20,8 +20,27 @@
  */
 #pragma once
 
+#include "compiler/variable_compiler.h"
+#include "llvm_wrapper.h"
+
+#include "../bytecode/virtual_machine.h"
+
 namespace Wge {
 namespace Jit {
-class CodeGenerator {};
+class CodeGenerator {
+public:
+  CodeGenerator();
+
+public:
+  /**
+   * Full JIT compile the given bytecode program
+   * @param program The bytecode program to compile
+   */
+  void generate(Bytecode::Program& program);
+
+private:
+  LlvmWrapper llvm_;
+  Compiler::VariableCompiler variable_compiler_;
+};
 } // namespace Jit
 } // namespace Wge

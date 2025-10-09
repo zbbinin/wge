@@ -29,8 +29,7 @@
 namespace Wge {
 namespace Jit {
 namespace Compiler {
-VariableCompiler::VariableCompiler(const Bytecode::VirtualMachine& vm, LlvmWrapper& llvm)
-    : vm_(vm), llvm_(llvm) {
+VariableCompiler::VariableCompiler(LlvmWrapper& llvm) : llvm_(llvm) {
   using VM = Bytecode::VirtualMachine;
 #define ASSIGN_LOAD_VARIABLE_FUNC(var_type)                                                        \
   llvm_.registerFunction<&VM::execLoad##var_type##_CC>("execLoad" #var_type "_CC");                \
@@ -49,7 +48,7 @@ void VariableCompiler::compile(const Bytecode::Instruction& instruction) {
 
 #define CASE(label, func_name)                                                                     \
   label:                                                                                           \
-  llvm_.createCall(func_name, &vm_, &instruction);                                                 \
+  llvm_.createCall(func_name, &instruction);                                                       \
   return;
 #define CASE_LOAD_VAR(var_type)                                                                    \
   CASE(LOAD_##var_type##_CC, "execLoad" #var_type "_CC");                                          \

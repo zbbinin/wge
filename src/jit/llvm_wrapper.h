@@ -25,11 +25,16 @@
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
+#include <llvm/ExecutionEngine/GenericValue.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/LLVMContext.h>
+#include <llvm/IR/LegacyPassManager.h>
 #include <llvm/IR/Module.h>
 #include <llvm/Support/TargetSelect.h>
+#include <llvm/Transforms/InstCombine/InstCombine.h>
+#include <llvm/Transforms/Scalar.h>
+#include <llvm/Transforms/Utils.h>
 
 #pragma GCC diagnostic pop
 
@@ -61,13 +66,65 @@ public:
   template <auto func_ptr> void registerFunction(std::string_view name);
 
   /**
+   * Create a function in the LLVM module.
+   * @tparam FuncType Function type (e.g., void(*)(int), int(Class::*)(double)).
+   * @param name Name of the function.
+   * @return Pointer to the created LLVM function.
+   */
+  template <class FuncType> llvm::Function* createFunction(std::string_view name);
+
+  /**
+   * Create a basic block in the LLVM module.
+   * @param name Name of the basic block.
+   * @param parent Parent function to which the basic block belongs.
+   * @return Pointer to the created LLVM basic block.
+   */
+  llvm::BasicBlock* createBasicBlock(std::string_view name, llvm::Function* parent) {
+    return llvm::BasicBlock::Create(context_, name, parent);
+  }
+
+  /**
+   * Set the insertion point for subsequent instructions.
+   * @param block Basic block where instructions will be inserted.
+   */
+  void setInsertPoint(llvm::BasicBlock* block) { builder_.SetInsertPoint(block); }
+
+  /**
+   * Create a return instruction with a value.
+   * @tparam RetType Return type.
+   * @param value Value to return.
+   */
+  template <class RetType> void createReturn(RetType value) {
+    builder_.CreateRet(builder_.CreateIntCast(getType<RetType>(), value, true));
+  }
+
+  /**
+   * Create a return instruction without a value (for void functions).
+   */
+  void createReturn() { builder_.CreateRetVoid(); }
+
+  /**
+   * Optimize a function using LLVM's legacy function pass manager.
+   * @param func Function to optimize.
+   */
+  void optimizeFunction(llvm::Function* func);
+
+  /**
    * Create a call to a registered function
-   * @tparam ArgTypes Argument types
+   * @tparam ArgTypes Types of the function arguments.
    * @param name Name of the function to call
-   * @param args Arguments to pass to the function
+   * @param args Compile-time arguments to pass to the function (Will append after runtime args)
    * @return Function call instruction
    */
   template <class... ArgTypes> void createCall(std::string_view name, ArgTypes... args);
+
+  /**
+   * Run a registered function with the given arguments.
+   * @tparam ArgTypes Types of the function arguments.
+   * @param name Name of the function to run.
+   * @param args Arguments to pass to the function.
+   */
+  template <class... ArgTypes> void runFunction(std::string_view name, ArgTypes... args);
 
 private:
   class InitHelper {
@@ -206,6 +263,35 @@ template <auto func_ptr> void LlvmWrapper::registerFunction(std::string_view nam
   }
 }
 
+template <class FuncType> llvm::Function* LlvmWrapper::createFunction(std::string_view name) {
+  static_assert(std::is_pointer_v<FuncType> || std::is_member_function_pointer_v<FuncType>,
+                "Template parameter must be a function pointer, or member function pointer");
+
+  // Trait to extract class type and return type
+  using ClassType = typename FunctionTraits<FuncType>::class_type;
+  using RetType = typename FunctionTraits<FuncType>::return_type;
+  std::vector<llvm::Type*> args;
+  addArgs<FuncType>(args, std::make_index_sequence<FunctionTraits<FuncType>::arity>{});
+
+  // Create the function in the LLVM module.
+  llvm::Type* ret_type = getType<RetType>();
+  llvm::Function* func = llvm::Function::Create(llvm::FunctionType::get(ret_type, args, false),
+                                                llvm::Function::ExternalLinkage, name, *module_);
+
+  return func;
+}
+
+void LlvmWrapper::optimizeFunction(llvm::Function* func) {
+  llvm::legacy::FunctionPassManager fpm(module_.get());
+  fpm.add(llvm::createInstructionCombiningPass());
+  fpm.add(llvm::createCFGSimplificationPass());
+  fpm.add(llvm::createDeadCodeEliminationPass());
+  fpm.doInitialization();
+  fpm.run(*func);
+
+  engine_->finalizeObject();
+}
+
 template <class... ArgTypes> void LlvmWrapper::createCall(std::string_view name, ArgTypes... args) {
   // Get the function from the module
   llvm::Function* func = module_->getFunction(name);
@@ -214,11 +300,44 @@ template <class... ArgTypes> void LlvmWrapper::createCall(std::string_view name,
     return;
   }
 
+  // Add arguments
   std::vector<llvm::Value*> arg_values;
+  auto run_time_args = func->args();
+  for (auto& arg : run_time_args) {
+    arg_values.emplace_back(&arg);
+  }
+
+  // Add compile-time arguments
   (arg_values.emplace_back(createPointerConstant(args)), ...);
 
   // Call the function
   builder_.CreateCall(func, arg_values);
 }
+
+template <class... ArgTypes>
+void LlvmWrapper::runFunction(std::string_view name, ArgTypes... args) {
+  // Get the function from the module
+  llvm::Function* func = module_->getFunction(name);
+  if (!func) {
+    assert(false && "Function not found in module");
+    return;
+  }
+
+  // Add arguments
+  std::vector<llvm::GenericValue> arg_values;
+  auto addArg = [&](auto arg) {
+    llvm::GenericValue gv;
+    gv.IntVal = llvm::APInt(64, reinterpret_cast<uint64_t>(arg));
+    arg_values.emplace_back(gv);
+  };
+  (addArg(args), ...);
+
+  assert(arg_values.size() == func->arg_size() &&
+         "Argument count mismatch when calling JITed function");
+
+  // Execute the function
+  engine_->runFunction(func, arg_values);
+}
+
 } // namespace Jit
 } // namespace Wge
