@@ -20,7 +20,6 @@
  */
 #pragma once
 
-#include "compiler/variable_compiler.h"
 #include "llvm_wrapper.h"
 
 #include "../bytecode/virtual_machine.h"
@@ -39,8 +38,10 @@ public:
   void generate(Bytecode::Program& program);
 
 private:
+  void registerVariableFunctions();
+
+private:
   LlvmWrapper llvm_;
-  Compiler::VariableCompiler variable_compiler_;
 };
 } // namespace Jit
 } // namespace Wge

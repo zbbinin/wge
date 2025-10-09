@@ -22,7 +22,6 @@ add_library(wge
   $<TARGET_OBJECTS:bytecode>
   $<TARGET_OBJECTS:compiler>
   $<TARGET_OBJECTS:jit>
-  $<TARGET_OBJECTS:jit_compiler>
   $<TARGET_OBJECTS:common>
   $<TARGET_OBJECTS:common_ragel>
   $<TARGET_OBJECTS:macro>

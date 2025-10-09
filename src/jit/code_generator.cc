@@ -28,11 +28,9 @@
 
 namespace Wge {
 namespace Jit {
-CodeGenerator::CodeGenerator() : variable_compiler_(llvm_) {
+CodeGenerator::CodeGenerator() {
   if (llvm_.ok()) {
-    // llvm_.registerFunction<&Bytecode::VirtualMachine::execMov>("execMov");
-    // llvm_.registerFunction<&Bytecode::VirtualMachine::execAdd>("execAdd");
-    // llvm_.registerFunction<&Bytecode::VirtualMachine::execCmp>("execCmp");
+    registerVariableFunctions();
   } else {
     WGE_LOG_ERROR("Failed to initialize LLVM JIT ExecutionEngine: {}", llvm_.error());
   }
@@ -153,6 +151,17 @@ void CodeGenerator::generate(Bytecode::Program& program) {
   llvm_.optimizeFunction(main);
 
   program.jitFunc([&](Bytecode::VirtualMachine& vm) { llvm_.runFunction("main", &vm); });
+}
+
+void CodeGenerator::registerVariableFunctions() {
+  using VM = Bytecode::VirtualMachine;
+#define ASSIGN_LOAD_VARIABLE_FUNC(var_type)                                                        \
+  llvm_.registerFunction<&VM::execLoad##var_type##_CC>("execLoad" #var_type "_CC");                \
+  llvm_.registerFunction<&VM::execLoad##var_type##_CS>("execLoad" #var_type "_CS");                \
+  llvm_.registerFunction<&VM::execLoad##var_type##_VC>("execLoad" #var_type "_VC");                \
+  llvm_.registerFunction<&VM::execLoad##var_type##_VR>("execLoad" #var_type "_VR");                \
+  llvm_.registerFunction<&VM::execLoad##var_type##_VS>("execLoad" #var_type "_VS");
+  TRAVEL_VARIABLES(ASSIGN_LOAD_VARIABLE_FUNC)
 }
 
 } // namespace Jit
