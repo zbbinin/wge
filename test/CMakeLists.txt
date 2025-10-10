@@ -37,3 +37,18 @@ target_link_libraries(test PRIVATE antlr4_static)
 
 find_package(re2 CONFIG REQUIRED)
 target_link_libraries(test PRIVATE re2::re2)
+
+# Create the zstd target expected by LLVM
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(ZSTD REQUIRED libzstd)
+if(NOT TARGET zstd::libzstd_shared)
+  add_library(zstd::libzstd_shared INTERFACE IMPORTED)
+  set_target_properties(zstd::libzstd_shared PROPERTIES
+    INTERFACE_LINK_LIBRARIES "${ZSTD_LIBRARIES}"
+    INTERFACE_INCLUDE_DIRECTORIES "${ZSTD_INCLUDE_DIRS}"
+  )
+endif()
+
+find_package(LLVM CONFIG REQUIRED)
+llvm_map_components_to_libnames(llvm_libs support core executionengine native mcjit orcjit)
+target_link_libraries(test PRIVATE ${llvm_libs})

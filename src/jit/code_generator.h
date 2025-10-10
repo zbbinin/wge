@@ -20,28 +20,40 @@
  */
 #pragma once
 
-#include "llvm_wrapper.h"
+#include <memory>
 
-#include "../bytecode/virtual_machine.h"
+namespace Wge {
+namespace Bytecode {
+class Program;
+} // namespace Bytecode
+} // namespace Wge
 
 namespace Wge {
 namespace Jit {
+class LlvmWrapper;
 class CodeGenerator {
 public:
   CodeGenerator();
+  ~CodeGenerator();
 
 public:
   /**
    * Full JIT compile the given bytecode program
    * @param program The bytecode program to compile
+   * @param func_name The name of the generated function
    */
-  void generate(Bytecode::Program& program);
+  void generate(Bytecode::Program& program, std::string_view func_name);
+
+  /**
+   * Optimize the generated code that created by generate() for efficiency
+   */
+  void optimize();
 
 private:
   void registerVariableFunctions();
 
 private:
-  LlvmWrapper llvm_;
+  std::unique_ptr<LlvmWrapper> llvm_;
 };
 } // namespace Jit
 } // namespace Wge

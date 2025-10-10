@@ -24,17 +24,22 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 
+#include <llvm/Analysis/CGSCCPassManager.h>
+#include <llvm/Analysis/LoopAnalysisManager.h>
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
 #include <llvm/ExecutionEngine/GenericValue.h>
+#include <llvm/ExecutionEngine/MCJIT.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/LLVMContext.h>
-#include <llvm/IR/LegacyPassManager.h>
 #include <llvm/IR/Module.h>
+#include <llvm/IR/PassManager.h>
+#include <llvm/Passes/PassBuilder.h>
 #include <llvm/Support/TargetSelect.h>
+#include <llvm/Transforms/IPO/Inliner.h>
 #include <llvm/Transforms/InstCombine/InstCombine.h>
-#include <llvm/Transforms/Scalar.h>
-#include <llvm/Transforms/Utils.h>
+#include <llvm/Transforms/Scalar/DCE.h>
+#include <llvm/Transforms/Scalar/SimplifyCFG.h>
 
 #pragma GCC diagnostic pop
 
@@ -104,10 +109,56 @@ public:
   void createReturn() { builder_.CreateRetVoid(); }
 
   /**
-   * Optimize a function using LLVM's legacy function pass manager.
+   * Optimize a function
    * @param func Function to optimize.
    */
-  void optimizeFunction(llvm::Function* func);
+  void optimizeFunction(llvm::Function* func) {
+    // Disable function-level optimization to avoid issues with breakpoints
+#ifdef NDEBUG
+    llvm::LoopAnalysisManager lam;
+    llvm::FunctionAnalysisManager fam;
+    llvm::CGSCCAnalysisManager cgam;
+    llvm::ModuleAnalysisManager mam;
+
+    llvm::PassBuilder pb;
+    pb.registerModuleAnalyses(mam);
+    pb.registerCGSCCAnalyses(cgam);
+    pb.registerFunctionAnalyses(fam);
+    pb.registerLoopAnalyses(lam);
+    pb.crossRegisterProxies(lam, fam, cgam, mam);
+
+    llvm::FunctionPassManager fpm = pb.buildFunctionSimplificationPipeline(
+        llvm::OptimizationLevel::O3, llvm::ThinOrFullLTOPhase::None);
+    fpm.run(*func, fam);
+#endif
+
+    engine_->finalizeObject();
+  }
+
+  /**
+   * Optimize the entire module
+   */
+  void optimizeModule() {
+    // Disable module-level optimization to avoid issues with breakpoints
+#ifdef NDEBUG
+    llvm::LoopAnalysisManager lam;
+    llvm::FunctionAnalysisManager fam;
+    llvm::CGSCCAnalysisManager cgam;
+    llvm::ModuleAnalysisManager mam;
+
+    llvm::PassBuilder pb;
+    pb.registerModuleAnalyses(mam);
+    pb.registerCGSCCAnalyses(cgam);
+    pb.registerFunctionAnalyses(fam);
+    pb.registerLoopAnalyses(lam);
+    pb.crossRegisterProxies(lam, fam, cgam, mam);
+
+    llvm::ModulePassManager mpm = pb.buildPerModuleDefaultPipeline(llvm::OptimizationLevel::O3);
+    mpm.run(*module_, mam);
+#endif
+
+    engine_->finalizeObject();
+  }
 
   /**
    * Create a call to a registered function
@@ -223,7 +274,7 @@ private:
   llvm::LLVMContext context_;
   llvm::IRBuilder<> builder_;
   llvm::DataLayout data_layout_;
-  std::unique_ptr<llvm::Module> module_;
+  llvm::Module* module_;
   std::unique_ptr<llvm::ExecutionEngine> engine_;
   Types types_;
   std::string error_;
@@ -279,17 +330,6 @@ template <class FuncType> llvm::Function* LlvmWrapper::createFunction(std::strin
                                                 llvm::Function::ExternalLinkage, name, *module_);
 
   return func;
-}
-
-void LlvmWrapper::optimizeFunction(llvm::Function* func) {
-  llvm::legacy::FunctionPassManager fpm(module_.get());
-  fpm.add(llvm::createInstructionCombiningPass());
-  fpm.add(llvm::createCFGSimplificationPass());
-  fpm.add(llvm::createDeadCodeEliminationPass());
-  fpm.doInitialization();
-  fpm.run(*func);
-
-  engine_->finalizeObject();
 }
 
 template <class... ArgTypes> void LlvmWrapper::createCall(std::string_view name, ArgTypes... args) {

@@ -20,6 +20,8 @@
  */
 #include "code_generator.h"
 
+#include "llvm_wrapper.h"
+
 #include "../bytecode/virtual_machine.h"
 #include "../common/log.h"
 
@@ -28,15 +30,21 @@
 
 namespace Wge {
 namespace Jit {
-CodeGenerator::CodeGenerator() {
-  if (llvm_.ok()) {
+CodeGenerator::CodeGenerator() : llvm_(std::make_unique<LlvmWrapper>()) {
+  if (llvm_->ok()) {
     registerVariableFunctions();
   } else {
-    WGE_LOG_ERROR("Failed to initialize LLVM JIT ExecutionEngine: {}", llvm_.error());
+    WGE_LOG_ERROR("Failed to initialize LLVM JIT ExecutionEngine: {}", llvm_->error());
   }
 }
 
-void CodeGenerator::generate(Bytecode::Program& program) {
+CodeGenerator::~CodeGenerator() = default;
+
+void CodeGenerator::generate(Bytecode::Program& program, std::string_view func_name) {
+  if (!llvm_->ok()) {
+    return;
+  }
+
 // clang-format off
 #define LOAD_VAR_LABEL(var_type)                                                                                                              \
   &&LOAD_##var_type##_CC,                                                                                                                     \
@@ -103,17 +111,17 @@ void CodeGenerator::generate(Bytecode::Program& program) {
   }
 
 #define CASE_LOAD_VAR(var_type)                                                                    \
-  CASE(LOAD_##var_type##_CC, (llvm_.createCall("execLoad" #var_type "_CC", &(*iter))));            \
-  CASE(LOAD_##var_type##_CS, (llvm_.createCall("execLoad" #var_type "_CS", &(*iter))));            \
-  CASE(LOAD_##var_type##_VC, (llvm_.createCall("execLoad" #var_type "_VC", &(*iter))));            \
-  CASE(LOAD_##var_type##_VR, (llvm_.createCall("execLoad" #var_type "_VR", &(*iter))));            \
-  CASE(LOAD_##var_type##_VS, (llvm_.createCall("execLoad" #var_type "_VS", &(*iter))));
+  CASE(LOAD_##var_type##_CC, (llvm_->createCall("execLoad" #var_type "_CC", &(*iter))));           \
+  CASE(LOAD_##var_type##_CS, (llvm_->createCall("execLoad" #var_type "_CS", &(*iter))));           \
+  CASE(LOAD_##var_type##_VC, (llvm_->createCall("execLoad" #var_type "_VC", &(*iter))));           \
+  CASE(LOAD_##var_type##_VR, (llvm_->createCall("execLoad" #var_type "_VR", &(*iter))));           \
+  CASE(LOAD_##var_type##_VS, (llvm_->createCall("execLoad" #var_type "_VS", &(*iter))));
 
   // Create function and basic blocks
-  auto main = llvm_.createFunction<void (*)(Bytecode::VirtualMachine*)>("main");
-  auto entry_block = llvm_.createBasicBlock("entry", main);
-  auto exit_block = llvm_.createBasicBlock("exit", main);
-  llvm_.setInsertPoint(entry_block);
+  auto func = llvm_->createFunction<void (*)(Bytecode::VirtualMachine*)>(func_name);
+  auto entry_block = llvm_->createBasicBlock("entry", func);
+  auto exit_block = llvm_->createBasicBlock("exit", func);
+  llvm_->setInsertPoint(entry_block);
 
   // Dispatch instructions
   DISPATCH(dispatch_table[static_cast<size_t>(iter->op_code_)]);
@@ -146,21 +154,28 @@ void CodeGenerator::generate(Bytecode::Program& program) {
   // TRAVEL_ACTIONS(CASE_ACTION)
   // TRAVEL_ACTIONS(CASE_UNC_ACTION)
 
-  llvm_.setInsertPoint(exit_block);
-  llvm_.createReturn();
-  llvm_.optimizeFunction(main);
+  llvm_->setInsertPoint(exit_block);
+  llvm_->createReturn();
+  llvm_->optimizeFunction(func);
 
-  program.jitFunc([&](Bytecode::VirtualMachine& vm) { llvm_.runFunction("main", &vm); });
+  program.jitFunc([&](Bytecode::VirtualMachine& vm) { llvm_->runFunction(func_name, &vm); });
+}
+
+void CodeGenerator::optimize() {
+  if (!llvm_->ok()) {
+    return;
+  }
+  llvm_->optimizeModule();
 }
 
 void CodeGenerator::registerVariableFunctions() {
   using VM = Bytecode::VirtualMachine;
 #define ASSIGN_LOAD_VARIABLE_FUNC(var_type)                                                        \
-  llvm_.registerFunction<&VM::execLoad##var_type##_CC>("execLoad" #var_type "_CC");                \
-  llvm_.registerFunction<&VM::execLoad##var_type##_CS>("execLoad" #var_type "_CS");                \
-  llvm_.registerFunction<&VM::execLoad##var_type##_VC>("execLoad" #var_type "_VC");                \
-  llvm_.registerFunction<&VM::execLoad##var_type##_VR>("execLoad" #var_type "_VR");                \
-  llvm_.registerFunction<&VM::execLoad##var_type##_VS>("execLoad" #var_type "_VS");
+  llvm_->registerFunction<&VM::execLoad##var_type##_CC>("execLoad" #var_type "_CC");               \
+  llvm_->registerFunction<&VM::execLoad##var_type##_CS>("execLoad" #var_type "_CS");               \
+  llvm_->registerFunction<&VM::execLoad##var_type##_VC>("execLoad" #var_type "_VC");               \
+  llvm_->registerFunction<&VM::execLoad##var_type##_VR>("execLoad" #var_type "_VR");               \
+  llvm_->registerFunction<&VM::execLoad##var_type##_VS>("execLoad" #var_type "_VS");
   TRAVEL_VARIABLES(ASSIGN_LOAD_VARIABLE_FUNC)
 }
 

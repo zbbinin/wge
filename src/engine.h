@@ -38,6 +38,12 @@ class Parser;
 }
 
 namespace Wge {
+namespace Jit {
+class CodeGenerator;
+} // namespace Jit
+} // namespace Wge
+
+namespace Wge {
 
 /**
  * The engine is the core of the WAF.
@@ -54,9 +60,13 @@ public:
    * @param log_file the log file path. If it is empty, the log will be output to the console
    * @param enable_bytecode if true, enable the bytecode engine to evaluate the rules. otherwise,
    * disable it.
+   * @param enable_jit if true, enable the JIT compiler to compile the bytecode program to native
+   * code. otherwise, disable it.
    */
   Engine(spdlog::level::level_enum level = spdlog::level::info, const std::string& log_file = "",
-         bool enable_bytecode = true);
+         bool enable_bytecode = true, bool enable_jit = true);
+
+  ~Engine();
 
 public:
   /**
@@ -114,6 +124,12 @@ public:
    * @return true if the bytecode engine is enabled, and false otherwise
    */
   bool enableBytecode() const { return enable_bytecode_; }
+
+  /**
+   * Check if the JIT compiler is enabled
+   * @return true if the JIT compiler is enabled, and false otherwise
+   */
+  bool enableJit() const { return enable_jit_; }
 
   /**
    * Get the engine configuration
@@ -181,6 +197,9 @@ private:
   // Is the bytecode engine enabled
   bool enable_bytecode_;
 
+  // Is the JIT compiler enabled
+  bool enable_jit_;
+
   // Is the engine initialized
   bool is_init_{false};
 
@@ -197,8 +216,11 @@ private:
   // store the each phase's rule pointers in an array.
   std::array<std::vector<const Rule*>, PHASE_TOTAL> rules_;
 
-  // Bytecode programs for each rule
+  // Bytecode programs for each phase
   std::array<std::unique_ptr<Bytecode::Program>, PHASE_TOTAL> programs_;
+
+  // JIT code generators for all programs of each phase
+  std::unique_ptr<Jit::CodeGenerator> jit_code_gens_;
 
   std::unordered_map<std::string, Marker&> markers_;
   mutable PersistentStorage::Storage storage_;

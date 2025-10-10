@@ -25,18 +25,23 @@
 #include "bytecode/compiler/rule_compiler.h"
 #include "common/assert.h"
 #include "common/log.h"
+#include "jit/code_generator.h"
 
 std::thread::id main_thread_id;
 
 namespace Wge {
-Engine::Engine(spdlog::level::level_enum level, const std::string& log_file, bool enable_bytecode)
-    : enable_bytecode_(enable_bytecode), parser_(std::make_shared<Antlr4::Parser>()) {
+Engine::Engine(spdlog::level::level_enum level, const std::string& log_file, bool enable_bytecode,
+               bool enable_jit)
+    : enable_bytecode_(enable_bytecode), enable_jit_(enable_jit),
+      parser_(std::make_shared<Antlr4::Parser>()) {
   // We assume that it can only be constructed in the main thread
   main_thread_id = std::this_thread::get_id();
 
   // Initialize the log
   Common::Log::init(level, log_file);
 }
+
+Engine::~Engine() = default;
 
 std::expected<bool, std::string> Engine::loadFromFile(const std::string& file_path) {
   // An efficient and rational design should not call this method in the worker thread.
@@ -241,6 +246,17 @@ void Engine::compileRules() {
 
     programs_[phase - 1] =
         Bytecode::Compiler::RuleCompiler::compile(phase_rules, default_action, this);
+  }
+
+  if (enable_jit_) {
+    jit_code_gens_ = std::make_unique<Jit::CodeGenerator>();
+    for (size_t i = 0; i < PHASE_TOTAL; ++i) {
+      if (programs_[i]) {
+        std::string jit_func_name = std::format("wge_jit_{}", i + 1);
+        jit_code_gens_->generate(*programs_[i], jit_func_name);
+      }
+    }
+    jit_code_gens_->optimize();
   }
 }
 

@@ -31,9 +31,11 @@ LlvmWrapper::LlvmWrapper()
                                            .get()
                                            .getDefaultDataLayoutForTarget()
                                            .get()),
-      module_(std::make_unique<llvm::Module>("WGE_JIT_Module", context_)), types_(context_) {
-  module_->setDataLayout(data_layout_);
-  engine_ = std::unique_ptr<llvm::ExecutionEngine>(llvm::EngineBuilder(std::move(module_))
+      types_(context_) {
+  auto m = std::make_unique<llvm::Module>("WGE_JIT_Module", context_);
+  m->setDataLayout(data_layout_);
+  module_ = m.get();
+  engine_ = std::unique_ptr<llvm::ExecutionEngine>(llvm::EngineBuilder(std::move(m))
                                                        .setErrorStr(&error_)
                                                        .setEngineKind(llvm::EngineKind::JIT)
                                                        .setOptLevel(llvm::CodeGenOptLevel::Default)
