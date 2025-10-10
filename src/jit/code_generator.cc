@@ -32,7 +32,7 @@ namespace Wge {
 namespace Jit {
 CodeGenerator::CodeGenerator() : llvm_(std::make_unique<LlvmWrapper>()) {
   if (llvm_->ok()) {
-    registerVariableFunctions();
+    registerFunctions();
   } else {
     WGE_LOG_ERROR("Failed to initialize LLVM JIT ExecutionEngine: {}", llvm_->error());
   }
@@ -59,56 +59,47 @@ void CodeGenerator::generate(Bytecode::Program& program, std::string_view func_n
 #define UNC_ACTION_LABEL(action_tyep) &&UNC_ACTION_##action_tyep,
 
   // Dispatch table for bytecode instructions. We use computed gotos for efficiency
-  static constexpr void* dispatch_table[] = {
-                                            //  &&MOV,
-                                            //  &&ADD,
-                                            //  &&CMP,
-                                            //  &&JMP,
-                                            //  &&JZ,
-                                            //  &&JNZ,
-                                            //  &&JOM,
-                                            //  &&JNOM,
-                                            //  &&JRM,
-                                            //  &&JNRM,
-                                            //  &&NOP,
-                                            //  &&DEBUG,
-                                            //  &&RULE_START,
-                                            //  &&JMP_IF_REMOVED,
-                                            //  &&TRANSFORM_START,
-                                            //  &&SIZE,
-                                            //  &&PUSH_MATCHED,
-                                            //  &&PUSH_ALL_MATCHED,
-                                            //  &&EXPAND_MACRO,
-                                            //  &&CHAIN_START,
-                                            //  &&CHAIN_END,
-                                            //  &&LOG_CALLBACK,
-                                            //  &&EXIT_IF_DISRUPTIVE,
+  static constexpr void* dispatch_table[] = {&&MOV,
+                                             &&ADD,
+                                             &&CMP,
+                                             &&JMP,
+                                             &&JZ,
+                                             &&JNZ,
+                                             &&JOM,
+                                             &&JNOM,
+                                             &&JRM,
+                                             &&JNRM,
+                                             &&NOP,
+                                             &&DEBUG,
+                                             &&RULE_START,
+                                             &&JMP_IF_REMOVED,
+                                             &&TRANSFORM_START,
+                                             &&SIZE,
+                                             &&PUSH_MATCHED,
+                                             &&PUSH_ALL_MATCHED,
+                                             &&EXPAND_MACRO,
+                                             &&CHAIN_START,
+                                             &&CHAIN_END,
+                                             &&LOG_CALLBACK,
+                                             &&EXIT_IF_DISRUPTIVE,
                                              TRAVEL_VARIABLES(LOAD_VAR_LABEL)
-                                            //  TRAVEL_TRANSFORMATIONS(TRANSFORM_LABEL)
-                                            //  TRAVEL_OPERATORS(OPERATOR_LABEL)
-                                            //  TRAVEL_ACTIONS(ACTION_LABEL)
-                                            //  TRAVEL_ACTIONS(UNC_ACTION_LABEL)
+                                             TRAVEL_TRANSFORMATIONS(TRANSFORM_LABEL)
+                                             TRAVEL_OPERATORS(OPERATOR_LABEL)
+                                             TRAVEL_ACTIONS(ACTION_LABEL)
+                                             TRAVEL_ACTIONS(UNC_ACTION_LABEL)
                                           };
   // clang-format on
 
 #define CASE(ins, proc)                                                                            \
   ins:                                                                                             \
-  WGE_LOG_TRACE("gen[0x{:x}]: {}", std::distance(begin, iter), iter->toString());                  \
+  WGE_LOG_TRACE("code_generator[0x{:x}]: {}", std::distance(begin, iter), iter->toString());       \
   proc;                                                                                            \
   ++iter;                                                                                          \
   if (iter == instructions.end()) {                                                                \
-    return;                                                                                        \
+    goto EXIT;                                                                                     \
   }                                                                                                \
   assert(static_cast<size_t>(iter->op_code_) < std::size(dispatch_table));                         \
   goto* dispatch_table[static_cast<size_t>(iter->op_code_)];
-
-  // Get instruction iterator
-  auto& instructions = program.instructions();
-  auto begin = instructions.begin();
-  auto iter = begin;
-  if (iter == instructions.end()) {
-    return;
-  }
 
 #define CASE_LOAD_VAR(var_type)                                                                    \
   CASE(LOAD_##var_type##_CC, (llvm_->createCall("execLoad" #var_type "_CC", &(*iter))));           \
@@ -117,48 +108,78 @@ void CodeGenerator::generate(Bytecode::Program& program, std::string_view func_n
   CASE(LOAD_##var_type##_VR, (llvm_->createCall("execLoad" #var_type "_VR", &(*iter))));           \
   CASE(LOAD_##var_type##_VS, (llvm_->createCall("execLoad" #var_type "_VS", &(*iter))));
 
+#define CASE_TRANSFORM(transform_type)                                                             \
+  CASE(TRANSFORM_##transform_type, (llvm_->createCall("execTransform" #transform_type, &(*iter))));
+#define CASE_OPERATOR(operator_type)                                                               \
+  CASE(OPERATOR_##operator_type, (llvm_->createCall("execOperator" #operator_type, &(*iter))));
+#define CASE_ACTION(action_type)                                                                   \
+  CASE(ACTION_##action_type, (llvm_->createCall("execAction" #action_type, &(*iter))));
+#define CASE_UNC_ACTION(action_type)                                                               \
+  CASE(UNC_ACTION_##action_type, (llvm_->createCall("execUncAction" #action_type, &(*iter))));
+
   // Create function and basic blocks
   auto func = llvm_->createFunction<void (*)(Bytecode::VirtualMachine*)>(func_name);
   auto entry_block = llvm_->createBasicBlock("entry", func);
   auto exit_block = llvm_->createBasicBlock("exit", func);
   llvm_->setInsertPoint(entry_block);
 
+  // Get instruction iterator
+  auto& instructions = program.instructions();
+  auto begin = instructions.begin();
+  auto iter = begin;
+  if (iter == instructions.end()) {
+    goto EXIT;
+  }
+
   // Dispatch instructions
   DISPATCH(dispatch_table[static_cast<size_t>(iter->op_code_)]);
-  // CASE(MOV, genMov(*iter));
-  // CASE(ADD, genAdd(*iter));
-  // CASE(CMP, genCmp(*iter));
-  // CASE(JMP, genJmp(*iter));
-  // CASE(JZ, genJumpIfFlag(*iter, Bytecode::VirtualMachine::Rflags::ZF, true));
-  // CASE(JNZ, genJumpIfFlag(*iter, Bytecode::VirtualMachine::Rflags::ZF, false));
-  // CASE(JOM, genJumpIfFlag(*iter, Bytecode::VirtualMachine::Rflags::OMF, true));
-  // CASE(JNOM, genJumpIfFlag(*iter, Bytecode::VirtualMachine::Rflags::OMF, false));
-  // CASE(JRM, genJumpIfFlag(*iter, Bytecode::VirtualMachine::Rflags::RMF, true));
-  // CASE(JNRM, genJumpIfFlag(*iter, Bytecode::VirtualMachine::Rflags::RMF, false));
-  // CASE(NOP, {});
-  // CASE(DEBUG, genDebug(*iter));
-  // CASE(RULE_START, genRuleStart(*iter));
-  // CASE(JMP_IF_REMOVED, genJmpIfRemoved(*iter));
-  // CASE(TRANSFORM_START, genTransformStart(*iter));
-  // CASE(SIZE, genSize(*iter));
-  // CASE(PUSH_MATCHED, genPushMatched(*iter));
-  // CASE(PUSH_ALL_MATCHED, genPushAllMatched(*iter));
-  // CASE(EXPAND_MACRO, genExpandMacro(*iter));
-  // CASE(CHAIN_START, genChainStart(*iter));
-  // CASE(CHAIN_END, genChainEnd(*iter));
-  // CASE(LOG_CALLBACK, genLogCallback(*iter));
-  // CASE(EXIT_IF_DISRUPTIVE, genExitIfDisruptive(*iter));
+  CASE(MOV, (llvm_->createCall("execMov", &(*iter))));
+  CASE(ADD, (llvm_->createCall("execAdd", &(*iter))));
+  CASE(CMP, (llvm_->createCall("execCmp", &(*iter))));
+  // CASE(JMP, (llvm_->createCall("execJmp", &(*iter))));
+  // CASE(JZ, (llvm_->createCall("execJumpIfFlag", &(*iter))));
+  // CASE(JNZ, (llvm_->createCall("execJumpIfFlag", &(*iter))));
+  // CASE(JOM, (llvm_->createCall("execJumpIfFlag", &(*iter))));
+  // CASE(JNOM, (llvm_->createCall("execJumpIfFlag", &(*iter))));
+  // CASE(JRM, (llvm_->createCall("execJumpIfFlag", &(*iter))));
+  // CASE(JNRM, (llvm_->createCall("execJumpIfFlag", &(*iter))));
+  CASE(JMP, {});
+  CASE(JZ, {});
+  CASE(JNZ, {});
+  CASE(JOM, {});
+  CASE(JNOM, {});
+  CASE(JRM, {});
+  CASE(JNRM, {});
+  CASE(NOP, {});
+  CASE(DEBUG, (llvm_->createCall("execDebug", &(*iter))));
+  CASE(RULE_START, (llvm_->createCall("execRuleStart", &(*iter))));
+  // CASE(JMP_IF_REMOVED, (llvm_->createCall("execJmpIfRemoved", &(*iter))));
+  CASE(JMP_IF_REMOVED, {});
+  CASE(TRANSFORM_START, (llvm_->createCall("execTransformStart", &(*iter))));
+  CASE(SIZE, (llvm_->createCall("execSize", &(*iter))));
+  CASE(PUSH_MATCHED, (llvm_->createCall("execPushMatched", &(*iter))));
+  CASE(PUSH_ALL_MATCHED, (llvm_->createCall("execPushAllMatched", &(*iter))));
+  CASE(EXPAND_MACRO, (llvm_->createCall("execExpandMacro", &(*iter))));
+  CASE(CHAIN_START, (llvm_->createCall("execChainStart", &(*iter))));
+  CASE(CHAIN_END, (llvm_->createCall("execChainEnd", &(*iter))));
+  CASE(LOG_CALLBACK, (llvm_->createCall("execLogCallback", &(*iter))));
+  // CASE(EXIT_IF_DISRUPTIVE, (llvm_->createCall("execExitIfDisruptive", &(*iter))));
+  CASE(EXIT_IF_DISRUPTIVE, {});
   TRAVEL_VARIABLES(CASE_LOAD_VAR)
-  // TRAVEL_TRANSFORMATIONS(CASE_TRANSFORM)
-  // TRAVEL_OPERATORS(CASE_OPERATOR)
-  // TRAVEL_ACTIONS(CASE_ACTION)
-  // TRAVEL_ACTIONS(CASE_UNC_ACTION)
+  TRAVEL_TRANSFORMATIONS(CASE_TRANSFORM)
+  TRAVEL_OPERATORS(CASE_OPERATOR)
+  TRAVEL_ACTIONS(CASE_ACTION)
+  TRAVEL_ACTIONS(CASE_UNC_ACTION)
 
+EXIT:
+  llvm_->createBranch(exit_block);
   llvm_->setInsertPoint(exit_block);
   llvm_->createReturn();
   llvm_->optimizeFunction(func);
 
-  program.jitFunc([&](Bytecode::VirtualMachine& vm) { llvm_->runFunction(func_name, &vm); });
+  std::string name_holder(func_name.data(), func_name.size());
+  program.jitFunc(
+      [&, name_holder](Bytecode::VirtualMachine& vm) { llvm_->runFunction(name_holder, &vm); });
 }
 
 void CodeGenerator::optimize() {
@@ -168,15 +189,49 @@ void CodeGenerator::optimize() {
   llvm_->optimizeModule();
 }
 
-void CodeGenerator::registerVariableFunctions() {
+void CodeGenerator::registerFunctions() {
   using VM = Bytecode::VirtualMachine;
-#define ASSIGN_LOAD_VARIABLE_FUNC(var_type)                                                        \
+  llvm_->registerFunction<&VM::execMov>("execMov");
+  llvm_->registerFunction<&VM::execAdd>("execAdd");
+  llvm_->registerFunction<&VM::execCmp>("execCmp");
+  llvm_->registerFunction<&VM::execJmp>("execJmp");
+  llvm_->registerFunction<&VM::execJumpIfFlag>("execJumpIfFlag");
+  llvm_->registerFunction<&VM::execDebug>("execDebug");
+  llvm_->registerFunction<&VM::execRuleStart>("execRuleStart");
+  llvm_->registerFunction<&VM::execJmpIfRemoved>("execJmpIfRemoved");
+  llvm_->registerFunction<&VM::execTransformStart>("execTransformStart");
+  llvm_->registerFunction<&VM::execSize>("execSize");
+  llvm_->registerFunction<&VM::execPushMatched>("execPushMatched");
+  llvm_->registerFunction<&VM::execPushAllMatched>("execPushAllMatched");
+  llvm_->registerFunction<&VM::execExpandMacro>("execExpandMacro");
+  llvm_->registerFunction<&VM::execChainStart>("execChainStart");
+  llvm_->registerFunction<&VM::execChainEnd>("execChainEnd");
+  llvm_->registerFunction<&VM::execLogCallback>("execLogCallback");
+  llvm_->registerFunction<&VM::execExitIfDisruptive>("execExitIfDisruptive");
+
+#define REGISTER_VARIABLE_FUNC(var_type)                                                           \
   llvm_->registerFunction<&VM::execLoad##var_type##_CC>("execLoad" #var_type "_CC");               \
   llvm_->registerFunction<&VM::execLoad##var_type##_CS>("execLoad" #var_type "_CS");               \
   llvm_->registerFunction<&VM::execLoad##var_type##_VC>("execLoad" #var_type "_VC");               \
   llvm_->registerFunction<&VM::execLoad##var_type##_VR>("execLoad" #var_type "_VR");               \
   llvm_->registerFunction<&VM::execLoad##var_type##_VS>("execLoad" #var_type "_VS");
-  TRAVEL_VARIABLES(ASSIGN_LOAD_VARIABLE_FUNC)
+  TRAVEL_VARIABLES(REGISTER_VARIABLE_FUNC)
+
+#define REGISTER_TRANSFORM_FUNC(transform_type)                                                    \
+  llvm_->registerFunction<&VM::execTransform##transform_type>("execTransform" #transform_type);
+  TRAVEL_TRANSFORMATIONS(REGISTER_TRANSFORM_FUNC)
+
+#define REGISTER_OPERATOR_FUNC(operator_type)                                                      \
+  llvm_->registerFunction<&VM::execOperator##operator_type>("execOperator" #operator_type);
+  TRAVEL_OPERATORS(REGISTER_OPERATOR_FUNC)
+
+#define REGISTER_ACTION_FUNC(action_type)                                                          \
+  llvm_->registerFunction<&VM::execAction##action_type>("execAction" #action_type);
+  TRAVEL_ACTIONS(REGISTER_ACTION_FUNC)
+
+#define REGISTER_UNC_ACTION_FUNC(action_type)                                                      \
+  llvm_->registerFunction<&VM::execUncAction##action_type>("execUncAction" #action_type);
+  TRAVEL_ACTIONS(REGISTER_UNC_ACTION_FUNC)
 }
 
 } // namespace Jit

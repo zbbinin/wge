@@ -91,34 +91,34 @@ public:
   std::bitset<8>& rflags() { return rflags_; }
 
 private:
-  inline void execMov(const Instruction& instruction);
-  inline void execAdd(const Instruction& instruction);
-  inline void execCmp(const Instruction& instruction);
-  inline void execJmp(const Instruction& instruction,
+  void execMov(const Instruction& instruction);
+  void execAdd(const Instruction& instruction);
+  void execCmp(const Instruction& instruction);
+  void execJmp(const Instruction& instruction,
+               const std::vector<Wge::Bytecode::Instruction>& instruction_array,
+               std::vector<Wge::Bytecode::Instruction>::const_iterator& iter);
+  void execJumpIfFlag(const Instruction& instruction,
                       const std::vector<Wge::Bytecode::Instruction>& instruction_array,
-                      std::vector<Wge::Bytecode::Instruction>::const_iterator& iter);
-  inline void execJumpIfFlag(const Instruction& instruction,
-                             const std::vector<Wge::Bytecode::Instruction>& instruction_array,
-                             std::vector<Wge::Bytecode::Instruction>::const_iterator& iter,
-                             VirtualMachine::Rflags flag, bool is_set);
-  inline void execDebug(const Instruction& instruction);
-  inline void execRuleStart(const Instruction& instruction);
-  inline void execJmpIfRemoved(const Instruction& instruction,
-                               const std::vector<Wge::Bytecode::Instruction>& instruction_array,
-                               std::vector<Wge::Bytecode::Instruction>::const_iterator& iter);
-  inline void execTransformStart(const Instruction& instruction);
-  inline void execSize(const Instruction& instruction);
-  inline void execPushMatched(const Instruction& instruction);
-  inline void execPushAllMatched(const Instruction& instruction);
-  inline void execExpandMacro(const Instruction& instruction);
-  inline void execMsgExpandMacro(const Instruction& instruction);
-  inline void execLogDataExpandMacro(const Instruction& instruction);
-  inline void execChainStart(const Instruction& instruction);
-  inline void execChainEnd(const Instruction& instruction);
-  inline void execLogCallback(const Instruction& instruction);
-  inline void execExitIfDisruptive(const Instruction& instruction,
-                                   const std::vector<Wge::Bytecode::Instruction>& instruction_array,
-                                   std::vector<Wge::Bytecode::Instruction>::const_iterator& iter);
+                      std::vector<Wge::Bytecode::Instruction>::const_iterator& iter,
+                      VirtualMachine::Rflags flag, bool is_set);
+  void execDebug(const Instruction& instruction);
+  void execRuleStart(const Instruction& instruction);
+  void execJmpIfRemoved(const Instruction& instruction,
+                        const std::vector<Wge::Bytecode::Instruction>& instruction_array,
+                        std::vector<Wge::Bytecode::Instruction>::const_iterator& iter);
+  void execTransformStart(const Instruction& instruction);
+  void execSize(const Instruction& instruction);
+  void execPushMatched(const Instruction& instruction);
+  void execPushAllMatched(const Instruction& instruction);
+  void execExpandMacro(const Instruction& instruction);
+  void execMsgExpandMacro(const Instruction& instruction);
+  void execLogDataExpandMacro(const Instruction& instruction);
+  void execChainStart(const Instruction& instruction);
+  void execChainEnd(const Instruction& instruction);
+  void execLogCallback(const Instruction& instruction);
+  void execExitIfDisruptive(const Instruction& instruction,
+                            const std::vector<Wge::Bytecode::Instruction>& instruction_array,
+                            std::vector<Wge::Bytecode::Instruction>::const_iterator& iter);
 
 private:
   // Load variable handlers
@@ -134,25 +134,25 @@ private:
 
 // Transformation handlers
 #define DECLARE_TRANSFORM_PROC(transform_type)                                                     \
-  inline void execTransform##transform_type(const Instruction& instruction);
+  void execTransform##transform_type(const Instruction& instruction);
   TRAVEL_TRANSFORMATIONS(DECLARE_TRANSFORM_PROC)
 #undef DECLARE_TRANSFORM_PROC
 
 // Operator handlers
 #define DECLARE_OPERATOR_PROC(operator_type)                                                       \
-  inline void execOperator##operator_type(const Instruction& instruction);
+  void execOperator##operator_type(const Instruction& instruction);
   TRAVEL_OPERATORS(DECLARE_OPERATOR_PROC)
 #undef DECLARE_OPERATOR_PROC
 
   // Action handlers
 #define DECLARE_ACTION_PROC(action_type)                                                           \
-  inline void execAction##action_type(const Instruction& instruction);
+  void execAction##action_type(const Instruction& instruction);
   TRAVEL_ACTIONS(DECLARE_ACTION_PROC)
 #undef DECLARE_ACTION_PROC
 
   // Uncondition action handlers
 #define DECLARE_UNC_ACTION_PROC(action_type)                                                       \
-  inline void execUncAction##action_type(const Instruction& instruction);
+  void execUncAction##action_type(const Instruction& instruction);
   TRAVEL_ACTIONS(DECLARE_UNC_ACTION_PROC)
 #undef DECLARE_UNC_ACTION_PROC
 

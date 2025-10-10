@@ -34,6 +34,7 @@
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/PassManager.h>
+#include <llvm/IR/Verifier.h>
 #include <llvm/Passes/PassBuilder.h>
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Transforms/IPO/Inliner.h>
@@ -109,10 +110,21 @@ public:
   void createReturn() { builder_.CreateRetVoid(); }
 
   /**
+   * Create an unconditional branch to a basic block.
+   * @param dest_block Destination basic block.
+   */
+  void createBranch(llvm::BasicBlock* dest_block) { builder_.CreateBr(dest_block); }
+
+  /**
    * Optimize a function
    * @param func Function to optimize.
    */
   void optimizeFunction(llvm::Function* func) {
+    if (llvm::verifyFunction(*func, &llvm::errs())) {
+      assert(false && "Generated function failed verification");
+      return;
+    }
+
     // Disable function-level optimization to avoid issues with breakpoints
 #ifdef NDEBUG
     llvm::LoopAnalysisManager lam;
@@ -131,7 +143,6 @@ public:
         llvm::OptimizationLevel::O3, llvm::ThinOrFullLTOPhase::None);
     fpm.run(*func, fam);
 #endif
-
     engine_->finalizeObject();
   }
 
@@ -156,8 +167,6 @@ public:
     llvm::ModulePassManager mpm = pb.buildPerModuleDefaultPipeline(llvm::OptimizationLevel::O3);
     mpm.run(*module_, mam);
 #endif
-
-    engine_->finalizeObject();
   }
 
   /**
@@ -229,12 +238,14 @@ private:
     using DecayT = std::decay_t<T>;
     if constexpr (std::is_same_v<DecayT, void>) {
       return types_.void_;
-    } else if constexpr (std::is_same_v<DecayT, int64_t>) {
+    } else if constexpr (std::is_same_v<DecayT, int64_t> || std::is_same_v<DecayT, bool>) {
       return types_.int64_t_;
     } else if constexpr (std::is_pointer_v<DecayT>) {
       return types_.ptr_;
     } else if constexpr (std::is_reference_v<T>) {
       return types_.ptr_;
+    } else if constexpr (std::is_enum_v<T>) {
+      return types_.int64_t_;
     } else {
       static_assert(!std::is_same_v<DecayT, DecayT>, "Unsupported type");
     }
@@ -340,11 +351,14 @@ template <class... ArgTypes> void LlvmWrapper::createCall(std::string_view name,
     return;
   }
 
-  // Add arguments
+  // For member functions, the first parameter is the 'this' pointer which comes from the function's
+  // first parameter at runtime
   std::vector<llvm::Value*> arg_values;
-  auto run_time_args = func->args();
-  for (auto& arg : run_time_args) {
-    arg_values.emplace_back(&arg);
+  llvm::Function* current_func = builder_.GetInsertBlock()->getParent();
+  if (current_func && current_func->arg_size() > 0) {
+    // Add the runtime 'this' pointer (first function parameter)
+    auto arg_iter = current_func->arg_begin();
+    arg_values.emplace_back(&(*arg_iter));
   }
 
   // Add compile-time arguments
@@ -375,8 +389,17 @@ void LlvmWrapper::runFunction(std::string_view name, ArgTypes... args) {
   assert(arg_values.size() == func->arg_size() &&
          "Argument count mismatch when calling JITed function");
 
-  // Execute the function
-  engine_->runFunction(func, arg_values);
+  // Get the function address
+  uint64_t addr = engine_->getFunctionAddress({name.data(), name.size()});
+  if (addr == 0) {
+    assert(false && "Failed to get function address");
+    return;
+  }
+
+  // Cast the address to a function pointer and call it
+  using FuncPtrType = void (*)(ArgTypes...);
+  FuncPtrType func_ptr = reinterpret_cast<FuncPtrType>(addr);
+  func_ptr(args...);
 }
 
 } // namespace Jit

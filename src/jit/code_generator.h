@@ -50,7 +50,7 @@ public:
   void optimize();
 
 private:
-  void registerVariableFunctions();
+  void registerFunctions();
 
 private:
   std::unique_ptr<LlvmWrapper> llvm_;
