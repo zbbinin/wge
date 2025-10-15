@@ -50,22 +50,22 @@
   *|;
 
   transformation := |*
-    '0' => { if((p - ps) % 2 == 0){*r++ = 0 << 4;} else { *(r-1) |= 0; } };
-    '1' => { if((p - ps) % 2 == 0){*r++ = 1 << 4;} else { *(r-1) |= 1; } };
-    '2' => { if((p - ps) % 2 == 0){*r++ = 2 << 4;} else { *(r-1) |= 2; } };
-    '3' => { if((p - ps) % 2 == 0){*r++ = 3 << 4;} else { *(r-1) |= 3; } };
-    '4' => { if((p - ps) % 2 == 0){*r++ = 4 << 4;} else { *(r-1) |= 4; } };
-    '5' => { if((p - ps) % 2 == 0){*r++ = 5 << 4;} else { *(r-1) |= 5; } };
-    '6' => { if((p - ps) % 2 == 0){*r++ = 6 << 4;} else { *(r-1) |= 6; } };
-    '7' => { if((p - ps) % 2 == 0){*r++ = 7 << 4;} else { *(r-1) |= 7; } };
-    '8' => { if((p - ps) % 2 == 0){*r++ = 8 << 4;} else { *(r-1) |= 8; } };
-    '9' => { if((p - ps) % 2 == 0){*r++ = 9 << 4;} else { *(r-1) |= 9; } };
-    [aA] => { if((p - ps) % 2 == 0){*r++ = 10 << 4;} else { *(r-1) |= 10; } };
-    [bB] => { if((p - ps) % 2 == 0){*r++ = 11 << 4;} else { *(r-1) |= 11; } };
-    [cC] => { if((p - ps) % 2 == 0){*r++ = 12 << 4;} else { *(r-1) |= 12; } };
-    [dD] => { if((p - ps) % 2 == 0){*r++ = 13 << 4;} else { *(r-1) |= 13; } };
-    [eE] => { if((p - ps) % 2 == 0){*r++ = 14 << 4;} else { *(r-1) |= 14; } };
-    [fF] => { if((p - ps) % 2 == 0){*r++ = 15 << 4;} else { *(r-1) |= 15; } };
+    '0' => { if((p - ps) % 2 == 0){*r++ = 0x00;} else { *(r-1) |= 0; } };
+    '1' => { if((p - ps) % 2 == 0){*r++ = 0x10;} else { *(r-1) |= 1; } };
+    '2' => { if((p - ps) % 2 == 0){*r++ = 0x20;} else { *(r-1) |= 2; } };
+    '3' => { if((p - ps) % 2 == 0){*r++ = 0x30;} else { *(r-1) |= 3; } };
+    '4' => { if((p - ps) % 2 == 0){*r++ = 0x40;} else { *(r-1) |= 4; } };
+    '5' => { if((p - ps) % 2 == 0){*r++ = 0x50;} else { *(r-1) |= 5; } };
+    '6' => { if((p - ps) % 2 == 0){*r++ = 0x60;} else { *(r-1) |= 6; } };
+    '7' => { if((p - ps) % 2 == 0){*r++ = 0x70;} else { *(r-1) |= 7; } };
+    '8' => { if((p - ps) % 2 == 0){*r++ = 0x80;} else { *(r-1) |= 8; } };
+    '9' => { if((p - ps) % 2 == 0){*r++ = 0x90;} else { *(r-1) |= 9; } };
+    [aA] => { if((p - ps) % 2 == 0){*r++ = 0xA0;} else { *(r-1) |= 10; } };
+    [bB] => { if((p - ps) % 2 == 0){*r++ = 0xB0;} else { *(r-1) |= 11; } };
+    [cC] => { if((p - ps) % 2 == 0){*r++ = 0xC0;} else { *(r-1) |= 12; } };
+    [dD] => { if((p - ps) % 2 == 0){*r++ = 0xD0;} else { *(r-1) |= 13; } };
+    [eE] => { if((p - ps) % 2 == 0){*r++ = 0xE0;} else { *(r-1) |= 14; } };
+    [fF] => { if((p - ps) % 2 == 0){*r++ = 0xF0;} else { *(r-1) |= 15; } };
     any => { fhold; fbreak; };
   *|;
 
@@ -108,22 +108,22 @@ static bool hexDecode(std::string_view input, std::string& result) {
   machine hex_decode_stream;
 
   main := |*
-    '0' => { if(count % 2 == 0){result += 0 << 4;} else { result.back() |= 0; } ++count; };
-    '1' => { if(count % 2 == 0){result += 1 << 4;} else { result.back() |= 1; } ++count; };
-    '2' => { if(count % 2 == 0){result += 2 << 4;} else { result.back() |= 2; } ++count; };
-    '3' => { if(count % 2 == 0){result += 3 << 4;} else { result.back() |= 3; } ++count; };
-    '4' => { if(count % 2 == 0){result += 4 << 4;} else { result.back() |= 4; } ++count; };
-    '5' => { if(count % 2 == 0){result += 5 << 4;} else { result.back() |= 5; } ++count; };
-    '6' => { if(count % 2 == 0){result += 6 << 4;} else { result.back() |= 6; } ++count; };
-    '7' => { if(count % 2 == 0){result += 7 << 4;} else { result.back() |= 7; } ++count; };
-    '8' => { if(count % 2 == 0){result += 8 << 4;} else { result.back() |= 8; } ++count; };
-    '9' => { if(count % 2 == 0){result += 9 << 4;} else { result.back() |= 9; } ++count; };
-    [aA] => { if(count % 2 == 0){result += 10 << 4;} else { result.back() |= 10; } ++count; };
-    [bB] => { if(count % 2 == 0){result += 11 << 4;} else { result.back() |= 11; } ++count; };
-    [cC] => { if(count % 2 == 0){result += 12 << 4;} else { result.back() |= 12; } ++count; };
-    [dD] => { if(count % 2 == 0){result += 13 << 4;} else { result.back() |= 13; } ++count; };
-    [eE] => { if(count % 2 == 0){result += 14 << 4;} else { result.back() |= 14; } ++count; };
-    [fF] => { if(count % 2 == 0){result += 15 << 4;} else { result.back() |= 15; } ++count; };
+    '0' => { if(count % 2 == 0){result += static_cast<char>(0x00);} else { result.back() |= 0; } ++count; };
+    '1' => { if(count % 2 == 0){result += static_cast<char>(0x10);} else { result.back() |= 1; } ++count; };
+    '2' => { if(count % 2 == 0){result += static_cast<char>(0x20);} else { result.back() |= 2; } ++count; };
+    '3' => { if(count % 2 == 0){result += static_cast<char>(0x30);} else { result.back() |= 3; } ++count; };
+    '4' => { if(count % 2 == 0){result += static_cast<char>(0x40);} else { result.back() |= 4; } ++count; };
+    '5' => { if(count % 2 == 0){result += static_cast<char>(0x50);} else { result.back() |= 5; } ++count; };
+    '6' => { if(count % 2 == 0){result += static_cast<char>(0x60);} else { result.back() |= 6; } ++count; };
+    '7' => { if(count % 2 == 0){result += static_cast<char>(0x70);} else { result.back() |= 7; } ++count; };
+    '8' => { if(count % 2 == 0){result += static_cast<char>(0x80);} else { result.back() |= 8; } ++count; };
+    '9' => { if(count % 2 == 0){result += static_cast<char>(0x90);} else { result.back() |= 9; } ++count; };
+    [aA] => { if(count % 2 == 0){result += static_cast<char>(0xA0);} else { result.back() |= 10; } ++count; };
+    [bB] => { if(count % 2 == 0){result += static_cast<char>(0xB0);} else { result.back() |= 11; } ++count; };
+    [cC] => { if(count % 2 == 0){result += static_cast<char>(0xC0);} else { result.back() |= 12; } ++count; };
+    [dD] => { if(count % 2 == 0){result += static_cast<char>(0xD0);} else { result.back() |= 13; } ++count; };
+    [eE] => { if(count % 2 == 0){result += static_cast<char>(0xE0);} else { result.back() |= 14; } ++count; };
+    [fF] => { if(count % 2 == 0){result += static_cast<char>(0xF0);} else { result.back() |= 15; } ++count; };
     any => {
       // If the input length is odd, we assume the last character is a low 4 bits of a byte
       if (count % 2 != 0) {
