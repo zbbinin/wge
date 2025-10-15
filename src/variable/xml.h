@@ -30,11 +30,11 @@ namespace Variable {
  * XML variable. Supports the following syntax:
  * - `XML://@*` for all attributes of all tags. When filling Common::EvaluateResults, each element
  * corresponds to the attribute value of a tag.
- * - `XML:/*` for all tag values. When filling Common::EvaluateResults, there is only one element,
+ * - `XML:/\*` for all tag values. When filling Common::EvaluateResults, there is only one element,
  * which concatenates all XML tag values into a string.
  * - `XML://@*@file@` for multi-pattern matching of attributes based on the specified file. When
  * filling Common::EvaluateResults, each element corresponds to the attribute value of a tag.
- * - `XML:/*@file@` for multi-pattern matching of tag values based on the specified file. When
+ * - `XML:/\*@file@` for multi-pattern matching of tag values based on the specified file. When
  * filling Common::EvaluateResults, each element corresponds to the value of a tag.
  */
 class Xml final : public VariableBase, public CollectionBase {
