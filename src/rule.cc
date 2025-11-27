@@ -30,12 +30,13 @@
 #include "variable/collection_base.h"
 
 namespace Wge {
+std::unordered_set<std::string> Rule::string_pool_;
 void Rule::initExceptVariables() {
   ASSERT_IS_MAIN_THREAD();
 
   // Traverse the except variables and remove the matched variables from the variables list, or add
   // the except variable to the collection except list.
-  for (auto& except_var : except_variables_) {
+  for (auto& except_var : detail_->except_variables_) {
     auto except_var_name = except_var->fullName();
 
     // Init the except scanner
@@ -60,7 +61,7 @@ void Rule::initExceptVariables() {
       // The specific exception is collection or they are the same variable, we remove the variable
       // directly for the performance.
       if (except_var_name.sub_name_.empty() || var_name.sub_name_ == except_var_name.sub_name_) {
-        variables_index_by_full_name_.erase(var_name);
+        detail_->variables_index_by_full_name_.erase(var_name);
         iter = variables_.erase(iter);
         continue;
       }
@@ -68,7 +69,7 @@ void Rule::initExceptVariables() {
       // The specific exception is a regex, if matched, we remove the variable directly
       if (!var_name.sub_name_.empty() && except_scanner &&
           except_scanner->match(var_name.sub_name_)) {
-        variables_index_by_full_name_.erase(var_name);
+        detail_->variables_index_by_full_name_.erase(var_name);
         iter = variables_.erase(iter);
         continue;
       }
@@ -99,9 +100,19 @@ void Rule::initPmfOperator(const std::string& serialize_dir) {
   }
 
   // init the pmf operator of chained rule
-  if (!chain_.empty()) {
-    chain_.front()->initPmfOperator(serialize_dir);
+  if (chain_) {
+    chain_->initPmfOperator(serialize_dir);
   }
+}
+
+void Rule::initFlags(const Rule& default_action_rule) {
+  ASSERT_IS_MAIN_THREAD();
+
+  // Initialize the flags according to the default action rule
+  auditLog((default_action_rule.auditLog() || auditLog()) && !noAuditLog());
+  log((default_action_rule.log() || log()) && !noLog());
+  capture(default_action_rule.capture() || capture());
+  multiMatch(default_action_rule.multiMatch() || multiMatch());
 }
 
 /**
@@ -129,10 +140,9 @@ bool Rule::evaluate(Transaction& t) const {
   WGE_LOG_TRACE("------------------------------------");
 
   // Check whether the rule is unconditional(SecAction)
-  bool is_uncondition = operator_ == nullptr;
-  if (is_uncondition)
+  if (operator_ == nullptr)
     [[unlikely]] {
-      WGE_LOG_TRACE("evaluate SecAction. id: {} [{}:{}]", id_, file_path_, line_);
+      WGE_LOG_TRACE("evaluate SecAction. id: {} [{}:{}]", id(), filePath(), line());
       // Evaluate the actions
       for (auto& action : actions_) {
         action->evaluate(t);
@@ -140,19 +150,18 @@ bool Rule::evaluate(Transaction& t) const {
       return true;
     }
 
-  WGE_LOG_TRACE("evaluate SecRule. id: {} [{}:{}]", id_, file_path_, line_);
+  WGE_LOG_TRACE("evaluate SecRule. id: {} [{}:{}]", id(), filePath(), line());
 
   // If the multi match is enabled, then perform multiple operator invocations for every target,
   // before and after every anti-evasion transformation is performed.
-  if (multi_match_.value_or(false))
+  if (multiMatch())
     [[unlikely]] {
       WGE_LOG_TRACE("multi match is enabled");
       return evaluateWithMultiMatch(t);
     }
 
-  Common::EvaluateResults::Element transformed_value;
-  Common::EvaluateResults::Element captured_value;
-  std::list<const Transformation::TransformBase*> transform_list;
+  static thread_local Common::EvaluateElement transformed_value;
+  static thread_local std::list<const Transformation::TransformBase*> transform_list;
 
   // Evaluate the variables
   bool rule_matched = false;
@@ -161,11 +170,11 @@ bool Rule::evaluate(Transaction& t) const {
     evaluateVariable(t, var, result);
 
     // Evaluate each variable result
-    for (size_t i = 0; i < result.size(); i++) {
-      const Common::EvaluateResults::Element& variable_value = result.get(i);
+    for (size_t i = 0; i < result.size(); ++i) {
+      const Common::EvaluateElement& variable_value = result[i];
       bool variable_matched = false;
+      std::string_view captured_value;
       transformed_value.clear();
-      captured_value.clear();
       transform_list.clear();
       if (IS_STRING_VIEW_VARIANT(variable_value.variant_))
         [[likely]] {
@@ -174,41 +183,25 @@ bool Rule::evaluate(Transaction& t) const {
         }
 
       // Evaluate the operator
-      if (transform_list.empty())
-        [[unlikely]] {
-          variable_matched = evaluateOperator(t, variable_value.variant_, var, captured_value);
-        }
-      else {
-        variable_matched = evaluateOperator(t, transformed_value.variant_, var, captured_value);
-      }
+      variable_matched = evaluateOperator(
+          t, transform_list.empty() ? variable_value.variant_ : transformed_value.variant_, var,
+          captured_value);
 
       // If the variable is matched, evaluate the actions
       if (variable_matched) {
-        if (is_need_push_matched_) {
-          t.pushMatchedVariable(var.get(), chain_index_, result.move(i),
-                                std::move(transformed_value), std::move(captured_value),
-                                std::move(transform_list));
+        WGE_LOG_TRACE([&]() {
+          if (!var->isCollection()) {
+            return std::format("variable is matched. {}{}", var->mainName(),
+                               var->subName().empty() ? "" : "." + var->subName());
+          } else {
+            return std::format("variable of collection is matched. {}:{}", var->mainName(),
+                               variable_value.variable_sub_name_);
+          }
+        }());
 
-          WGE_LOG_TRACE([&]() {
-            if (!var->isCollection()) {
-              return std::format("variable is matched. {}{}", var->mainName(),
-                                 var->subName().empty() ? "" : "." + var->subName());
-            } else {
-              auto& matched_var = t.getMatchedVariables(chain_index_).back();
-              return std::format("variable of collection is matched. {}:{}", var->mainName(),
-                                 matched_var.transformed_value_.variable_sub_name_);
-            }
-          }());
-        } else {
-          WGE_LOG_TRACE([&]() {
-            if (!var->isCollection()) {
-              return std::format("variable is matched. {}{}", var->mainName(),
-                                 var->subName().empty() ? "" : "." + var->subName());
-            } else {
-              return std::format("variable of collection is matched. {}:{}", var->mainName(),
-                                 variable_value.variable_sub_name_);
-            }
-          }());
+        if (isNeedPushMatched()) {
+          t.pushMatchedVariable(var.get(), chain_index_, result[i], transformed_value,
+                                captured_value, std::move(transform_list));
         }
 
         rule_matched = true;
@@ -221,7 +214,7 @@ bool Rule::evaluate(Transaction& t) const {
 
   // Evaluate the chained rules
   if (rule_matched) {
-    if (!chain_.empty())
+    if (chain_)
       [[unlikely]] {
         // If the chained rules are matched means the rule is matched, otherwise the rule is not
         // matched
@@ -229,12 +222,6 @@ bool Rule::evaluate(Transaction& t) const {
           rule_matched = false;
         }
       }
-  }
-
-  // Evaluate the msg macro and logdata macro
-  if (rule_matched) {
-    evaluateMsgMacro(t);
-    evaluateLogDataMacro(t);
   }
 
   return rule_matched;
@@ -245,15 +232,15 @@ void Rule::appendVariable(std::unique_ptr<Variable::VariableBase>&& var) {
 
   if (!var->isNot()) {
     auto full_name = var->fullName();
-    auto iter = variables_index_by_full_name_.find(full_name);
+    auto iter = detail_->variables_index_by_full_name_.find(full_name);
 
     // Not accept the same variable
-    if (iter == variables_index_by_full_name_.end()) {
+    if (iter == detail_->variables_index_by_full_name_.end()) {
       variables_.emplace_back(std::move(var));
-      variables_index_by_full_name_.insert({full_name, *variables_.back()});
+      detail_->variables_index_by_full_name_.insert({full_name, *variables_.back()});
     }
   } else {
-    except_variables_.emplace_back(std::move(var));
+    detail_->except_variables_.emplace_back(std::move(var));
   }
 }
 
@@ -262,7 +249,7 @@ void Rule::capture(bool value) {
   if (rx) {
     rx->capture(value);
   }
-  capture_ = value;
+  flags_.set(static_cast<size_t>(Flags::CAPTURE), value);
 }
 
 void Rule::setOperator(std::unique_ptr<Operator::OperatorBase>&& op) {
@@ -270,20 +257,55 @@ void Rule::setOperator(std::unique_ptr<Operator::OperatorBase>&& op) {
   operator_ = std::move(op);
 }
 
-inline void Rule::evaluateVariable(Transaction& t,
-                                   const std::unique_ptr<Wge::Variable::VariableBase>& var,
-                                   Common::EvaluateResults& result) const {
+void Rule::appendChainRule(std::unique_ptr<Rule>&& rule) {
+  ASSERT_IS_MAIN_THREAD();
+  assert(!chain_);
+  chain_ = std::move(rule);
+
+  // The chained rule inherits the phase of the parent rule.
+  chain_->phase_ = phase_;
+
+  // Sets the chain index and parent rule for the chained rule.
+  chain_->detail_->parent_rule_ = this;
+  chain_->detail_->top_rule_ = this;
+  chain_->chain_index_ = 0;
+  Rule* parent = detail_->parent_rule_;
+  while (parent) {
+    chain_->detail_->top_rule_ = parent;
+    parent = parent->detail_->parent_rule_;
+    // Update the chain index
+    chain_->chain_index_++;
+  }
+}
+
+Rule* Rule::chainRule(size_t index) {
+  Rule* result = nullptr;
+  Rule* parent = this;
+  for (size_t i = 0; i <= index; ++i) {
+    if (parent->chain_) {
+      result = parent->chain_.get();
+      parent = parent->chain_.get();
+    } else {
+      break;
+    }
+  }
+  return result;
+}
+
+void Rule::evaluateVariable(Transaction& t, const std::unique_ptr<Wge::Variable::VariableBase>& var,
+                            Common::EvaluateResults& result) const {
   var->evaluate(t, result);
   WGE_LOG_TRACE([&]() {
     if (!var->isCollection()) {
-      return std::format("evaluate variable: {}{}{}{} = {}", var->isNot() ? "!" : "",
-                         var->isCounter() ? "&" : "", var->mainName(),
-                         var->subName().empty() ? "" : ":" + var->subName(),
-                         VISTIT_VARIANT_AS_STRING(result.front().variant_));
+      return std::format(
+          "evaluate variable: {}{}{}{} = {}", var->isNot() ? "!" : "", var->isCounter() ? "&" : "",
+          var->mainName(), var->subName().empty() ? "" : ":" + var->subName(),
+          result.empty() ? "nil" : VISTIT_VARIANT_AS_STRING(result.front().variant_));
     } else {
       if (var->isCounter()) {
-        return std::format("evaluate collection: {}&{} = {}", var->isNot() ? "!" : "",
-                           var->mainName(), VISTIT_VARIANT_AS_STRING(result.front().variant_));
+        return std::format(
+            "evaluate collection: {}&{} = {}", var->isNot() ? "!" : "", var->mainName(),
+            result.empty() ? "nil" : VISTIT_VARIANT_AS_STRING(result.front().variant_));
       } else {
         return std::format("evaluate collection: {}{}", var->isNot() ? "!" : "", var->mainName());
       }
@@ -291,15 +313,14 @@ inline void Rule::evaluateVariable(Transaction& t,
   }());
 }
 
-inline void
-Rule::evaluateTransform(Transaction& t, const Wge::Variable::VariableBase* var,
-                        const Common::EvaluateResults::Element& input,
-                        Common::EvaluateResults::Element& output,
-                        std::list<const Transformation::TransformBase*>& transform_list) const {
-  const Common::EvaluateResults::Element* p_input = &input;
+void Rule::evaluateTransform(
+    Transaction& t, const Wge::Variable::VariableBase* var, const Common::EvaluateElement& input,
+    Common::EvaluateElement& output,
+    std::list<const Transformation::TransformBase*>& transform_list) const {
+  const Common::EvaluateElement* p_input = &input;
 
   // Check if the default transformation should be ignored
-  if (!is_ingnore_default_transform_)
+  if (!isIgnoreDefaultTransform())
     [[unlikely]] {
       // Check that the default action is defined
       const Wge::Rule* default_action = t.getEngine().defaultActions(phase_);
@@ -331,32 +352,28 @@ Rule::evaluateTransform(Transaction& t, const Wge::Variable::VariableBase* var,
   }
 }
 
-inline bool Rule::evaluateOperator(Transaction& t, const Common::Variant& var_value,
-                                   const std::unique_ptr<Wge::Variable::VariableBase>& var,
-                                   Common::EvaluateResults::Element& capture_value) const {
+bool Rule::evaluateOperator(Transaction& t, const Common::Variant& var_value,
+                            const std::unique_ptr<Wge::Variable::VariableBase>& var,
+                            std::string_view& capture_value) const {
   bool matched = operator_->evaluate(t, var_value);
   matched = operator_->isNot() ^ matched;
 
   // Call additional conditions if they are defined
   if (matched && t.getAdditionalCond()) {
     if (IS_STRING_VIEW_VARIANT(var_value)) {
-      matched = t.getAdditionalCond()(*this, std::get<std::string_view>(var_value), var);
+      matched = t.getAdditionalCond()(*this, *var.get(), std::get<std::string_view>(var_value),
+                                      t.getAdditionalCondUserdata());
       WGE_LOG_TRACE("call additional condition: {}", matched);
     }
   }
 
   if (matched) {
-    auto merged_count = t.mergeCapture();
-    if (merged_count) {
-      auto& tx_0 = t.getCapture(0);
-
-      // Copy the first captured value to the capture_value. The copy is necessary because
-      // the captured value may be modified later.
-      capture_value.string_buffer_ = std::get<std::string_view>(tx_0);
-      capture_value.variant_ = capture_value.string_buffer_;
+    auto committed_count = t.commitCapture();
+    if (committed_count) {
+      capture_value = t.getCapture(0);
     }
   } else {
-    t.clearTempCapture();
+    t.rollbackCapture();
   }
 
   WGE_LOG_TRACE("evaluate operator: {} {}@{} {} = {}", VISTIT_VARIANT_AS_STRING(var_value),
@@ -366,17 +383,16 @@ inline bool Rule::evaluateOperator(Transaction& t, const Common::Variant& var_va
   return matched;
 }
 
-inline bool Rule::evaluateChain(Transaction& t) const {
-  assert(chain_.size() <= 1);
+bool Rule::evaluateChain(Transaction& t) const {
   bool matched = true;
-  if (!chain_.empty()) {
-    WGE_LOG_TRACE("evaluate chained rule. id: {}", chain_.front()->id());
+  if (chain_) {
+    WGE_LOG_TRACE("evaluate chained rule. id: {}", chain_->id());
     WGE_LOG_TRACE("↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓");
 
     // Set the chained rule as the current evaluate rule
-    t.setCurrentEvaluateRule(chain_.front().get());
+    t.setCurrentEvaluateRule(chain_.get());
 
-    matched = chain_.front()->evaluate(t);
+    matched = chain_->evaluate(t);
 
     // Restore the current rule to the transaction
     t.setCurrentEvaluateRule(this);
@@ -385,27 +401,7 @@ inline bool Rule::evaluateChain(Transaction& t) const {
   return matched;
 }
 
-inline void Rule::evaluateMsgMacro(Transaction& t) const {
-  if (msg_macro_)
-    [[unlikely]] {
-      Common::EvaluateResults msg_result;
-      msg_macro_->evaluate(t, msg_result);
-      t.setMsgMacroExpanded(msg_result.move(0));
-      WGE_LOG_TRACE("evaluate msg macro: {}", t.getMsgMacroExpanded());
-    }
-}
-
-inline void Rule::evaluateLogDataMacro(Transaction& t) const {
-  if (log_data_macro_)
-    [[unlikely]] {
-      Common::EvaluateResults log_data_result;
-      log_data_macro_->evaluate(t, log_data_result);
-      t.setLogDataMacroExpanded(log_data_result.move(0));
-      WGE_LOG_TRACE("evaluate logdata macro: {}", t.getLogDataMacroExpanded());
-    }
-}
-
-inline void Rule::evaluateActions(Transaction& t) const {
+void Rule::evaluateActions(Transaction& t) const {
   // Evaluate the default actions
   const Wge::Rule* default_action = t.getEngine().defaultActions(phase_);
   if (default_action) {
@@ -423,10 +419,10 @@ inline void Rule::evaluateActions(Transaction& t) const {
 // Normally, variables are inspected only once per rule, and only after all transformation functions
 // have been completed. With multiMatch, variables are checked against the operator before and after
 // every transformation function that changes the input.
-inline bool Rule::evaluateWithMultiMatch(Transaction& t) const {
+bool Rule::evaluateWithMultiMatch(Transaction& t) const {
   // Get all of the transformations
   std::vector<Transformation::TransformBase*> transforms;
-  if (!is_ingnore_default_transform_) {
+  if (!isIgnoreDefaultTransform()) {
     const Wge::Rule* default_action = t.getEngine().defaultActions(phase_);
     if (default_action) {
       transforms.reserve(default_action->transforms().size());
@@ -440,9 +436,8 @@ inline bool Rule::evaluateWithMultiMatch(Transaction& t) const {
     transforms.emplace_back(transform.get());
   }
 
-  Common::EvaluateResults::Element transformed_value;
-  Common::EvaluateResults::Element captured_value;
-  std::list<const Transformation::TransformBase*> transform_list;
+  static thread_local Common::EvaluateElement transformed_value;
+  static thread_local std::list<const Transformation::TransformBase*> transform_list;
 
   // Evaluate the variables
   bool rule_matched = false;
@@ -453,13 +448,13 @@ inline bool Rule::evaluateWithMultiMatch(Transaction& t) const {
     size_t curr_transform_index = 0;
 
     // Evaluate each variable result
+    std::string_view captured_value;
     transformed_value.clear();
-    captured_value.clear();
     transform_list.clear();
-    const Common::EvaluateResults::Element* evaluated_value = nullptr;
+    const Common::EvaluateElement* evaluated_value = nullptr;
     for (size_t i = 0; i < result.size();) {
       if (evaluated_value == nullptr) {
-        evaluated_value = &result.get(i);
+        evaluated_value = &result.at(i);
       }
 
       // Evaluate the operator
@@ -467,31 +462,19 @@ inline bool Rule::evaluateWithMultiMatch(Transaction& t) const {
 
       // If the variable is matched, evaluate the actions
       if (variable_matched) {
-        if (is_need_push_matched_) {
-          t.pushMatchedVariable(var.get(), chain_index_, result.move(i),
-                                std::move(transformed_value), std::move(captured_value),
-                                std::move(transform_list));
+        WGE_LOG_TRACE([&]() {
+          if (!var->isCollection()) {
+            return std::format("variable is matched. {}{}", var->mainName(),
+                               var->subName().empty() ? "" : "." + var->subName());
+          } else {
+            return std::format("variable of collection is matched. {}:{}", var->mainName(),
+                               evaluated_value->variable_sub_name_);
+          }
+        }());
 
-          WGE_LOG_TRACE([&]() {
-            if (!var->isCollection()) {
-              return std::format("variable is matched. {}{}", var->mainName(),
-                                 var->subName().empty() ? "" : "." + var->subName());
-            } else {
-              auto& matched_var = t.getMatchedVariables(chain_index_).back();
-              return std::format("variable of collection is matched. {}:{}", var->mainName(),
-                                 matched_var.transformed_value_.variable_sub_name_);
-            }
-          }());
-        } else {
-          WGE_LOG_TRACE([&]() {
-            if (!var->isCollection()) {
-              return std::format("variable is matched. {}{}", var->mainName(),
-                                 var->subName().empty() ? "" : "." + var->subName());
-            } else {
-              return std::format("variable of collection is matched. {}:{}", var->mainName(),
-                                 evaluated_value->variable_sub_name_);
-            }
-          }());
+        if (isNeedPushMatched()) {
+          t.pushMatchedVariable(var.get(), chain_index_, result.at(i), transformed_value,
+                                captured_value, std::move(transform_list));
         }
 
         rule_matched = true;
@@ -539,7 +522,7 @@ inline bool Rule::evaluateWithMultiMatch(Transaction& t) const {
 
   // Evaluate the chained rules
   if (rule_matched) {
-    if (!chain_.empty())
+    if (chain_)
       [[unlikely]] {
         // If the chained rules are matched means the rule is matched, otherwise the rule is not
         // matched
@@ -547,12 +530,6 @@ inline bool Rule::evaluateWithMultiMatch(Transaction& t) const {
           rule_matched = false;
         }
       }
-  }
-
-  // Evaluate the msg macro and logdata macro
-  if (rule_matched) {
-    evaluateMsgMacro(t);
-    evaluateLogDataMacro(t);
   }
 
   return rule_matched;

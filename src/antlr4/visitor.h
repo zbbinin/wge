@@ -837,7 +837,7 @@ private:
   static bool optionStr2Bool(const std::string& option_str);
   static EngineConfig::Option optionStr2EnumValue(const std::string& option_str);
   static EngineConfig::BodyLimitAction bodyLimitActionStr2EnumValue(const std::string& action_str);
-  std::expected<std::shared_ptr<Macro::MacroBase>, std::string> getMacro(
+  std::expected<std::unique_ptr<Macro::MacroBase>, std::string> getMacro(
       std::string&& text,
       const std::vector<Wge::Antlr4::Antlr4Gen::SecLangParser::VariableContext*>& macro_ctx_array,
       bool is_only_macro);
@@ -852,7 +852,7 @@ private:
     const bool is_not = ctx->NOT() != nullptr;
     const bool is_counter = ctx->VAR_COUNT() != nullptr;
 
-    if (visit_variable_mode_ == VisitVariableMode::Ctl) {
+    if (current_rule_->visitVariableMode() == CurrentRule::VisitVariableMode::Ctl) {
       // std::any is copyable, so we can't return a unique_ptr
       std::shared_ptr<Variable::VariableBase> variable(
           new VarT(std::move(sub_name), is_not, is_counter, parser_->currLoadFile()));
@@ -865,8 +865,8 @@ private:
       }
 
       return variable;
-    } else if (visit_variable_mode_ == VisitVariableMode::Macro) {
-      std::shared_ptr<Variable::VariableBase> variable(
+    } else if (current_rule_->visitVariableMode() == CurrentRule::VisitVariableMode::Macro) {
+      std::unique_ptr<Variable::VariableBase> variable(
           new VarT(std::move(sub_name), false, false, parser_->currLoadFile()));
       setRuleNeedPushMatched(variable.get());
 
@@ -882,8 +882,12 @@ private:
       } else {
         letera_value = std::format("%{{{}:{}}}", variable->mainName(), variable->subName());
       }
-      return std::shared_ptr<Macro::MacroBase>(
-          new Macro::VariableMacro(std::move(letera_value), variable));
+
+      Macro::MacroBase* macro_ptr =
+          new Macro::VariableMacro(std::move(letera_value), std::move(variable));
+
+      // The raw pointer will be managed by std::unique_ptr in getMacro
+      return macro_ptr;
     } else {
       std::unique_ptr<Variable::VariableBase> variable(
           new VarT(std::move(sub_name), is_not, is_counter, parser_->currLoadFile()));
@@ -896,14 +900,14 @@ private:
       }
 
       // Append variable
-      (*current_rule_iter_)->appendVariable(std::move(variable));
+      current_rule_->get()->appendVariable(std::move(variable));
 
       return EMPTY_STRING;
     }
   }
 
-  template <class VarT, class CtxT> std::any setOperator(CtxT* ctx) {
-    std::expected<std::shared_ptr<Wge::Macro::MacroBase>, std::string> macro =
+  template <class OperatorT, class CtxT> std::any setOperator(CtxT* ctx) {
+    std::expected<std::unique_ptr<Macro::MacroBase>, std::string> macro =
         getMacro(ctx->string_with_macro()->getText(), ctx->string_with_macro()->variable(),
                  ctx->string_with_macro()->STRING().empty());
 
@@ -913,69 +917,148 @@ private:
 
     std::unique_ptr<Operator::OperatorBase> op;
     if (macro.value()) {
-      auto macro_shared_ptr = macro.value();
-      if (visit_operator_mode_ == VisitOperatorMode::SecRuleUpdateOperator) {
+      auto& macro_ptr = macro.value();
+      if (current_rule_->visitOperatorMode() ==
+          CurrentRule::VisitOperatorMode::SecRuleUpdateOperator) {
         // In the SecRuleUpdateOperator mode:
         // - If the macro type is VariableMacro and the variable is RULE.operator_value, we need
         // expand the macro to get the original value of the operator.
         // - If the macro type is VariableMacro but the varaible is not RULE.operator_value, we use
         // it directly.
         // - If the macro type is MultiMacro, we don't support it yet.
-        std::shared_ptr<Wge::Macro::VariableMacro> variable_macro_shared_ptr =
-            std::dynamic_pointer_cast<Wge::Macro::VariableMacro>(macro.value());
-        if (variable_macro_shared_ptr) {
-          std::string_view variable_main_name =
-              variable_macro_shared_ptr->getVariable()->mainName();
-          const std::string& variable_sub_name =
-              variable_macro_shared_ptr->getVariable()->subName();
+        Wge::Macro::VariableMacro* variable_macro_ptr =
+            dynamic_cast<Wge::Macro::VariableMacro*>(macro_ptr.get());
+        if (variable_macro_ptr) {
+          std::string_view variable_main_name = variable_macro_ptr->getVariable()->mainName();
+          const std::string& variable_sub_name = variable_macro_ptr->getVariable()->subName();
           if (variable_main_name == "RULE" && variable_sub_name == "operator_value") {
             std::string original_operator_literal_value =
-                (*current_rule_iter_)->getOperator()->literalValue();
+                current_rule_->get()->getOperator()->literalValue();
             if (!original_operator_literal_value.empty()) {
               op = std::unique_ptr<Operator::OperatorBase>(
-                  new VarT(std::move(original_operator_literal_value), ctx->NOT() != nullptr,
-                           parser_->currLoadFile()));
+                  new OperatorT(std::move(original_operator_literal_value), ctx->NOT() != nullptr,
+                                parser_->currLoadFile()));
             } else {
               op = std::unique_ptr<Operator::OperatorBase>(
-                  new VarT((*current_rule_iter_)->getOperator()->macro(), ctx->NOT() != nullptr,
-                           parser_->currLoadFile()));
+                  new OperatorT(std::move(current_rule_->get()->getOperator()->macro()),
+                                ctx->NOT() != nullptr, parser_->currLoadFile()));
             }
           } else {
-            op = std::unique_ptr<Operator::OperatorBase>(
-                new VarT(macro.value(), ctx->NOT() != nullptr, parser_->currLoadFile()));
+            op = std::unique_ptr<Operator::OperatorBase>(new OperatorT(
+                std::move(macro_ptr), ctx->NOT() != nullptr, parser_->currLoadFile()));
           }
-        } else if (std::dynamic_pointer_cast<Wge::Macro::MultiMacro>(macro_shared_ptr)) {
+        } else if (dynamic_cast<Wge::Macro::MultiMacro*>(macro_ptr.get())) {
           // We don't support MultiMacro yet.
           // FIXME(zhouyu 2025-05-09): Add support for MultiMacro in SecRuleUpdateOperator.
           // It a bit tricky because we need merge the original operator value to a new macro if the
           // macro has RULE.operator_value and the original operator value is a multi macro. I am
           // just want to finish the basic feature first.
+          assert(false);
           RETURN_ERROR("MultiMacro is not supported yet in SecRuleUpdateOperator.");
         }
       } else {
         op = std::unique_ptr<Operator::OperatorBase>(
-            new VarT(macro.value(), ctx->NOT() != nullptr, parser_->currLoadFile()));
+            new OperatorT(std::move(macro_ptr), ctx->NOT() != nullptr, parser_->currLoadFile()));
       }
     } else {
-      op = std::unique_ptr<Operator::OperatorBase>(new VarT(
+      op = std::unique_ptr<Operator::OperatorBase>(new OperatorT(
           ctx->string_with_macro()->getText(), ctx->NOT() != nullptr, parser_->currLoadFile()));
     }
 
-    (*current_rule_iter_)->setOperator(std::move(op));
+    current_rule_->get()->setOperator(std::move(op));
     return EMPTY_STRING;
   }
 
 private:
+  class CurrentRule {
+  public:
+    enum class VisitVariableMode { SecRule, SecRuleUpdateTarget, Ctl, Macro };
+    enum class VisitActionMode { SecRule, SecRuleUpdateAction, SecAction, SecDefaultAction };
+    enum class VisitOperatorMode { SecRule, SecRuleUpdateOperator };
+
+  public:
+    CurrentRule(Parser* parser, int line, Rule* parent_rule)
+        : parser_(parser), parent_rule_(parent_rule) {
+      created_rule_ = std::make_unique<Rule>(parser->currLoadFile(), line);
+    }
+
+    CurrentRule(Parser* parser, uint64_t existed_rule_id) : parser_(parser) {
+      existed_rule_ = parser->findRuleById(existed_rule_id);
+      assert(existed_rule_);
+    }
+
+    CurrentRule(Parser* parser, Rule* rule) : parser_(parser) {
+      existed_rule_ = rule;
+      assert(existed_rule_);
+    }
+
+    ~CurrentRule() { finalize(true); }
+
+  public:
+    Rule* get() const { return created_rule_ ? created_rule_.get() : existed_rule_; }
+    Rule* parent() const { return parent_rule_; }
+    void visitVariableMode(VisitVariableMode mode) { visit_variable_mode_ = mode; }
+    void visitActionMode(VisitActionMode mode) { visit_action_mode_ = mode; }
+    void visitOperatorMode(VisitOperatorMode mode) { visit_operator_mode_ = mode; }
+    VisitVariableMode visitVariableMode() const { return visit_variable_mode_; }
+    VisitActionMode visitActionMode() const { return visit_action_mode_; }
+    VisitOperatorMode visitOperatorMode() const { return visit_operator_mode_; }
+    Rule* finalize(bool append) {
+      Rule* appended_rule = nullptr;
+      // Drop created rule if not appending
+      if (!append) {
+        created_rule_.reset();
+        return appended_rule;
+      }
+
+      if (created_rule_) {
+        if (parent_rule_) {
+          // Check the chain rule count limit, ensure the chain index won't overflow
+          if (std::numeric_limits<RuleChainIndexType>::max() <= parent_rule_->chainIndex()) {
+            assert(false && "Too many chain rules in the rule");
+            return appended_rule;
+          }
+
+          appended_rule = created_rule_.get();
+          parent_rule_->appendChainRule(std::move(created_rule_));
+        } else {
+          switch (visit_action_mode_) {
+          case VisitActionMode::SecRule:
+            appended_rule = parser_->secRule(std::move(created_rule_));
+            break;
+          case VisitActionMode::SecAction:
+            parser_->secAction(std::move(created_rule_));
+            break;
+          case VisitActionMode::SecDefaultAction:
+            parser_->secDefaultAction(std::move(created_rule_));
+            break;
+          default:
+            assert(false);
+            break;
+          }
+        }
+      }
+      return appended_rule;
+    }
+
+  private:
+    Parser* parser_;
+    // The rule will be appended to parser's rule list when finalized or when a chained rule is
+    // created.
+    std::unique_ptr<Rule> created_rule_;
+    // The rule use to update existed rule in SecRuleUpdateXXX directives.
+    Rule* existed_rule_{nullptr};
+    Rule* parent_rule_{nullptr};
+    VisitVariableMode visit_variable_mode_{VisitVariableMode::SecRule};
+    VisitActionMode visit_action_mode_{VisitActionMode::SecRule};
+    VisitOperatorMode visit_operator_mode_{VisitOperatorMode::SecRule};
+  };
+
+private:
   Parser* parser_;
-  std::list<std::unique_ptr<Rule>>::iterator current_rule_iter_;
+  std::unique_ptr<CurrentRule> current_rule_;
   bool chain_{false};
   std::unordered_multimap<std::string, std::string> action_map_;
-  enum class VisitVariableMode { SecRule, Ctl, Macro };
-  enum class VisitActionMode { SecRule, SecRuleUpdateAction, SecAction, SecDefaultAction };
-  enum class VisitOperatorMode { SecRule, SecRuleUpdateOperator };
-  VisitVariableMode visit_variable_mode_{VisitVariableMode::SecRule};
-  VisitActionMode visit_action_mode_{VisitActionMode::SecRule};
-  VisitOperatorMode visit_operator_mode_{VisitOperatorMode::SecRule};
   bool should_visit_next_child_{true};
 };
 } // namespace Wge::Antlr4

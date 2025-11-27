@@ -37,6 +37,7 @@ TEST(RuleEvaluateLogicTest, evluateLogic) {
         "id:1, \
         phase:1, \
         pass, \
+        log, \
         t:none, \
         t:urlDecode, \
         t:lowercase, \
@@ -51,7 +52,13 @@ TEST(RuleEvaluateLogicTest, evluateLogic) {
     ASSERT_TRUE(result.has_value());
 
     bool matched = false;
-    t->processRequestHeaders(nullptr, nullptr, 0, [&](const Rule& rule) { matched = true; });
+    t->processRequestHeaders(
+        nullptr, nullptr, 0,
+        [](const Rule& rule, void* user_data) {
+          bool* matched = static_cast<bool*>(user_data);
+          *matched = true;
+        },
+        &matched);
     EXPECT_EQ(std::get<int64_t>(t->getVariable("test")), 3);
     EXPECT_TRUE(matched);
     EXPECT_EQ(t->getMsgMacroExpanded(), "tx.test=3");
@@ -67,6 +74,7 @@ TEST(RuleEvaluateLogicTest, evluateLogic) {
         "id:1, \
         phase:1, \
         pass, \
+        log, \
         t:none, \
         t:lowercase, \
         msg:'tx.test=%{tx.test}', \
@@ -82,7 +90,13 @@ TEST(RuleEvaluateLogicTest, evluateLogic) {
     ASSERT_TRUE(result.has_value());
 
     bool matched = false;
-    t->processRequestHeaders(nullptr, nullptr, 0, [&](const Rule& rule) { matched = true; });
+    t->processRequestHeaders(
+        nullptr, nullptr, 0,
+        [](const Rule& rule, void* user_data) {
+          bool* matched = static_cast<bool*>(user_data);
+          *matched = true;
+        },
+        &matched);
     EXPECT_EQ(std::get<int64_t>(t->getVariable("test")), 3);
     EXPECT_TRUE(matched);
     EXPECT_EQ(t->getMsgMacroExpanded(), "tx.test=3");
@@ -100,6 +114,7 @@ TEST(RuleEvaluateLogicTest, evluateLogic) {
         "id:1, \
         phase:1, \
         pass, \
+        log, \
         t:none, \
         t:lowercase, \
         msg:'tx.test=%{tx.test}', \
@@ -115,11 +130,19 @@ TEST(RuleEvaluateLogicTest, evluateLogic) {
     ASSERT_TRUE(result.has_value());
 
     bool matched = false;
-    t->processRequestHeaders(nullptr, nullptr, 0, [&](const Rule& rule) { matched = true; });
+    t->processRequestHeaders(
+        nullptr, nullptr, 0,
+        [](const Rule& rule, void* user_data) {
+          bool* matched = static_cast<bool*>(user_data);
+          *matched = true;
+        },
+        &matched);
     EXPECT_EQ(std::get<int64_t>(t->getVariable("test")), 3);
     EXPECT_FALSE(matched);
-    EXPECT_TRUE(t->getMsgMacroExpanded().empty());
-    EXPECT_TRUE(t->getLogDataMacroExpanded().empty());
+
+    // Even though the rule is not matched, the msg and logdata macro can evluate manually.
+    EXPECT_FALSE(t->getMsgMacroExpanded().empty());
+    EXPECT_FALSE(t->getLogDataMacroExpanded().empty());
   }
 }
 
@@ -133,6 +156,7 @@ TEST(RuleEvaluateLogicTest, exceptVariable) {
         "id:1, \
         phase:1, \
         pass, \
+        log, \
         t:none, \
         t:lowercase, \
         msg:'tx.test=%{tx.test}', \
@@ -146,7 +170,13 @@ TEST(RuleEvaluateLogicTest, exceptVariable) {
     ASSERT_TRUE(result.has_value());
 
     bool matched = false;
-    t->processRequestHeaders(nullptr, nullptr, 0, [&](const Rule& rule) { matched = true; });
+    t->processRequestHeaders(
+        nullptr, nullptr, 0,
+        [](const Rule& rule, void* user_data) {
+          bool* matched = static_cast<bool*>(user_data);
+          *matched = true;
+        },
+        &matched);
     EXPECT_EQ(std::get<int64_t>(t->getVariable("test")), 4);
     EXPECT_TRUE(matched);
     EXPECT_EQ(t->getMsgMacroExpanded(), "tx.test=4");
@@ -163,6 +193,7 @@ TEST(RuleEvaluateLogicTest, exceptVariable) {
         "id:1, \
         phase:1, \
         pass, \
+        log, \
         t:none, \
         t:lowercase, \
         msg:'tx.test=%{tx.test}', \
@@ -176,7 +207,13 @@ TEST(RuleEvaluateLogicTest, exceptVariable) {
     ASSERT_TRUE(result.has_value());
 
     bool matched = false;
-    t->processRequestHeaders(nullptr, nullptr, 0, [&](const Rule& rule) { matched = true; });
+    t->processRequestHeaders(
+        nullptr, nullptr, 0,
+        [](const Rule& rule, void* user_data) {
+          bool* matched = static_cast<bool*>(user_data);
+          *matched = true;
+        },
+        &matched);
     EXPECT_EQ(std::get<int64_t>(t->getVariable("test")), 4);
     EXPECT_TRUE(matched);
     EXPECT_EQ(t->getMsgMacroExpanded(), "tx.test=4");
@@ -193,6 +230,7 @@ TEST(RuleEvaluateLogicTest, exceptVariable) {
         "id:1, \
         phase:1, \
         pass, \
+        log, \
         t:none, \
         t:lowercase, \
         msg:'tx.test=%{tx.test}', \
@@ -206,7 +244,13 @@ TEST(RuleEvaluateLogicTest, exceptVariable) {
     ASSERT_TRUE(result.has_value());
 
     bool matched = false;
-    t->processRequestHeaders(nullptr, nullptr, 0, [&](const Rule& rule) { matched = true; });
+    t->processRequestHeaders(
+        nullptr, nullptr, 0,
+        [](const Rule& rule, void* user_data) {
+          bool* matched = static_cast<bool*>(user_data);
+          *matched = true;
+        },
+        &matched);
     EXPECT_FALSE(t->hasVariable("test"));
     EXPECT_FALSE(matched);
   }

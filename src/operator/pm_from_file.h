@@ -75,9 +75,9 @@ public:
     }
   }
 
-  PmFromFile(const std::shared_ptr<Macro::MacroBase> macro, bool is_not,
+  PmFromFile(std::unique_ptr<Macro::MacroBase>&& macro, bool is_not,
              std::string_view curr_rule_file_path)
-      : OperatorBase(macro, is_not), expression_list_(true) {
+      : OperatorBase(std::move(macro), is_not), expression_list_(true) {
     // Not supported macro expansion
     UNREACHABLE();
   }
@@ -113,11 +113,7 @@ public:
 
     bool matched = result.first != result.second;
     if (matched) {
-      Common::EvaluateResults::Element value;
-      value.string_buffer_ =
-          std::string_view(operand_str.data() + result.first, result.second - result.first);
-      value.variant_ = value.string_buffer_;
-      t.setTempCapture(0, std::move(value));
+      t.stageCapture(0, {operand_str.data() + result.first, result.second - result.first});
     }
 
     return matched;

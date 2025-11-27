@@ -48,9 +48,8 @@ public:
   Rx(std::string&& literal_value, bool is_not, std::string_view curr_rule_file_path)
       : OperatorBase(std::move(literal_value), is_not), scanner_(createScanner(literalValue())) {}
 
-  Rx(const std::shared_ptr<Macro::MacroBase> macro, bool is_not,
-     std::string_view curr_rule_file_path)
-      : OperatorBase(macro, is_not) {}
+  Rx(std::unique_ptr<Macro::MacroBase>&& macro, bool is_not, std::string_view curr_rule_file_path)
+      : OperatorBase(std::move(macro), is_not) {}
 
 public:
   bool evaluate(Transaction& t, const Common::Variant& operand) const override {
@@ -101,10 +100,7 @@ public:
 
     size_t capture_index = 0;
     for (const auto& [from, to] : result) {
-      Common::EvaluateResults::Element value;
-      value.string_buffer_ = std::string_view(operand_str.data() + from, to - from);
-      value.variant_ = value.string_buffer_;
-      t.setTempCapture(capture_index++, std::move(value));
+      t.stageCapture(capture_index++, {operand_str.data() + from, to - from});
     }
 
     return !result.empty();

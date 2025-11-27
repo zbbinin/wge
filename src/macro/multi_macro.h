@@ -35,7 +35,7 @@ namespace Wge {
 namespace Macro {
 class MultiMacro final : public MacroBase {
 public:
-  MultiMacro(std::string&& literal_value, std::vector<std::shared_ptr<MacroBase>>&& macros)
+  MultiMacro(std::string&& literal_value, std::vector<std::unique_ptr<MacroBase>>&& macros)
       : MacroBase(std::move(literal_value)), macros_(std::move(macros)) {}
 
 public:
@@ -52,7 +52,7 @@ public:
           eval = eval.replace(pos1, pos2 - pos1 + 1,
                               std::to_string(std::get<int64_t>(result.front().variant_)));
         } else if (IS_STRING_VIEW_VARIANT(result.front().variant_)) {
-          auto& sv = std::get<std::string_view>(result.front().variant_);
+          std::string_view sv = std::get<std::string_view>(result.front().variant_);
           eval = eval.replace(pos1, pos2 - pos1 + 1, sv.data(), sv.size());
         } else
           [[unlikely]] {
@@ -67,7 +67,7 @@ public:
         result.clear();
       }
     }
-    result.append(std::move(eval));
+    result.emplace_back(t.internString(std::move(eval)));
     assert(eval.empty());
 
     WGE_LOG_TRACE("macro {} expanded: {}", literal_value_,
@@ -75,7 +75,7 @@ public:
   }
 
 private:
-  std::vector<std::shared_ptr<MacroBase>> macros_;
+  std::vector<std::unique_ptr<MacroBase>> macros_;
 };
 } // namespace Macro
 } // namespace Wge

@@ -31,9 +31,9 @@ public:
   Contains(std::string&& literal_value, bool is_not, std::string_view curr_rule_file_path)
       : OperatorBase(std::move(literal_value), is_not) {}
 
-  Contains(const std::shared_ptr<Macro::MacroBase> macro, bool is_not,
+  Contains(std::unique_ptr<Macro::MacroBase>&& macro, bool is_not,
            std::string_view curr_rule_file_path)
-      : OperatorBase(macro, is_not) {}
+      : OperatorBase(std::move(macro), is_not) {}
 
 public:
   bool evaluate(Transaction& t, const Common::Variant& operand) const override {
@@ -45,19 +45,14 @@ public:
             matched =
                 std::get<std::string_view>(operand).find(literal_value_) != std::string_view::npos;
             if (matched) {
-              Common::EvaluateResults::Element value;
-              value.variant_ = literal_value_;
-              t.setTempCapture(0, std::move(value));
+              t.stageCapture(0, literal_value_);
             }
           }
         else {
           MACRO_EXPAND_STRING_VIEW(macro_value);
           matched = std::get<std::string_view>(operand).find(macro_value) != std::string_view::npos;
           if (matched) {
-            Common::EvaluateResults::Element value;
-            value.string_buffer_ = macro_value;
-            value.variant_ = value.string_buffer_;
-            t.setTempCapture(0, std::move(value));
+            t.stageCapture(0, macro_value);
           }
         }
       }
